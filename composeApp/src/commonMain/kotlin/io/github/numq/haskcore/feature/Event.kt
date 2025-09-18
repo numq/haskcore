@@ -8,7 +8,7 @@ import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 
 @OptIn(ExperimentalTime::class)
-sealed interface Event {
+interface Event {
     val timestamp: Instant
 
     val payload: Any?
@@ -17,7 +17,11 @@ sealed interface Event {
         fun createTimestamp() = Clock.System.now()
     }
 
-    data class Collectable<out T>(val key: Any, val flow: Flow<T>, override val payload: Any? = null) : Event {
+    abstract class Collectable<out T>(override val payload: Any? = null) : Event {
+        abstract val key: Any
+
+        abstract val flow: Flow<T>
+
         override val timestamp = createTimestamp()
     }
 
