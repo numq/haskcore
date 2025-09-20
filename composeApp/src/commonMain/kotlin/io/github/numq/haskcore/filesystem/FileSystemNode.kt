@@ -1,13 +1,13 @@
-package io.github.numq.haskcore.filesystem.internal
+package io.github.numq.haskcore.filesystem
 
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 
 @OptIn(ExperimentalTime::class)
-sealed interface FileSystemItem {
-    val name: String
-
+sealed interface FileSystemNode {
     val path: String
+
+    val name: String
 
     val size: Long
 
@@ -23,9 +23,11 @@ sealed interface FileSystemItem {
 
     val modifiedAt: Instant
 
+    val parent: FileSystemNode?
+
     data class File(
-        override val name: String,
         override val path: String,
+        override val name: String,
         override val size: Long,
         override val isHidden: Boolean,
         override val isReadOnly: Boolean,
@@ -33,7 +35,8 @@ sealed interface FileSystemItem {
         override val createdAt: Instant,
         override val accessedAt: Instant,
         override val modifiedAt: Instant,
-    ) : FileSystemItem {
+        override val parent: FileSystemNode?
+    ) : FileSystemNode {
         val extension: String get() = name.substringAfterLast('.', "")
     }
 
@@ -47,8 +50,9 @@ sealed interface FileSystemItem {
         override val createdAt: Instant,
         override val accessedAt: Instant,
         override val modifiedAt: Instant,
-        val children: List<FileSystemItem> = emptyList(),
-    ) : FileSystemItem {
+        override val parent: FileSystemNode?,
+        val children: List<FileSystemNode>,
+    ) : FileSystemNode {
         fun findFile(name: String) = children.filterIsInstance<File>().firstOrNull { file ->
             file.name == name
         }

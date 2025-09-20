@@ -75,16 +75,16 @@ interface VirtualFileSystem {
                 throw IOException("Path $path does not exist")
             }
 
-            val absPath = absolutePath
+            val absolutePath = Path(path).toAbsolutePath().toString()
 
-            nodeCache[absPath]?.let { cached ->
+            nodeCache[absolutePath]?.let { cached ->
                 val node = when (cached) {
                     is FileSystemNode.File -> cached.copy(parent = parent)
 
                     is FileSystemNode.Directory -> cached.copy(parent = parent)
                 }
 
-                nodeCache[absPath] = node
+                nodeCache[absolutePath] = node
 
                 return node
             }
@@ -216,7 +216,7 @@ interface VirtualFileSystem {
         }
 
         override fun invalidateCache(path: String) {
-            val absolutePath = File(path).absolutePath
+            val absolutePath = Path(path).toAbsolutePath().toString()
 
             val pathsToInvalidate = mutableSetOf<String>()
 
