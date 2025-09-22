@@ -1,6 +1,5 @@
-package io.github.numq.haskcore.process.di
+package io.github.numq.haskcore.process
 
-import io.github.numq.haskcore.process.internal.ProcessService
 import org.koin.dsl.bind
 import org.koin.dsl.module
 
