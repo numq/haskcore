@@ -91,6 +91,72 @@ class FileSystemServiceTest {
     }
 
     @Test
+    fun `readBytes should return file content as bytes`() {
+        val path = tempDir.resolve("file.bin").toString()
+        val bytes = byteArrayOf(10, 20, 30, 40)
+        File(path).writeBytes(bytes)
+
+        val result = fileSystemService.readBytes(path)
+
+        assertTrue(result.isSuccess)
+        assertContentEquals(bytes, result.getOrThrow())
+    }
+
+    @Test
+    fun `readBytes should fail when file does not exist`() {
+        val path = tempDir.resolve("nofile.bin").toString()
+
+        val result = fileSystemService.readBytes(path)
+
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is FileSystemException)
+    }
+
+    @Test
+    fun `readText should return file content as string`() {
+        val path = tempDir.resolve("file.txt").toString()
+        val text = "Hello World!"
+        File(path).writeText(text)
+
+        val result = fileSystemService.readText(path)
+
+        assertTrue(result.isSuccess)
+        assertEquals(text, result.getOrThrow())
+    }
+
+    @Test
+    fun `readText should fail when file does not exist`() {
+        val path = tempDir.resolve("nofile.txt").toString()
+
+        val result = fileSystemService.readText(path)
+
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is FileSystemException)
+    }
+
+    @Test
+    fun `readLines should return file content as list of lines`() {
+        val path = tempDir.resolve("file.txt").toString()
+        val lines = listOf("line1", "line2", "line3")
+        File(path).writeText(lines.joinToString("\n"))
+
+        val result = fileSystemService.readLines(path)
+
+        assertTrue(result.isSuccess)
+        assertEquals(lines, result.getOrThrow())
+    }
+
+    @Test
+    fun `readLines should fail when file does not exist`() {
+        val path = tempDir.resolve("nofile.txt").toString()
+
+        val result = fileSystemService.readLines(path)
+
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is FileSystemException)
+    }
+
+    @Test
     fun `listDirectory should return children for non-recursive listing`() {
         val path = "/test/dir"
         val children = listOf(mockk<FileSystemNode.File>(), mockk<FileSystemNode.Directory>())
@@ -186,17 +252,18 @@ class FileSystemServiceTest {
     }
 
     @Test
-    fun `createDirectory should invalidate cache and parent cache`() {
-        val path = tempDir.resolve("newdir").toString()
+    fun `createFile with bytes should write file and invalidate cache`() {
+        val path = tempDir.resolve("file.bin").toString()
+        val bytes = byteArrayOf(1, 2, 3, 4, 5)
         val parentPath = tempDir.toString()
 
         every { virtualFileSystem.invalidateCache(path) } just Runs
         every { virtualFileSystem.invalidateCache(parentPath) } just Runs
 
-        val result = fileSystemService.createDirectory(path)
+        val result = fileSystemService.createFile(path, bytes)
 
         assertTrue(result.isSuccess)
-        assertTrue(File(path).exists())
+        assertContentEquals(bytes, File(path).readBytes())
         verify { virtualFileSystem.invalidateCache(path) }
         verify { virtualFileSystem.invalidateCache(parentPath) }
     }
@@ -219,18 +286,17 @@ class FileSystemServiceTest {
     }
 
     @Test
-    fun `createFile with bytes should write file and invalidate cache`() {
-        val path = tempDir.resolve("file.bin").toString()
-        val bytes = byteArrayOf(1, 2, 3, 4, 5)
+    fun `createDirectory should invalidate cache and parent cache`() {
+        val path = tempDir.resolve("newdir").toString()
         val parentPath = tempDir.toString()
 
         every { virtualFileSystem.invalidateCache(path) } just Runs
         every { virtualFileSystem.invalidateCache(parentPath) } just Runs
 
-        val result = fileSystemService.createFile(path, bytes)
+        val result = fileSystemService.createDirectory(path)
 
         assertTrue(result.isSuccess)
-        assertContentEquals(bytes, File(path).readBytes())
+        assertTrue(File(path).exists())
         verify { virtualFileSystem.invalidateCache(path) }
         verify { virtualFileSystem.invalidateCache(parentPath) }
     }
