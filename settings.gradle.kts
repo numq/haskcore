@@ -33,24 +33,4 @@ plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }
 
-/**
- * Pure Kotlin
- */
-include(":compiler")
-include(":core")
-include(":filesystem")
-include(":keymap")
-include(":lsp")
-include(":project")
-include(":run")
-include(":settings")
-include(":workspace")
-
-/**
- * Compose
- */
-include(":application")
-include(":editor")
-include(":explorer")
-include(":ui")
-include(":window")
+include(":composeApp")
