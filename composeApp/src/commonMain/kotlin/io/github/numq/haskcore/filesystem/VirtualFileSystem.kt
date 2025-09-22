@@ -3,9 +3,9 @@ package io.github.numq.haskcore.filesystem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.runInterruptible
-import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
 import java.nio.file.Files
@@ -169,51 +169,49 @@ interface VirtualFileSystem {
         override fun watch(path: String) = channelFlow {
             val watchPath = Path(path)
 
-            withContext(Dispatchers.IO) {
-                val watchService = watchPath.fileSystem.newWatchService()
+            val watchService = watchPath.fileSystem.newWatchService()
 
-                try {
-                    watchPath.register(
-                        watchService,
-                        StandardWatchEventKinds.ENTRY_CREATE,
-                        StandardWatchEventKinds.ENTRY_MODIFY,
-                        StandardWatchEventKinds.ENTRY_DELETE
-                    )
+            try {
+                watchPath.register(
+                    watchService,
+                    StandardWatchEventKinds.ENTRY_CREATE,
+                    StandardWatchEventKinds.ENTRY_MODIFY,
+                    StandardWatchEventKinds.ENTRY_DELETE
+                )
 
-                    while (isActive) {
-                        val key = runInterruptible { watchService.take() }
+                while (isActive) {
+                    val key = runInterruptible { watchService.take() }
 
-                        try {
-                            for (event in key.pollEvents()) {
-                                val context = event.context() as Path
+                    try {
+                        for (event in key.pollEvents()) {
+                            val context = event.context() as Path
 
-                                val fullPath = (key.watchable() as Path).resolve(context).toAbsolutePath().toString()
+                            val fullPath = (key.watchable() as Path).resolve(context).toAbsolutePath().toString()
 
-                                val fileSystemEvent = when (event.kind()) {
-                                    StandardWatchEventKinds.ENTRY_CREATE -> FileSystemEvent.Created(path = fullPath)
+                            val fileSystemEvent = when (event.kind()) {
+                                StandardWatchEventKinds.ENTRY_CREATE -> FileSystemEvent.Created(path = fullPath)
 
-                                    StandardWatchEventKinds.ENTRY_MODIFY -> FileSystemEvent.Modified(path = fullPath)
+                                StandardWatchEventKinds.ENTRY_MODIFY -> FileSystemEvent.Modified(path = fullPath)
 
-                                    StandardWatchEventKinds.ENTRY_DELETE -> FileSystemEvent.Deleted(path = fullPath)
+                                StandardWatchEventKinds.ENTRY_DELETE -> FileSystemEvent.Deleted(path = fullPath)
 
-                                    else -> null
-                                }
-
-                                if (fileSystemEvent != null) {
-                                    invalidateCache(path = fullPath)
-
-                                    send(fileSystemEvent)
-                                }
+                                else -> null
                             }
-                        } finally {
-                            key.reset()
+
+                            if (fileSystemEvent != null) {
+                                invalidateCache(path = fullPath)
+
+                                send(fileSystemEvent)
+                            }
                         }
+                    } finally {
+                        key.reset()
                     }
-                } finally {
-                    watchService.close()
                 }
+            } finally {
+                watchService.close()
             }
-        }
+        }.flowOn(Dispatchers.IO)
 
         override fun invalidateCache(path: String) {
             val absolutePath = Path(path).toAbsolutePath().toString()

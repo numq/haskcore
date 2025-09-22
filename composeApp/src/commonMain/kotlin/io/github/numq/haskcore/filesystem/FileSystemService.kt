@@ -14,17 +14,23 @@ interface FileSystemService {
 
     fun isDirectory(path: String): Result<Boolean>
 
+    fun readBytes(path: String): Result<ByteArray>
+
+    fun readText(path: String): Result<String>
+
+    fun readLines(path: String): Result<List<String>>
+
     fun getNodes(path: String, recursive: Boolean): Result<List<FileSystemNode>>
 
     fun listDirectory(path: String, recursive: Boolean): Result<List<FileSystemNode>>
 
     fun observeDirectory(path: String): Result<Flow<FileSystemNodeChange>>
 
-    fun createDirectory(path: String): Result<Unit>
+    fun createFile(path: String, bytes: ByteArray): Result<Unit>
 
     fun createFile(path: String, text: String): Result<Unit>
 
-    fun createFile(path: String, bytes: ByteArray): Result<Unit>
+    fun createDirectory(path: String): Result<Unit>
 
     fun rename(path: String, name: String): Result<Unit>
 
@@ -84,6 +90,42 @@ interface FileSystemService {
             virtualFileSystem.getNode(path) is FileSystemNode.Directory
         }.recoverCatching { throwable ->
             throw FileSystemException("Failed to check if '$path' is directory: ${throwable.message}")
+        }
+
+        override fun readBytes(path: String) = runCatching {
+            val file = File(path)
+
+            if (!file.exists()) {
+                throw IOException("Path '$path' does not exist")
+            }
+
+            file.readBytes()
+        }.recoverCatching { throwable ->
+            throw FileSystemException("Failed to read bytes for '$path': ${throwable.message}")
+        }
+
+        override fun readText(path: String) = runCatching {
+            val file = File(path)
+
+            if (!file.exists()) {
+                throw IOException("Path '$path' does not exist")
+            }
+
+            file.readText()
+        }.recoverCatching { throwable ->
+            throw FileSystemException("Failed to read text for '$path': ${throwable.message}")
+        }
+
+        override fun readLines(path: String) = runCatching {
+            val file = File(path)
+
+            if (!file.exists()) {
+                throw IOException("Path '$path' does not exist")
+            }
+
+            file.readLines()
+        }.recoverCatching { throwable ->
+            throw FileSystemException("Failed to read lines for '$path': ${throwable.message}")
         }
 
         override fun getNodes(path: String, recursive: Boolean) = runCatching {
@@ -169,6 +211,18 @@ interface FileSystemService {
             }
         }
 
+        override fun createFile(path: String, bytes: ByteArray) = createFileInternal(path) {
+            writeBytes(bytes)
+        }.recoverCatching { throwable ->
+            throw FileSystemException("Failed to create file '$path': ${throwable.message}")
+        }
+
+        override fun createFile(path: String, text: String) = createFileInternal(path) {
+            writeText(text)
+        }.recoverCatching { throwable ->
+            throw FileSystemException("Failed to create file '$path': ${throwable.message}")
+        }
+
         override fun createDirectory(path: String) = runCatching {
             try {
                 if (!File(path).mkdirs()) {
@@ -181,18 +235,6 @@ interface FileSystemService {
             }
         }.recoverCatching { throwable ->
             throw FileSystemException("Failed to create directory '$path': ${throwable.message}")
-        }
-
-        override fun createFile(path: String, text: String) = createFileInternal(path) {
-            writeText(text)
-        }.recoverCatching { throwable ->
-            throw FileSystemException("Failed to create file '$path': ${throwable.message}")
-        }
-
-        override fun createFile(path: String, bytes: ByteArray) = createFileInternal(path) {
-            writeBytes(bytes)
-        }.recoverCatching { throwable ->
-            throw FileSystemException("Failed to create file '$path': ${throwable.message}")
         }
 
         override fun rename(path: String, name: String) = runCatching {
