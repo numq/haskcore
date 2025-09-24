@@ -1,370 +1,211 @@
 package io.github.numq.haskcore.filesystem
 
+import io.methvin.watcher.DirectoryChangeEvent
+import io.methvin.watcher.DirectoryWatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.withContext
 import java.io.File
-import java.io.IOException
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import kotlin.time.ExperimentalTime
 
 @OptIn(ExperimentalTime::class)
 interface FileSystemService {
-    fun exists(path: String): Result<Boolean>
+    suspend fun exists(path: String): Result<Boolean>
 
-    fun isFile(path: String): Result<Boolean>
+    suspend fun isFile(path: String): Result<Boolean>
 
-    fun isDirectory(path: String): Result<Boolean>
+    suspend fun isDirectory(path: String): Result<Boolean>
 
-    fun readBytes(path: String): Result<ByteArray>
+    suspend fun readBytes(path: String): Result<ByteArray>
 
-    fun readText(path: String): Result<String>
+    suspend fun readText(path: String): Result<String>
 
-    fun readLines(path: String): Result<List<String>>
+    suspend fun readLines(path: String): Result<List<String>>
 
-    fun getNodes(path: String, recursive: Boolean): Result<List<FileSystemNode>>
+    suspend fun listDirectory(path: String): Result<List<String>>
 
-    fun listDirectory(path: String, recursive: Boolean): Result<List<FileSystemNode>>
+    suspend fun observeDirectoryChanges(path: String): Result<Flow<FileSystemChange>>
 
-    fun observeDirectory(path: String): Result<Flow<FileSystemNodeChange>>
+    suspend fun createFile(path: String, bytes: ByteArray): Result<Unit>
 
-    fun createFile(path: String, bytes: ByteArray): Result<Unit>
+    suspend fun createFile(path: String, text: String): Result<Unit>
 
-    fun createFile(path: String, text: String): Result<Unit>
+    suspend fun createDirectory(path: String): Result<Unit>
 
-    fun createDirectory(path: String): Result<Unit>
+    suspend fun rename(path: String, name: String): Result<Unit>
 
-    fun rename(path: String, name: String): Result<Unit>
+    suspend fun move(fromPath: String, toPath: String, overwrite: Boolean): Result<Unit>
 
-    fun move(fromPath: String, toPath: String, overwrite: Boolean): Result<Unit>
+    suspend fun copy(fromPath: String, toPath: String, overwrite: Boolean): Result<Unit>
 
-    fun copy(fromPath: String, toPath: String, overwrite: Boolean): Result<Unit>
+    suspend fun delete(path: String): Result<Unit>
 
-    fun delete(path: String): Result<Unit>
-
-    class Default(private val virtualFileSystem: VirtualFileSystem) : FileSystemService {
-        private fun createFileInternal(path: String, block: File.() -> Unit) = runCatching {
-            try {
-                with(File(path)) {
-                    parentFile?.mkdirs()
-
-                    block(this)
-                }
-            } finally {
-                virtualFileSystem.invalidateCache(path)
-
-                invalidateParent(path)
+    class Default : FileSystemService {
+        private suspend fun <T> withFileSystem(block: () -> T) = withContext(Dispatchers.IO) {
+            runCatching(block).recoverCatching { throwable ->
+                throw FileSystemException(throwable)
             }
         }
 
-        private fun getAllDescendants(
-            dir: FileSystemNode.Directory
-        ): List<FileSystemNode> = dir.children.flatMap { child ->
-            when (child) {
-                is FileSystemNode.Directory -> listOf(child) + getAllDescendants(child)
-
-                else -> listOf(child)
-            }
-        }
-
-        private fun invalidateParent(path: String) =
-            File(path).parentFile?.toPath()?.toAbsolutePath()?.toString()?.let(virtualFileSystem::invalidateCache)
-
-        override fun exists(path: String) = runCatching {
-            try {
-                virtualFileSystem.getNode(path)
-
-                true
-            } catch (_: IOException) {
-                false
-            }
-        }.recoverCatching { throwable ->
-            throw FileSystemException("Failed to check if '$path' exists: ${throwable.message}")
-        }
-
-        override fun isFile(path: String) = runCatching {
-            virtualFileSystem.getNode(path) is FileSystemNode.File
-        }.recoverCatching { throwable ->
-            throw FileSystemException("Failed to check if '$path' is file: ${throwable.message}")
-        }
-
-        override fun isDirectory(path: String) = runCatching {
-            virtualFileSystem.getNode(path) is FileSystemNode.Directory
-        }.recoverCatching { throwable ->
-            throw FileSystemException("Failed to check if '$path' is directory: ${throwable.message}")
-        }
-
-        override fun readBytes(path: String) = runCatching {
+        private fun checkPath(path: String): File {
             val file = File(path)
 
-            if (!file.exists()) {
-                throw IOException("Path '$path' does not exist")
-            }
+            check(file.exists()) { "Path '$path' does not exist" }
 
-            file.readBytes()
-        }.recoverCatching { throwable ->
-            throw FileSystemException("Failed to read bytes for '$path': ${throwable.message}")
+            return file
         }
 
-        override fun readText(path: String) = runCatching {
-            val file = File(path)
+        private fun checkPaths(fromPath: String, toPath: String, overwrite: Boolean): Pair<File, File> {
+            val srcFile = File(fromPath)
 
-            if (!file.exists()) {
-                throw IOException("Path '$path' does not exist")
-            }
+            check(srcFile.exists()) { error("Path '$fromPath' does not exist") }
 
-            file.readText()
-        }.recoverCatching { throwable ->
-            throw FileSystemException("Failed to read text for '$path': ${throwable.message}")
+            val dstFile = File(toPath)
+
+            check(!dstFile.exists() || overwrite) { "Path '$toPath' already exists" }
+
+            return srcFile to dstFile
         }
 
-        override fun readLines(path: String) = runCatching {
-            val file = File(path)
+        private fun File.transferTo(target: File, overwrite: Boolean, copy: Boolean) {
+            val source = toPath()
 
-            if (!file.exists()) {
-                throw IOException("Path '$path' does not exist")
+            val options = when {
+                overwrite -> arrayOf(StandardCopyOption.REPLACE_EXISTING)
+
+                else -> emptyArray()
             }
 
-            file.readLines()
-        }.recoverCatching { throwable ->
-            throw FileSystemException("Failed to read lines for '$path': ${throwable.message}")
-        }
+            when {
+                copy -> Files.copy(source, target.toPath(), *options)
 
-        override fun getNodes(path: String, recursive: Boolean) = runCatching {
-            when (val node = virtualFileSystem.getNode(path)) {
-                is FileSystemNode.Directory -> listOf(node) + when {
-                    recursive -> getAllDescendants(node)
-
-                    else -> node.children
-                }
-
-                else -> error("'$path' is not a directory")
+                else -> Files.move(source, target.toPath(), *options)
             }
-        }.recoverCatching { throwable ->
-            throw FileSystemException("Failed to get nodes for '$path': ${throwable.message}")
         }
 
-        override fun listDirectory(path: String, recursive: Boolean) = runCatching {
-            when (val node = virtualFileSystem.getNode(path)) {
-                is FileSystemNode.Directory -> when {
-                    recursive -> getAllDescendants(node)
+        override suspend fun exists(path: String) = withFileSystem {
+            File(path).exists()
+        }
 
-                    else -> node.children
-                }
+        override suspend fun isFile(path: String) = withFileSystem {
+            File(path).isFile
+        }
 
-                else -> error("'$path' is not a directory")
+        override suspend fun isDirectory(path: String) = withFileSystem {
+            File(path).isDirectory
+        }
+
+        override suspend fun readBytes(path: String) = withFileSystem {
+            checkPath(path = path).readBytes()
+        }
+
+        override suspend fun readText(path: String) = withFileSystem {
+            checkPath(path = path).readText()
+        }
+
+        override suspend fun readLines(path: String) = withFileSystem {
+            checkPath(path = path).readLines()
+        }
+
+        override suspend fun listDirectory(path: String) = withFileSystem {
+            with(checkPath(path = path)) {
+                check(isDirectory) { "Path $path is not a directory" }
+
+                listFiles()?.mapNotNull(File::getAbsolutePath) ?: emptyList()
             }
-        }.recoverCatching { throwable ->
-            throw FileSystemException("Failed to list directory '$path': ${throwable.message}")
         }
 
-        override fun observeDirectory(path: String) = runCatching {
-            val rootNode =
-                virtualFileSystem.getNode(path) as? FileSystemNode.Directory ?: error("'$path' is not a directory")
+        override suspend fun observeDirectoryChanges(path: String) = withFileSystem {
+            with(checkPath(path = path)) {
+                check(isDirectory) { "Directory $path does not exist or is not a directory" }
 
-            val nodes = mutableMapOf<String, FileSystemNode>()
+                callbackFlow {
+                    val watcher = DirectoryWatcher.builder().path(toPath()).listener { event ->
+                        when (event.eventType()) {
+                            DirectoryChangeEvent.EventType.CREATE -> trySend(FileSystemChange.Created(event.path()))
 
-            nodes[path] = rootNode
+                            DirectoryChangeEvent.EventType.MODIFY -> trySend(FileSystemChange.Modified(event.path()))
 
-            virtualFileSystem.watch(path).mapNotNull { event ->
-                when (event) {
-                    is FileSystemEvent.Created -> {
-                        val createdNode = virtualFileSystem.getNode(event.path)
+                            DirectoryChangeEvent.EventType.DELETE -> trySend(FileSystemChange.Deleted(event.path()))
 
-                        nodes[createdNode.path] = createdNode
-
-                        createdNode.parent?.let { parent ->
-                            val parentNode = nodes[parent.path] as? FileSystemNode.Directory
-
-                            if (parentNode != null) {
-                                nodes[parent.path] = parentNode.copy(children = parentNode.children + createdNode)
-                            }
+                            else -> Unit
                         }
+                    }.fileHashing(false).build()
 
-                        FileSystemNodeChange.Added(createdNode)
+                    val future = watcher.watchAsync()
+
+                    awaitClose {
+                        future.cancel(true)
+
+                        watcher.close()
                     }
+                }.flowOn(Dispatchers.IO)
+            }
+        }
 
-                    is FileSystemEvent.Modified -> {
-                        val modifiedNode = virtualFileSystem.getNode(event.path)
+        override suspend fun createFile(path: String, bytes: ByteArray) = withFileSystem {
+            with(File(path)) {
+                check(!exists()) { "File '$path' already exists" }
 
-                        nodes[modifiedNode.path] = modifiedNode
+                parentFile?.mkdirs()
 
-                        FileSystemNodeChange.Updated(modifiedNode)
-                    }
+                check(createNewFile()) { "Failed to create file '$path'" }
+            }
+        }
 
-                    is FileSystemEvent.Deleted -> {
-                        val removedPath = event.path
+        override suspend fun createFile(path: String, text: String) = withFileSystem {
+            with(File(path)) {
+                check(!exists()) { "File '$path' already exists" }
 
-                        val deletedNode = nodes.remove(removedPath)
+                parentFile?.mkdirs()
 
-                        deletedNode?.parent?.let { parent ->
-                            val parentNode = nodes[parent.path] as? FileSystemNode.Directory
+                check(createNewFile()) { "Failed to create file '$path'" }
+            }
+        }
 
-                            if (parentNode != null) {
-                                nodes[parent.path] = parentNode.copy(children = parentNode.children.filter { node ->
-                                    node.path != removedPath
-                                })
-                            }
-                        }
-
-                        FileSystemNodeChange.Removed(removedPath)
-                    }
+        override suspend fun createDirectory(path: String) = withFileSystem {
+            with(File(path)) {
+                if (!exists()) {
+                    check(mkdirs()) { "Failed to create directory '$path'" }
                 }
             }
         }
 
-        override fun createFile(path: String, bytes: ByteArray) = createFileInternal(path) {
-            writeBytes(bytes)
-        }.recoverCatching { throwable ->
-            throw FileSystemException("Failed to create file '$path': ${throwable.message}")
-        }
-
-        override fun createFile(path: String, text: String) = createFileInternal(path) {
-            writeText(text)
-        }.recoverCatching { throwable ->
-            throw FileSystemException("Failed to create file '$path': ${throwable.message}")
-        }
-
-        override fun createDirectory(path: String) = runCatching {
-            try {
-                if (!File(path).mkdirs()) {
-                    throw IOException("File system error")
-                }
-            } finally {
-                virtualFileSystem.invalidateCache(path)
-
-                invalidateParent(path)
-            }
-        }.recoverCatching { throwable ->
-            throw FileSystemException("Failed to create directory '$path': ${throwable.message}")
-        }
-
-        override fun rename(path: String, name: String) = runCatching {
-            val srcFile = File(path)
+        override suspend fun rename(path: String, name: String) = withFileSystem {
+            val srcFile = checkPath(path)
 
             val dstFile = File(srcFile.parent, name)
 
-            try {
-                if (!srcFile.exists()) {
-                    throw IOException("Path '$path' does not exist")
-                }
+            check(!dstFile.exists()) { "File '$name' already exists in ${srcFile.parent}" }
 
-                if (dstFile.exists()) {
-                    throw IOException("Target '$name' already exists")
-                }
-
-                if (!srcFile.renameTo(dstFile)) {
-                    throw IOException("File system error")
-                }
-            } finally {
-                virtualFileSystem.invalidateCache(path)
-
-                virtualFileSystem.invalidateCache(dstFile.toPath().toAbsolutePath().toString())
-
-                invalidateParent(path)
-            }
-        }.recoverCatching { throwable ->
-            throw FileSystemException("Failed to rename '$path' to '$name': ${throwable.message}")
+            srcFile.transferTo(target = dstFile, overwrite = false, copy = false)
         }
 
-        override fun move(fromPath: String, toPath: String, overwrite: Boolean) = runCatching {
-            val srcFile = File(fromPath)
+        override suspend fun move(fromPath: String, toPath: String, overwrite: Boolean) = withFileSystem {
+            val (srcFile, dstFile) = checkPaths(fromPath = fromPath, toPath = toPath, overwrite = overwrite)
 
-            val dstFile = File(toPath)
-
-            try {
-                if (!srcFile.exists()) {
-                    throw IOException("Path '$fromPath' does not exist")
-                }
-
-                if (dstFile.exists() && !overwrite) {
-                    throw IOException("Target '$toPath' already exists")
-                }
-
-                when {
-                    srcFile.isDirectory -> {
-                        srcFile.copyRecursively(dstFile, overwrite)
-
-                        if (!srcFile.deleteRecursively()) {
-                            dstFile.deleteRecursively()
-
-                            throw IOException("File system error")
-                        }
-                    }
-
-                    else -> {
-                        srcFile.copyTo(dstFile, overwrite)
-
-                        if (!srcFile.delete()) {
-                            dstFile.delete()
-
-                            throw IOException("File system error")
-                        }
-                    }
-                }
-            } finally {
-                virtualFileSystem.invalidateCache(fromPath)
-
-                virtualFileSystem.invalidateCache(toPath)
-
-                invalidateParent(fromPath)
-
-                invalidateParent(toPath)
-            }
-        }.recoverCatching { throwable ->
-            throw FileSystemException("Failed to move $fromPath to $toPath: ${throwable.message}")
+            srcFile.transferTo(target = dstFile, overwrite = overwrite, copy = false)
         }
 
-        override fun copy(fromPath: String, toPath: String, overwrite: Boolean) = runCatching {
-            val srcFile = File(fromPath)
+        override suspend fun copy(fromPath: String, toPath: String, overwrite: Boolean) = withFileSystem {
+            val (srcFile, dstFile) = checkPaths(fromPath = fromPath, toPath = toPath, overwrite = overwrite)
 
-            val dstFile = File(toPath)
-
-            try {
-                if (!srcFile.exists()) {
-                    throw IOException("Path '$fromPath' does not exist")
-                }
-
-                if (dstFile.exists() && !overwrite) {
-                    throw IOException("Target '$toPath' already exists")
-                }
-
-                when {
-                    srcFile.isDirectory -> srcFile.copyRecursively(dstFile, overwrite)
-
-                    else -> srcFile.copyTo(dstFile, overwrite)
-                }
-            } finally {
-                virtualFileSystem.invalidateCache(toPath)
-
-                invalidateParent(toPath)
-            }
-
-            Unit
-        }.recoverCatching { throwable ->
-            throw FileSystemException("Failed to copy $fromPath to $toPath: ${throwable.message}")
+            srcFile.transferTo(target = dstFile, overwrite = overwrite, copy = true)
         }
 
-        override fun delete(path: String) = runCatching {
-            val file = File(path)
-
-            try {
-                if (!file.exists()) {
-                    throw FileSystemException("Path '$path' does not exist")
-                }
-
+        override suspend fun delete(path: String) = withFileSystem {
+            with(checkPath(path = path)) {
                 when {
-                    file.isDirectory -> if (!file.deleteRecursively()) {
-                        throw IOException("File system error")
-                    }
+                    isDirectory -> check(deleteRecursively()) { "Failed to delete '$path' directory" }
 
-                    !file.delete() -> throw IOException("File system error")
+                    isFile -> check(delete()) { "Failed to delete '$path' file" }
                 }
-            } finally {
-                virtualFileSystem.invalidateCache(path)
-
-                invalidateParent(path)
             }
-        }.recoverCatching { throwable ->
-            throw FileSystemException("Failed to delete '$path': ${throwable.message}")
         }
     }
 }
