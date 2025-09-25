@@ -11,6 +11,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
+import kotlin.io.path.absolutePathString
 import kotlin.time.ExperimentalTime
 
 @OptIn(ExperimentalTime::class)
@@ -116,7 +117,9 @@ interface FileSystemService {
             with(checkPath(path = path)) {
                 check(isDirectory) { "Path $path is not a directory" }
 
-                listFiles()?.mapNotNull(File::getAbsolutePath) ?: emptyList()
+                listFiles().map { file ->
+                    file.toPath().absolutePathString()
+                }
             }
         }
 
@@ -126,16 +129,35 @@ interface FileSystemService {
 
                 callbackFlow {
                     val watcher = DirectoryWatcher.builder().path(toPath()).listener { event ->
+                        val path = event.path().absolutePathString()
+
+                        val parentPath = event.path().parent.absolutePathString()
+
                         when (event.eventType()) {
-                            DirectoryChangeEvent.EventType.CREATE -> trySend(FileSystemChange.Created(event.path()))
+                            DirectoryChangeEvent.EventType.CREATE -> trySend(
+                                FileSystemChange.Created(
+                                    path = path,
+                                    parentPath = parentPath
+                                )
+                            )
 
-                            DirectoryChangeEvent.EventType.MODIFY -> trySend(FileSystemChange.Modified(event.path()))
+                            DirectoryChangeEvent.EventType.MODIFY -> trySend(
+                                FileSystemChange.Modified(
+                                    path = path,
+                                    parentPath = parentPath
+                                )
+                            )
 
-                            DirectoryChangeEvent.EventType.DELETE -> trySend(FileSystemChange.Deleted(event.path()))
+                            DirectoryChangeEvent.EventType.DELETE -> trySend(
+                                FileSystemChange.Deleted(
+                                    path = path,
+                                    parentPath = parentPath
+                                )
+                            )
 
                             else -> Unit
                         }
-                    }.fileHashing(false).build()
+                    }.build()
 
                     val future = watcher.watchAsync()
 

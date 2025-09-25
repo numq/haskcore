@@ -2,25 +2,26 @@
 
 package io.github.numq.haskcore.filesystem
 
-import java.nio.file.Path
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 
 sealed interface FileSystemChange {
-    val path: Path
+    val path: String
+
+    val parentPath: String
 
     val timestamp: Instant
 
-    data class Created(override val path: Path) : FileSystemChange {
+    data class Created(override val path: String, override val parentPath: String) : FileSystemChange {
         override val timestamp = Clock.System.now()
     }
 
-    data class Modified(override val path: Path) : FileSystemChange {
+    data class Modified(override val path: String, override val parentPath: String) : FileSystemChange {
         override val timestamp = Clock.System.now()
     }
 
-    data class Deleted(override val path: Path) : FileSystemChange {
+    data class Deleted(override val path: String, override val parentPath: String) : FileSystemChange {
         override val timestamp = Clock.System.now()
     }
 }
