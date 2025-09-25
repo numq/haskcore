@@ -131,7 +131,7 @@ interface FileSystemService {
                     val watcher = DirectoryWatcher.builder().path(toPath()).listener { event ->
                         val path = event.path().absolutePathString()
 
-                        val parentPath = event.path().parent.absolutePathString()
+                        val parentPath = event.path().parent?.absolutePathString()
 
                         when (event.eventType()) {
                             DirectoryChangeEvent.EventType.CREATE -> trySend(
@@ -192,9 +192,9 @@ interface FileSystemService {
 
         override suspend fun createDirectory(path: String) = withFileSystem {
             with(File(path)) {
-                if (!exists()) {
-                    check(mkdirs()) { "Failed to create directory '$path'" }
-                }
+                check(!exists()) { "Directory '$path' already exists" }
+
+                check(mkdirs()) { "Failed to create directory '$path'" }
             }
         }
 

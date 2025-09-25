@@ -9,19 +9,19 @@ import kotlin.time.Instant
 sealed interface FileSystemChange {
     val path: String
 
-    val parentPath: String
+    val parentPath: String?
 
     val timestamp: Instant
 
-    data class Created(override val path: String, override val parentPath: String) : FileSystemChange {
+    data class Created(override val path: String, override val parentPath: String?) : FileSystemChange {
         override val timestamp = Clock.System.now()
     }
 
-    data class Modified(override val path: String, override val parentPath: String) : FileSystemChange {
+    data class Modified(override val path: String, override val parentPath: String?) : FileSystemChange {
         override val timestamp = Clock.System.now()
     }
 
-    data class Deleted(override val path: String, override val parentPath: String) : FileSystemChange {
+    data class Deleted(override val path: String, override val parentPath: String?) : FileSystemChange {
         override val timestamp = Clock.System.now()
     }
 }
