@@ -7,14 +7,19 @@ import io.mockk.mockk
 import io.mockk.unmockkAll
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
+import kotlin.io.path.Path
+import kotlin.io.path.absolutePathString
+import kotlin.io.path.getLastModifiedTime
+import kotlin.io.path.name
+import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ExplorerRepositoryTest {
@@ -26,11 +31,21 @@ class ExplorerRepositoryTest {
     private lateinit var explorerRepository: ExplorerRepository
     private val rootPath = "/root"
 
+    private val destination = ExplorerNode.Directory(
+        name = "directory",
+        path = "/destination",
+        parentPath = "/root",
+        depth = 0,
+        lastModified = Long.MAX_VALUE,
+        cut = false,
+        expanded = false
+    )
+
     @BeforeEach
     fun setup() {
         fileSystemService = mockk()
         clipboardService = mockk()
-        explorerRepository = ExplorerRepository.Default(rootPath, clipboardService, fileSystemService)
+        explorerRepository = ExplorerRepository.Default(clipboardService, fileSystemService)
     }
 
     @AfterEach
@@ -39,23 +54,96 @@ class ExplorerRepositoryTest {
     }
 
     @Test
-    fun `getNodes throws when listDirectory fails`() = runTest {
-        coEvery { fileSystemService.listDirectory(rootPath) } returns Result.failure(RuntimeException("fail"))
+    fun `initialize returns root node directory`() = runTest {
+        val file = File(tempDir, rootPath)
+        file.createNewFile()
+        val filePath = file.path
 
-        val result = explorerRepository.getNodes(rootPath)
+        coEvery { fileSystemService.isFile(filePath) } returns Result.success(false)
+        coEvery { fileSystemService.isDirectory(filePath) } returns Result.success(true)
+        coEvery { fileSystemService.listDirectory(filePath) } returns Result.success(emptyList())
+
+        val rootNode = explorerRepository.initialize(filePath).getOrThrow()
+
+        val expectedPath = Path(rootNode.path)
+
+        with(rootNode) {
+            assertEquals(name, expectedPath.name)
+            assertEquals(path, expectedPath.absolutePathString())
+            assertEquals(parentPath, expectedPath.parent.absolutePathString())
+            assertEquals(depth, 0)
+            assertEquals(lastModified, expectedPath.getLastModifiedTime().toMillis())
+            assertFalse(cut)
+            assertFalse(expanded)
+        }
+    }
+
+    @Test
+    fun `initialize throws when listDirectory fails`() = runTest {
+        val file = File(tempDir, rootPath)
+        file.createNewFile()
+        val filePath = file.path
+
+        coEvery { fileSystemService.isFile(filePath) } returns Result.success(false)
+        coEvery { fileSystemService.isDirectory(filePath) } returns Result.success(true)
+        coEvery { fileSystemService.listDirectory(filePath) } returns Result.failure(RuntimeException("fail"))
+
+        val result = explorerRepository.initialize(filePath)
         assertFailsWith<RuntimeException> { result.getOrThrow() }
     }
 
     @Test
-    fun `getNodes handles errors in buildNode`() = runTest {
-        val filePath = File(tempDir, "$rootPath/file.txt").path
+    fun `initialize handles errors in buildNode`() = runTest {
+        val file = File(tempDir, rootPath)
+        file.createNewFile()
+        val filePath = file.path
 
-        coEvery { fileSystemService.listDirectory(rootPath) } returns Result.success(listOf(filePath))
+        coEvery { fileSystemService.listDirectory(filePath) } returns Result.success(listOf(filePath))
         coEvery { fileSystemService.isFile(filePath) } returns Result.failure(RuntimeException("file fail"))
         coEvery { fileSystemService.isDirectory(filePath) } returns Result.success(false)
-        coEvery { fileSystemService.observeDirectoryChanges(rootPath) } returns Result.success(flowOf())
 
-        val flow = explorerRepository.getNodes(rootPath)
+        val result = explorerRepository.initialize(filePath)
+        assertFailsWith<RuntimeException> { result.getOrThrow() }
+    }
+
+    @Test
+    fun `getNodes throws when listDirectory fails`() = runTest {
+        val rootNode = ExplorerNode.Directory(
+            name = "name",
+            path = "/path",
+            parentPath = "/parentPath",
+            depth = 0,
+            lastModified = Long.MAX_VALUE,
+            cut = false,
+            expanded = true
+        )
+
+        coEvery { fileSystemService.listDirectory(rootPath) } returns Result.failure(RuntimeException("fail"))
+
+        val result = explorerRepository.getNodes(rootNode)
+        assertFailsWith<RuntimeException> { result.getOrThrow() }
+    }
+
+    @Test
+    fun `getNodes handles errors in observeDirectoryChanges`() = runTest {
+        val rootNode = ExplorerNode.Directory(
+            name = "name",
+            path = "/path",
+            parentPath = "/parentPath",
+            depth = 0,
+            lastModified = Long.MAX_VALUE,
+            cut = false,
+            expanded = true
+        )
+
+        val path = rootNode.path
+
+        coEvery { fileSystemService.listDirectory(path) } returns Result.success(emptyList())
+        coEvery { fileSystemService.isFile(path) } returns Result.success(false)
+        coEvery { fileSystemService.isDirectory(path) } returns Result.success(true)
+        coEvery { fileSystemService.observeDirectoryChanges(path) } returns Result.failure(RuntimeException("fail"))
+
+        val flow = explorerRepository.getNodes(rootNode)
         assertFailsWith<RuntimeException> { flow.getOrThrow().first() }
     }
 
@@ -68,7 +156,7 @@ class ExplorerRepositoryTest {
             )
         } returns Result.failure(RuntimeException("fail"))
 
-        val result = explorerRepository.createFile(rootPath, "file")
+        val result = explorerRepository.createFile(destination, "file")
         assertFailsWith<RuntimeException> { result.getOrThrow() }
     }
 
@@ -76,7 +164,7 @@ class ExplorerRepositoryTest {
     fun `createDirectory throws when filesystem fails`() = runTest {
         coEvery { fileSystemService.createDirectory(any()) } returns Result.failure(RuntimeException("fail"))
 
-        val result = explorerRepository.createDirectory(rootPath, "dir")
+        val result = explorerRepository.createDirectory(destination, "dir")
         assertFailsWith<RuntimeException> { result.getOrThrow() }
     }
 
