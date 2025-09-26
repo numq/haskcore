@@ -10,11 +10,13 @@ import kotlin.time.ExperimentalTime
 
 @OptIn(ExperimentalTime::class)
 interface ExplorerRepository {
-    suspend fun getNodes(rootPath: String): Result<Flow<List<ExplorerNode>>>
+    suspend fun initialize(rootPath: String): Result<ExplorerNode.Directory>
 
-    suspend fun createFile(parentPath: String, name: String): Result<Unit>
+    suspend fun getNodes(rootNode: ExplorerNode.Directory): Result<Flow<List<ExplorerNode>>>
 
-    suspend fun createDirectory(parentPath: String, name: String): Result<Unit>
+    suspend fun createFile(destination: ExplorerNode, name: String): Result<Unit>
+
+    suspend fun createDirectory(destination: ExplorerNode, name: String): Result<Unit>
 
     suspend fun expandDirectory(directory: ExplorerNode.Directory): Result<Unit>
 
@@ -26,25 +28,27 @@ interface ExplorerRepository {
 
     suspend fun copyNodes(nodes: List<ExplorerNode>): Result<Unit>
 
-    suspend fun pasteNodes(destination: ExplorerNode.Directory): Result<Unit>
+    suspend fun pasteNodes(destination: ExplorerNode): Result<Unit>
 
-    suspend fun moveNodes(nodes: List<ExplorerNode>, destination: ExplorerNode.Directory): Result<Unit>
+    suspend fun moveNodes(nodes: List<ExplorerNode>, destination: ExplorerNode): Result<Unit>
 
     suspend fun deleteNodes(nodes: List<ExplorerNode>): Result<Unit>
 
     class Default(
-        private val rootPath: String,
-        private val clipboardService: ClipboardService,
-        private val fileSystemService: FileSystemService
+        private val clipboardService: ClipboardService, private val fileSystemService: FileSystemService
     ) : ExplorerRepository {
         private val nodes = ConcurrentHashMap<String, List<ExplorerNode>>()
 
         private val operations = MutableSharedFlow<ExplorerOperation>()
 
-        private suspend fun buildNode(path: String) = with(Path(path)) {
+        private suspend fun buildNode(rootPath: String, path: String) = Path(path).runCatching {
             val parentPath = parent?.absolutePathString() ?: rootPath
 
-            val depth = Path(rootPath).relativize(Path(path)).nameCount
+            val depth = when (path) {
+                rootPath -> 0
+
+                else -> Path(rootPath).relativize(Path(path)).nameCount
+            }
 
             val lastModified = getLastModifiedTime().toMillis()
 
@@ -71,7 +75,7 @@ interface ExplorerRepository {
 
                 else -> null
             }
-        }
+        }.getOrNull()
 
         private fun buildFlattened(rootPath: String, nodes: Map<String, List<ExplorerNode>>) = buildList {
             fun visit(path: String) {
@@ -89,7 +93,7 @@ interface ExplorerRepository {
             visit(path = rootPath)
         }
 
-        private suspend fun handleChange(change: FileSystemChange) {
+        private suspend fun handleChange(rootPath: String, change: FileSystemChange) {
             val parentPath = when (change) {
                 is FileSystemChange.Created -> change.parentPath
 
@@ -100,7 +104,7 @@ interface ExplorerRepository {
 
             when (change) {
                 is FileSystemChange.Created -> {
-                    val createdNode = buildNode(path = change.path)
+                    val createdNode = buildNode(rootPath = rootPath, path = change.path)
 
                     if (createdNode == null) return
 
@@ -121,16 +125,16 @@ interface ExplorerRepository {
                     }
 
                     if (createdNode is ExplorerNode.Directory) {
-                        val parentNode = buildNode(path = parentPath) as? ExplorerNode.Directory
+                        val parentNode = buildNode(rootPath = rootPath, path = parentPath) as? ExplorerNode.Directory
 
                         if (parentNode != null && !parentNode.expanded) {
-                            handleExpand(directory = parentNode.copy(expanded = true))
+                            handleExpand(rootPath = rootPath, directory = parentNode.copy(expanded = true))
                         }
                     }
                 }
 
                 is FileSystemChange.Modified -> {
-                    val modifiedNode = buildNode(path = change.path)
+                    val modifiedNode = buildNode(rootPath = rootPath, path = change.path)
 
                     if (modifiedNode == null) return
 
@@ -157,10 +161,12 @@ interface ExplorerRepository {
             }
         }
 
-        private suspend fun handleExpand(directory: ExplorerNode.Directory) {
+        private suspend fun handleExpand(rootPath: String, directory: ExplorerNode.Directory) {
             val path = directory.path
 
-            nodes.computeIfPresent(directory.parentPath) { key, value ->
+            val parentPath = directory.parentPath
+
+            nodes.computeIfPresent(parentPath) { key, value ->
                 value.map { node ->
                     when (node.path) {
                         path -> directory.copy(expanded = true)
@@ -173,7 +179,7 @@ interface ExplorerRepository {
             val paths = fileSystemService.listDirectory(path = path).getOrThrow()
 
             val children = paths.mapNotNull { path ->
-                buildNode(path = path)
+                buildNode(rootPath = rootPath, path = path)
             }
 
             nodes[path] = children
@@ -182,7 +188,9 @@ interface ExplorerRepository {
         private fun handleCollapse(directory: ExplorerNode.Directory) {
             val path = directory.path
 
-            nodes.computeIfPresent(directory.parentPath) { key, value ->
+            val parentPath = directory.parentPath
+
+            nodes.computeIfPresent(parentPath) { key, value ->
                 value.map { node ->
                     when (node.path) {
                         path -> directory.copy(expanded = false)
@@ -195,34 +203,51 @@ interface ExplorerRepository {
             nodes.keys.removeAll { key -> key.startsWith(path) }
         }
 
-        private suspend fun handleOperation(operation: ExplorerOperation) = with(operation) {
+        private suspend fun handleOperation(rootPath: String, operation: ExplorerOperation) = with(operation) {
             when (this) {
-                is ExplorerOperation.Change -> handleChange(change = change)
+                is ExplorerOperation.Change -> handleChange(rootPath = rootPath, change = change)
 
-                is ExplorerOperation.Expand -> handleExpand(directory = directory)
+                is ExplorerOperation.Expand -> handleExpand(rootPath = rootPath, directory = directory)
 
                 is ExplorerOperation.Collapse -> handleCollapse(directory = directory)
             }
         }
 
-        override suspend fun getNodes(rootPath: String) = runCatching {
-            val initialNodes = fileSystemService.listDirectory(path = rootPath).getOrThrow().mapNotNull { path ->
-                buildNode(path = path)
+        override suspend fun initialize(rootPath: String) = runCatching {
+            require(rootPath.isNotBlank()) { "Root path cannot be blank" }
+
+            val rootNode = checkNotNull(
+                buildNode(
+                    rootPath = rootPath,
+                    path = rootPath
+                ) as? ExplorerNode.Directory
+            ) { "Failed to build root node" }
+
+            nodes[rootNode.parentPath] = listOf(rootNode)
+
+            val children = fileSystemService.listDirectory(path = rootNode.path).getOrThrow().mapNotNull { path ->
+                buildNode(rootPath = rootPath, path = path)
             }
 
-            nodes[rootPath] = initialNodes
+            nodes[rootNode.path] = children
 
-            val changes = fileSystemService.observeDirectoryChanges(path = rootPath).getOrThrow()
+            rootNode
+        }
+
+        override suspend fun getNodes(rootNode: ExplorerNode.Directory) = runCatching {
+            val rootPath = rootNode.path
+
+            val changes = fileSystemService.observeDirectoryChanges(path = rootNode.path).getOrThrow()
 
             merge(
                 operations, changes.map(ExplorerOperation::Change)
             ).onEach { operation ->
-                handleOperation(operation = operation)
+                handleOperation(rootPath = rootPath, operation = operation)
             }.map {
                 buildFlattened(rootPath = rootPath, nodes = nodes)
             }.onStart {
-                buildFlattened(rootPath = rootPath, nodes = nodes)
-            }.distinctUntilChanged()
+                emit(buildFlattened(rootPath = rootPath, nodes = nodes))
+            }.catch { println(it) }.distinctUntilChanged()
         }
 
         override suspend fun expandDirectory(directory: ExplorerNode.Directory) = runCatching {
@@ -233,22 +258,34 @@ interface ExplorerRepository {
             operations.emit(ExplorerOperation.Collapse(directory))
         }
 
-        override suspend fun createFile(parentPath: String, name: String) = runCatching {
+        override suspend fun createFile(destination: ExplorerNode, name: String) = runCatching {
             require(name.isNotBlank()) { "File name cannot be blank" }
 
             require(!name.contains("/")) { "File name cannot contain path separators" }
 
-            val path = Path(parentPath, name).absolutePathString()
+            val destinationPath = when (destination) {
+                is ExplorerNode.File -> destination.parentPath
+
+                is ExplorerNode.Directory -> destination.path
+            }
+
+            val path = Path(destinationPath, name).absolutePathString()
 
             fileSystemService.createFile(path = path, bytes = byteArrayOf()).getOrThrow()
         }
 
-        override suspend fun createDirectory(parentPath: String, name: String) = runCatching {
+        override suspend fun createDirectory(destination: ExplorerNode, name: String) = runCatching {
             require(name.isNotBlank()) { "Directory name cannot be blank" }
 
             require(!name.contains("/")) { "Directory name cannot contain path separators" }
 
-            val path = Path(parentPath, name).absolutePathString()
+            val destinationPath = when (destination) {
+                is ExplorerNode.File -> destination.parentPath
+
+                is ExplorerNode.Directory -> destination.path
+            }
+
+            val path = Path(destinationPath, name).absolutePathString()
 
             fileSystemService.createDirectory(path = path).getOrThrow()
         }
@@ -258,9 +295,7 @@ interface ExplorerRepository {
 
             require(!name.contains("/")) { "Name cannot contain path separators" }
 
-            val oldPath = node.path
-
-            fileSystemService.rename(path = oldPath, name = name).getOrThrow()
+            fileSystemService.rename(path = node.path, name = name).getOrThrow()
         }
 
         override suspend fun cutNodes(nodes: List<ExplorerNode>) = runCatching {
@@ -271,15 +306,27 @@ interface ExplorerRepository {
             clipboardService.copy(paths = nodes.map(ExplorerNode::path)).getOrThrow()
         }
 
-        override suspend fun pasteNodes(destination: ExplorerNode.Directory) = runCatching {
-            clipboardService.paste(path = destination.path).getOrThrow()
+        override suspend fun pasteNodes(destination: ExplorerNode) = runCatching {
+            val destinationPath = when (destination) {
+                is ExplorerNode.File -> destination.parentPath
+
+                is ExplorerNode.Directory -> destination.path
+            }
+
+            clipboardService.paste(path = destinationPath).getOrThrow()
         }
 
-        override suspend fun moveNodes(nodes: List<ExplorerNode>, destination: ExplorerNode.Directory) = runCatching {
+        override suspend fun moveNodes(nodes: List<ExplorerNode>, destination: ExplorerNode) = runCatching {
+            val destinationPath = when (destination) {
+                is ExplorerNode.File -> destination.parentPath
+
+                is ExplorerNode.Directory -> destination.path
+            }
+
             nodes.forEach { node ->
                 val fromPath = node.path
 
-                val toPath = Path(destination.path, node.name).absolutePathString()
+                val toPath = Path(destinationPath, node.name).absolutePathString()
 
                 fileSystemService.move(fromPath = fromPath, toPath = toPath, overwrite = false).getOrThrow()
             }

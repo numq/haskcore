@@ -5,7 +5,7 @@ sealed interface ExplorerNode {
 
     val path: String
 
-    val parentPath: String?
+    val parentPath: String
 
     val depth: Int
 
