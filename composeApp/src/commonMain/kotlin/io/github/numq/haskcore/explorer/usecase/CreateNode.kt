@@ -1,0 +1,25 @@
+package io.github.numq.haskcore.explorer.usecase
+
+import io.github.numq.haskcore.explorer.ExplorerNode
+import io.github.numq.haskcore.explorer.ExplorerRepository
+import io.github.numq.haskcore.usecase.UseCase
+
+class CreateNode(private val explorerRepository: ExplorerRepository) : UseCase<CreateNode.Input, Unit> {
+    sealed interface Input {
+        val destination: ExplorerNode
+
+        val name: String
+
+        data class File(override val destination: ExplorerNode, override val name: String) : Input
+
+        data class Directory(override val destination: ExplorerNode, override val name: String) : Input
+    }
+
+    override suspend fun execute(input: Input) = with(input) {
+        when (this) {
+            is Input.File -> explorerRepository.createFile(destination = destination, name = name)
+
+            is Input.Directory -> explorerRepository.createDirectory(destination = destination, name = name)
+        }
+    }
+}

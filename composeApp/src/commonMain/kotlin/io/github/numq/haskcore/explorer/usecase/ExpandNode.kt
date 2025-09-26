@@ -1,0 +1,13 @@
+package io.github.numq.haskcore.explorer.usecase
+
+import io.github.numq.haskcore.explorer.ExplorerNode
+import io.github.numq.haskcore.explorer.ExplorerRepository
+import io.github.numq.haskcore.usecase.UseCase
+
+class ExpandNode(
+    private val explorerRepository: ExplorerRepository
+) : UseCase<ExpandNode.Input, Unit> {
+    data class Input(val directory: ExplorerNode.Directory)
+
+    override suspend fun execute(input: Input) = explorerRepository.expandDirectory(directory = input.directory)
+}
