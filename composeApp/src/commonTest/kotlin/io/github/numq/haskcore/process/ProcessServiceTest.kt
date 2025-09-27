@@ -19,11 +19,10 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ProcessServiceTest {
+    private lateinit var processService: ProcessService.Default
 
     @TempDir
     lateinit var tempDir: File
-
-    private lateinit var processService: ProcessService.Default
 
     @BeforeEach
     fun setUp() {

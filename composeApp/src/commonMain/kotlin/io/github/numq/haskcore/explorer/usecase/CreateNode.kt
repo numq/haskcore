@@ -16,10 +16,12 @@ class CreateNode(private val explorerRepository: ExplorerRepository) : UseCase<C
     }
 
     override suspend fun execute(input: Input) = with(input) {
-        when (this) {
-            is Input.File -> explorerRepository.createFile(destination = destination, name = name)
+        val validName = name.trim()
 
-            is Input.Directory -> explorerRepository.createDirectory(destination = destination, name = name)
+        when (this) {
+            is Input.File -> explorerRepository.createFile(destination = destination, name = validName)
+
+            is Input.Directory -> explorerRepository.createDirectory(destination = destination, name = validName)
         }
     }
 }

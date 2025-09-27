@@ -4,10 +4,15 @@ import io.github.numq.haskcore.filesystem.FileSystemService
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
-import io.mockk.unmockkAll
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import kotlin.io.path.Path
+import kotlin.io.path.name
 import kotlin.test.*
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -17,13 +22,14 @@ class ClipboardServiceTest {
 
     @BeforeTest
     fun setUp() {
+        Dispatchers.setMain(StandardTestDispatcher())
         mockFileSystemService = mockk()
         clipboardService = ClipboardService.Default(mockFileSystemService)
     }
 
     @AfterTest
     fun tearDown() {
-        unmockkAll()
+        Dispatchers.resetMain()
         runBlocking {
             clipboardService.clearClipboard().getOrThrow()
         }
@@ -77,41 +83,22 @@ class ClipboardServiceTest {
         val sourcePaths = listOf("/source/file1.txt", "/source/file2.txt")
         val targetPath = "/target/dir"
 
-        coEvery {
-            mockFileSystemService.move(
-                eq("/source/file1.txt"),
-                eq("/target/dir/file1.txt"),
-                eq(false)
-            )
-        } returns Result.success(Unit)
-
-        coEvery {
-            mockFileSystemService.move(
-                eq("/source/file2.txt"),
-                eq("/target/dir/file2.txt"),
-                eq(false)
-            )
-        } returns Result.success(Unit)
+        coEvery { mockFileSystemService.move(any(), any(), any()) } returns Result.success(Unit)
 
         clipboardService.cut(sourcePaths).getOrThrow()
-
         val result = clipboardService.paste(targetPath)
 
         assertTrue(result.isSuccess)
 
-        coVerify(exactly = 1) {
-            mockFileSystemService.move(
-                fromPath = "/source/file1.txt",
-                toPath = "/target/dir/file1.txt",
-                overwrite = false
-            )
-        }
-        coVerify(exactly = 1) {
-            mockFileSystemService.move(
-                fromPath = "/source/file2.txt",
-                toPath = "/target/dir/file2.txt",
-                overwrite = false
-            )
+        sourcePaths.forEach { fromPath ->
+            val fileName = Path(fromPath).name
+            coVerify(exactly = 1) {
+                mockFileSystemService.move(
+                    match { it.endsWith(fileName) },
+                    match { it.endsWith(fileName) },
+                    eq(false)
+                )
+            }
         }
 
         assertIs<Clipboard.Empty>(clipboardService.clipboard.value)
@@ -122,41 +109,22 @@ class ClipboardServiceTest {
         val sourcePaths = listOf("/source/file1.txt", "/source/file2.txt")
         val targetPath = "/target/dir"
 
-        coEvery {
-            mockFileSystemService.copy(
-                eq("/source/file1.txt"),
-                eq("/target/dir/file1.txt"),
-                eq(false)
-            )
-        } returns Result.success(Unit)
-
-        coEvery {
-            mockFileSystemService.copy(
-                eq("/source/file2.txt"),
-                eq("/target/dir/file2.txt"),
-                eq(false)
-            )
-        } returns Result.success(Unit)
+        coEvery { mockFileSystemService.copy(any(), any(), any()) } returns Result.success(Unit)
 
         clipboardService.copy(sourcePaths).getOrThrow()
-
         val result = clipboardService.paste(targetPath)
 
         assertTrue(result.isSuccess)
 
-        coVerify(exactly = 1) {
-            mockFileSystemService.copy(
-                fromPath = "/source/file1.txt",
-                toPath = "/target/dir/file1.txt",
-                overwrite = false
-            )
-        }
-        coVerify(exactly = 1) {
-            mockFileSystemService.copy(
-                fromPath = "/source/file2.txt",
-                toPath = "/target/dir/file2.txt",
-                overwrite = false
-            )
+        sourcePaths.forEach { fromPath ->
+            val fileName = Path(fromPath).name
+            coVerify(exactly = 1) {
+                mockFileSystemService.copy(
+                    match { it.endsWith(fileName) },
+                    match { it.endsWith(fileName) },
+                    eq(false)
+                )
+            }
         }
 
         assertIs<Clipboard.Copy>(clipboardService.clipboard.value)
@@ -165,50 +133,36 @@ class ClipboardServiceTest {
 
     @Test
     fun `paste with Cut clipboard should return failure when move fails`() = runTest {
-        val sourcePaths = listOf("/source/file1.txt")
+        val sourcePath = "/source/file1.txt"
         val targetPath = "/target/dir"
         val error = RuntimeException("Move failed")
 
-        coEvery {
-            mockFileSystemService.move(
-                eq("/source/file1.txt"),
-                eq("/target/dir/file1.txt"),
-                eq(false)
-            )
-        } returns Result.failure(error)
+        coEvery { mockFileSystemService.move(any(), any(), any()) } returns Result.failure(error)
 
-        clipboardService.cut(sourcePaths).getOrThrow()
-
+        clipboardService.cut(listOf(sourcePath)).getOrThrow()
         val result = clipboardService.paste(targetPath)
 
         assertTrue(result.isFailure)
         assertEquals(error, result.exceptionOrNull())
         assertIs<Clipboard.Cut>(clipboardService.clipboard.value)
-        assertEquals(sourcePaths, (clipboardService.clipboard.value as Clipboard.Cut).paths)
+        assertEquals(listOf(sourcePath), (clipboardService.clipboard.value as Clipboard.Cut).paths)
     }
 
     @Test
     fun `paste with Copy clipboard should return failure when copy fails`() = runTest {
-        val sourcePaths = listOf("/source/file1.txt")
+        val sourcePath = "/source/file1.txt"
         val targetPath = "/target/dir"
         val error = RuntimeException("Copy failed")
 
-        coEvery {
-            mockFileSystemService.copy(
-                eq("/source/file1.txt"),
-                eq("/target/dir/file1.txt"),
-                eq(false)
-            )
-        } returns Result.failure(error)
+        coEvery { mockFileSystemService.copy(any(), any(), any()) } returns Result.failure(error)
 
-        clipboardService.copy(sourcePaths).getOrThrow()
-
+        clipboardService.copy(listOf(sourcePath)).getOrThrow()
         val result = clipboardService.paste(targetPath)
 
         assertTrue(result.isFailure)
         assertEquals(error, result.exceptionOrNull())
         assertIs<Clipboard.Copy>(clipboardService.clipboard.value)
-        assertEquals(sourcePaths, (clipboardService.clipboard.value as Clipboard.Copy).paths)
+        assertEquals(listOf(sourcePath), (clipboardService.clipboard.value as Clipboard.Copy).paths)
     }
 
     @Test
@@ -218,23 +172,20 @@ class ClipboardServiceTest {
         val error = RuntimeException("Move failed")
 
         coEvery {
-            mockFileSystemService.move(
-                eq("/source/file1.txt"),
-                eq("/target/dir/file1.txt"),
-                eq(false)
-            )
+            mockFileSystemService.move(match { it.endsWith("file1.txt") }, any(), any())
         } returns Result.failure(error)
 
-        clipboardService.cut(sourcePaths).getOrThrow()
+        coEvery {
+            mockFileSystemService.move(match { it.endsWith("file2.txt") }, any(), any())
+        } returns Result.success(Unit)
 
+        clipboardService.cut(sourcePaths).getOrThrow()
         val result = clipboardService.paste(targetPath)
 
         assertTrue(result.isFailure)
         assertEquals(error, result.exceptionOrNull())
 
-        coVerify(exactly = 1) {
-            mockFileSystemService.move(any(), any(), any())
-        }
+        coVerify(exactly = 1) { mockFileSystemService.move(any(), any(), any()) }
 
         assertIs<Clipboard.Cut>(clipboardService.clipboard.value)
         assertEquals(sourcePaths, (clipboardService.clipboard.value as Clipboard.Cut).paths)

@@ -11,15 +11,12 @@ sealed interface ExplorerNode {
 
     val lastModified: Long
 
-    val cut: Boolean
-
     data class File(
         override val name: String,
         override val path: String,
         override val parentPath: String,
         override val depth: Int,
         override val lastModified: Long,
-        override val cut: Boolean,
         val extension: String
     ) : ExplorerNode
 
@@ -29,7 +26,6 @@ sealed interface ExplorerNode {
         override val parentPath: String,
         override val depth: Int,
         override val lastModified: Long,
-        override val cut: Boolean,
         val expanded: Boolean
     ) : ExplorerNode
 }

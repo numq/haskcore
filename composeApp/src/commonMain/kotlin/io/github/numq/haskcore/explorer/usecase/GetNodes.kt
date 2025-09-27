@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.Flow
 class GetNodes(
     private val explorerRepository: ExplorerRepository
 ) : UseCase<GetNodes.Input, Flow<List<ExplorerNode>>> {
-    data class Input(val rootNode: ExplorerNode.Directory)
+    data class Input(val rootPath: String)
 
-    override suspend fun execute(input: Input) = explorerRepository.getNodes(rootNode = input.rootNode)
+    override suspend fun execute(input: Input) = explorerRepository.getNodes(rootPath = input.rootPath.trim())
 }

@@ -10,10 +10,14 @@ import io.github.numq.haskcore.stack.output.StackRunOutput
 import io.github.numq.haskcore.stack.output.StackTestOutput
 import io.mockk.coEvery
 import io.mockk.mockk
-import io.mockk.unmockkAll
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import kotlin.io.path.Path
@@ -22,6 +26,7 @@ import kotlin.test.*
 import kotlin.test.DefaultAsserter.assertTrue
 import kotlin.time.Duration
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class StackServiceTest {
     private lateinit var fileSystemService: FileSystemService
     private lateinit var processService: ProcessService
@@ -29,14 +34,15 @@ class StackServiceTest {
 
     @BeforeEach
     fun setup() {
+        Dispatchers.setMain(StandardTestDispatcher())
         fileSystemService = mockk()
         processService = mockk()
         stackService = StackService.Default(fileSystemService, processService)
     }
 
     @AfterEach
-    fun teardown() {
-        unmockkAll()
+    fun tearDown() {
+        Dispatchers.resetMain()
     }
 
     @Test

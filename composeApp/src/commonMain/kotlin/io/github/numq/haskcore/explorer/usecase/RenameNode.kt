@@ -8,6 +8,8 @@ class RenameNode(private val explorerRepository: ExplorerRepository) : UseCase<R
     data class Input(val node: ExplorerNode, val name: String)
 
     override suspend fun execute(input: Input) = with(input) {
-        explorerRepository.renameNode(node = node, name = name)
+        val validName = name.trim()
+
+        explorerRepository.renameNode(node = node, name = validName)
     }
 }

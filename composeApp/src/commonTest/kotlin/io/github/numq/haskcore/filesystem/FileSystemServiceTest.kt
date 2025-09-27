@@ -1,8 +1,11 @@
 package io.github.numq.haskcore.filesystem
 
-import io.mockk.unmockkAll
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -13,19 +16,20 @@ import kotlin.test.assertFailsWith
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class FileSystemServiceTest {
+    private lateinit var fileSystemService: FileSystemService
+
     @TempDir
     private lateinit var tempDir: File
 
-    private lateinit var fileSystemService: FileSystemService
-
     @BeforeEach
     fun setup() {
+        Dispatchers.setMain(StandardTestDispatcher())
         fileSystemService = FileSystemService.Default()
     }
 
     @AfterEach
-    fun teardown() {
-        unmockkAll()
+    fun tearDown() {
+        Dispatchers.resetMain()
     }
 
     @Test
