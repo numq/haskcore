@@ -1,11 +1,10 @@
-@file:OptIn(ExperimentalTime::class)
-
 package io.github.numq.haskcore.filesystem
 
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 
+@OptIn(ExperimentalTime::class)
 sealed interface FileSystemChange {
     val path: String
 
