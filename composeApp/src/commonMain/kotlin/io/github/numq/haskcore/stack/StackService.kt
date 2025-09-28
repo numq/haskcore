@@ -11,20 +11,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlin.io.path.Path
 import kotlin.io.path.absolutePathString
-import kotlin.io.path.name
 
-interface StackService {
-    suspend fun hasStack(): Result<Boolean>
-
-    suspend fun getStackVersion(): Result<String?>
-
-    suspend fun getGhcVersion(path: String): Result<String?>
-
-    suspend fun getResolver(path: String): Result<String?>
-
+internal interface StackService {
     suspend fun getProject(path: String): Result<StackProject>
-
-    suspend fun createProject(name: String, path: String, template: StackTemplate): Result<Flow<StackBuildOutput>>
 
     suspend fun buildProject(path: String): Result<Flow<StackBuildOutput>>
 
@@ -42,25 +31,17 @@ interface StackService {
         private val fileSystemService: FileSystemService, private val processService: ProcessService
     ) : StackService {
         private companion object {
-            const val STACK_COMMAND = "stack"
+            val GHC_VERSION_PATTERN = Regex("""version (\d+\.\d+\.\d+)""")
 
-            const val STACK_YAML = "stack.yaml"
+            val BUILD_PATTERN = Regex("""Building\s+([\w-]+)""")
 
-            const val PACKAGE_YAML = "package.yaml"
+            val TEST_PATTERN = Regex("""(PASS|FAIL):\s+([\w.]+)""")
 
-            val VERSION_PATTERN by lazy { Regex("""[Vv]ersion (\d+\.\d+\.\d+)""") }
-
-            val BUILD_PATTERN by lazy { Regex("""Building\s+([\w-]+)""") }
-
-            val TEST_PATTERN by lazy { Regex("""(PASS|FAIL):\s+([\w.]+)""") }
-
-            val DEPENDENCY_PATTERN by lazy { Regex("""([\w-]+)-(\d+\.\d+\.\d+\.?\d*)""") }
+            val DEPENDENCY_PATTERN = Regex("""([\w-]+)-(\d+\.\d+\.\d+\.?\d*)""")
         }
 
-        private fun withStack(vararg args: String) = listOf(STACK_COMMAND, *args, "--color=never")
-
-        private suspend fun extractProjectName(projectPath: String) = runCatching {
-            val packageYamlPath = Path(projectPath, PACKAGE_YAML).absolutePathString()
+        private suspend fun parseProjectName(projectPath: String): String = runCatching {
+            val packageYamlPath = Path(projectPath, "package.yaml").absolutePathString()
 
             if (fileSystemService.exists(path = packageYamlPath).getOrNull() == true) {
                 fileSystemService.readLines(path = packageYamlPath).getOrNull()?.forEach { line ->
@@ -70,24 +51,41 @@ interface StackService {
                 }
             }
 
-            fileSystemService.listDirectory(projectPath).getOrNull()?.firstOrNull { path ->
+            fileSystemService.listDirectory(path = projectPath).getOrNull()?.firstOrNull { path ->
                 path.endsWith(".cabal")
-            }?.let { path ->
-                fileSystemService.readLines(path = path).getOrNull()?.forEach { line ->
+            }?.let { cabalPath ->
+                val fullCabalPath = Path(projectPath, cabalPath).absolutePathString()
+                fileSystemService.readLines(path = fullCabalPath).getOrNull()?.forEach { line ->
                     if (line.trim().startsWith("name:")) {
                         return@runCatching line.trim().removePrefix("name:").trim()
                     }
                 }
             }
 
-            null
+            "unknown"
+        }.getOrElse { "unknown" }
+
+        private fun parseGhcVersion(text: String) = GHC_VERSION_PATTERN.find(text)?.groupValues?.get(1)
+
+        private suspend fun parseResolver(projectPath: String): String? {
+            val stackYamlPath = Path(projectPath, "stack.yaml").absolutePathString()
+
+            if (fileSystemService.exists(path = stackYamlPath).getOrNull() == true) {
+                fileSystemService.readLines(path = stackYamlPath).getOrNull()?.forEach { line ->
+                    if (line.trim().startsWith("resolver:")) {
+                        return line.trim().removePrefix("resolver:").trim()
+                    }
+                }
+            }
+
+            return null
         }
 
-        private suspend fun extractDependencies(projectPath: String) = runCatching {
+        private suspend fun parseDependencies(projectPath: String): List<String> = runCatching {
             buildList {
-                val packageYamlPath = Path(projectPath, PACKAGE_YAML).absolutePathString()
+                val packageYamlPath = Path(projectPath, "package.yaml").absolutePathString()
 
-                if (fileSystemService.exists(path = packageYamlPath).getOrThrow()) {
+                if (fileSystemService.exists(path = packageYamlPath).getOrNull() == true) {
                     var inDependencies = false
 
                     fileSystemService.readLines(path = packageYamlPath).getOrNull()?.forEach { line ->
@@ -103,270 +101,136 @@ interface StackService {
                     }
                 }
             }
-        }
+        }.getOrElse { emptyList() }
 
-        private suspend fun extractResolver(projectPath: String) = runCatching {
-            val stackYamlPath = Path(projectPath, STACK_YAML).absolutePathString()
+        private fun parseDependencyOutput(chunk: ProcessOutputChunk): StackDependencyOutput = when (chunk) {
+            is ProcessOutputChunk.Line -> when (val match = DEPENDENCY_PATTERN.find(chunk.text)) {
+                null -> StackDependencyOutput.Info(name = "unknown", version = "unknown")
 
-            if (fileSystemService.exists(path = stackYamlPath).getOrNull() == true) {
-                fileSystemService.readLines(path = stackYamlPath).getOrNull()?.forEach { line ->
-                    if (line.trim().startsWith("resolver:")) {
-                        return@runCatching line.trim().removePrefix("resolver:").trim()
-                    }
-                }
+                else -> StackDependencyOutput.Info(name = match.groupValues[1], version = match.groupValues[2])
             }
 
-            null
+            is ProcessOutputChunk.Completed -> StackDependencyOutput.Completion(
+                exitCode = chunk.exitCode, duration = chunk.duration
+            )
         }
 
-        private fun parseBuildOutput(line: String) = when {
-            line.contains("Building") -> parseBuildProgress(line = line)
-
-            line.contains("Warning:") -> StackBuildOutput.Warning(message = line)
-
-            line.contains("Error:") -> StackBuildOutput.Error(message = line)
-
-            else -> StackBuildOutput.Progress(module = "unknown", message = line)
-        }
-
-        private fun parseBuildProgress(line: String) = with(BUILD_PATTERN) {
-            val match = find(input = line)
+        private fun parseBuildProgress(line: String): StackBuildOutput.Progress {
+            val match = BUILD_PATTERN.find(line)
 
             val module = match?.groupValues?.getOrNull(1) ?: "unknown"
 
-            StackBuildOutput.Progress(module = module, message = line)
+            return StackBuildOutput.Progress(module = module, message = line)
         }
 
-        private fun parseTestOutput(line: String) = when {
-            line.startsWith("PASS") || line.startsWith("FAIL") -> parseTestResult(line)
+        private fun parseBuildOutput(chunk: ProcessOutputChunk) = when (chunk) {
+            is ProcessOutputChunk.Line -> when {
+                chunk.text.contains("Building") -> parseBuildProgress(line = chunk.text)
 
-            line.contains("Warning:") -> StackTestOutput.Warning(message = line)
+                chunk.text.contains("Warning:") -> StackBuildOutput.Warning(message = chunk.text)
 
-            line.contains("Error:") -> StackTestOutput.Error(message = line)
+                chunk.text.contains("Error:") -> StackBuildOutput.Error(message = chunk.text)
 
-            else -> StackTestOutput.Result(module = "unknown", passed = false, details = line)
+                else -> StackBuildOutput.Progress(module = "unknown", message = chunk.text)
+            }
+
+            is ProcessOutputChunk.Completed -> StackBuildOutput.Completion(
+                exitCode = chunk.exitCode, duration = chunk.duration
+            )
         }
 
-        private fun parseTestResult(line: String) = with(TEST_PATTERN) {
-            val match = find(line)
+        private fun parseRunOutput(chunk: ProcessOutputChunk) = when (chunk) {
+            is ProcessOutputChunk.Line -> StackRunOutput.Output(text = chunk.text)
+
+            is ProcessOutputChunk.Completed -> StackRunOutput.Completion(
+                exitCode = chunk.exitCode, duration = chunk.duration
+            )
+        }
+
+        private fun parseTestOutput(chunk: ProcessOutputChunk) = when (chunk) {
+            is ProcessOutputChunk.Line -> when {
+                chunk.text.startsWith("PASS") || chunk.text.startsWith("FAIL") -> parseTestResult(line = chunk.text)
+
+                chunk.text.contains("Warning:") -> StackTestOutput.Warning(message = chunk.text)
+
+                chunk.text.contains("Error:") -> StackTestOutput.Error(message = chunk.text)
+
+                else -> StackTestOutput.Result(module = "unknown", passed = false, output = chunk.text)
+            }
+
+            is ProcessOutputChunk.Completed -> StackTestOutput.Completion(
+                exitCode = chunk.exitCode, duration = chunk.duration
+            )
+        }
+
+        private fun parseTestResult(line: String): StackTestOutput.Result {
+            val match = TEST_PATTERN.find(line)
 
             val passed = match?.groupValues?.getOrNull(1) == "PASS"
 
             val module = match?.groupValues?.getOrNull(2) ?: "unknown"
 
-            StackTestOutput.Result(module = module, passed = passed, details = line)
+            return StackTestOutput.Result(module = module, passed = passed, output = line)
         }
 
-        private fun parseDependencyOutput(line: String) = with(DEPENDENCY_PATTERN) {
-            when (val match = find(line)) {
-                null -> StackDependencyOutput.Info(name = "unknown", version = "unknown")
-
-                else -> StackDependencyOutput.Info(name = match.groupValues[1], version = match.groupValues[2])
-            }
+        private suspend fun getGhcVersion(path: String) = processService.execute(
+            commands = listOf("stack", "ghc", "--", "--version"), workingDirectory = path
+        ).getOrNull()?.let { output ->
+            parseGhcVersion(text = output.text)
         }
 
-        private suspend fun executeAndParseBuild(
-            commands: List<String>, workingDirectory: String
+        private suspend fun isValidDirectory(path: String) =
+            fileSystemService.isDirectory(path = path).getOrNull() == true
+
+        private suspend fun hasStackYaml(path: String) =
+            fileSystemService.exists(path = Path(path, "stack.yaml").absolutePathString()).getOrNull() == true
+
+        private suspend fun <T> executeAndParse(
+            path: String, args: Array<out String>, parser: (ProcessOutputChunk) -> T
         ) = processService.stream(
-            commands = commands, workingDirectory = workingDirectory, environment = emptyMap()
-        ).map { chunks ->
-            chunks.map { chunk ->
-                with(chunk) {
-                    when (this) {
-                        is ProcessOutputChunk.Line -> parseBuildOutput(line = text)
-
-                        is ProcessOutputChunk.Completed -> StackBuildOutput.Completion(
-                            exitCode = exitCode, duration = duration
-                        )
-                    }
-                }
-            }
-        }
-
-        private suspend fun executeAndParseTest(
-            commands: List<String>, workingDirectory: String
-        ) = processService.stream(
-            commands = commands, workingDirectory = workingDirectory, environment = emptyMap()
-        ).map { chunks ->
-            chunks.map { chunk ->
-                with(chunk) {
-                    when (this) {
-                        is ProcessOutputChunk.Line -> parseTestOutput(line = text)
-
-                        is ProcessOutputChunk.Completed -> StackTestOutput.Completion(
-                            exitCode = exitCode, duration = duration
-                        )
-                    }
-                }
-            }
-        }
-
-        private suspend fun executeAndParseRun(
-            commands: List<String>, workingDirectory: String
-        ) = processService.stream(
-            commands = commands, workingDirectory = workingDirectory, environment = emptyMap()
-        ).map { chunks ->
-            chunks.map { chunk ->
-                with(chunk) {
-                    when (this) {
-                        is ProcessOutputChunk.Line -> StackRunOutput.Output(text = text)
-
-                        is ProcessOutputChunk.Completed -> StackRunOutput.Completion(
-                            exitCode = exitCode, duration = duration
-                        )
-                    }
-                }
-            }
-        }
-
-        private suspend fun executeAndParseDependencies(
-            commands: List<String>, workingDirectory: String
-        ) = processService.stream(
-            commands = commands, workingDirectory = workingDirectory, environment = emptyMap()
-        ).map { chunks ->
-            chunks.map { chunk ->
-                with(chunk) {
-                    when (this) {
-                        is ProcessOutputChunk.Line -> parseDependencyOutput(line = text)
-
-                        is ProcessOutputChunk.Completed -> StackDependencyOutput.Completion(
-                            exitCode = exitCode, duration = duration
-                        )
-                    }
-                }
-            }
-        }
-
-        override suspend fun hasStack() = processService.execute(
-            commands = withStack("--version"),
-            workingDirectory = ".",
-        ).map { output ->
-            output.exitCode == 0
-        }
-
-        override suspend fun getStackVersion() = processService.execute(
-            commands = withStack("--version"),
-            workingDirectory = ".",
-        ).map { output ->
-            VERSION_PATTERN.find(input = output.text)?.groupValues?.getOrNull(1)
-        }
-
-        override suspend fun getGhcVersion(path: String) = processService.execute(
-            commands = withStack("ghc", "--", "--version"),
-            workingDirectory = path,
-        ).map { output ->
-            VERSION_PATTERN.find(input = output.text)?.groupValues?.getOrNull(1)
-        }
-
-        override suspend fun getResolver(path: String) = runCatching {
-            if (!fileSystemService.exists(path = path).getOrThrow() || !fileSystemService.isDirectory(path = path)
-                    .getOrThrow()
-            ) {
-                return@runCatching null
-            }
-
-            val stackYamlPath = Path(path, STACK_YAML).absolutePathString()
-
-            if (!fileSystemService.exists(path = stackYamlPath).getOrThrow()) {
-                return@runCatching null
-            }
-
-            fileSystemService.readLines(path = stackYamlPath).getOrNull()?.forEach { line ->
-                if (line.trim().startsWith("resolver:")) {
-                    return@runCatching line.trim().removePrefix("resolver:").trim()
-                }
-            }
-
-            null
-        }
+            commands = listOf("stack", *args, "--color=never"), workingDirectory = path, environment = emptyMap()
+        ).mapCatching { chunks -> chunks.map(parser) }
 
         override suspend fun getProject(path: String) = runCatching {
-            if (!fileSystemService.exists(path = path).getOrThrow() || !fileSystemService.isDirectory(path = path)
-                    .getOrThrow()
-            ) {
-                return@runCatching StackProject.None(path = path)
+            val name = parseProjectName(path)
+
+            if (!isValidDirectory(path = path)) {
+                error("Invalid directory")
             }
 
-            val stackYamlPath = Path(path, STACK_YAML).absolutePathString()
-
-            if (!fileSystemService.exists(path = stackYamlPath).getOrThrow()) {
-                val name = Path(path).name
-
-                return@runCatching StackProject.Incomplete(
-                    path = path, name = name, missingRequirements = setOf(StackProject.Requirement.STACK)
-                )
+            if (!hasStackYaml(path = path)) {
+                error("No stack.yaml found")
             }
 
-            val nameResult = extractProjectName(projectPath = path)
+            val resolver = parseResolver(projectPath = path) ?: error("No resolver found")
 
-            val dependenciesResult = extractDependencies(projectPath = path)
+            val ghcVersion = getGhcVersion(path = path) ?: error("No GHC found")
 
-            val resolverResult = extractResolver(projectPath = path)
-
-            val ghcVersionResult = getGhcVersion(path = path)
-
-            val errors = mutableListOf<String>()
-
-            val missingRequirements = mutableSetOf<StackProject.Requirement>()
-
-            val name = nameResult.onFailure { throwable ->
-                errors.add("Failed to get project name: ${throwable.message}")
-            }.getOrNull() ?: "unknown"
-
-            val dependencies = dependenciesResult.onFailure {
-                errors.add("Failed to get dependencies: ${it.message}")
-            }.getOrDefault(emptyList())
-
-            val resolver = resolverResult.onFailure {
-                errors.add("Failed to get resolver: ${it.message}")
-            }.getOrNull()
-
-            if (resolver == null) {
-                missingRequirements.add(StackProject.Requirement.RESOLVER)
-            }
-
-            val ghcVersion = ghcVersionResult.onFailure {
-                errors.add("Failed to get GHC version: ${it.message}")
-            }.getOrNull()
-
-            if (ghcVersion == null) {
-                missingRequirements.add(StackProject.Requirement.GHC_VERSION)
-            }
-
-            when {
-                errors.isNotEmpty() -> StackProject.Invalid(path = path, name = name, errors = errors)
-
-                resolver != null && ghcVersion != null -> StackProject.Valid(
-                    path = path,
-                    name = name,
-                    dependencies = dependencies,
-                    resolver = resolver,
-                    ghcVersion = ghcVersion,
-                )
-
-                else -> StackProject.Incomplete(path = path, name = name, missingRequirements = missingRequirements)
-            }
+            StackProject(
+                path = path,
+                name = name,
+                resolver = resolver,
+                ghcVersion = ghcVersion,
+                dependencies = parseDependencies(projectPath = path)
+            )
         }
 
-        override suspend fun createProject(name: String, path: String, template: StackTemplate) =
-            executeAndParseBuild(commands = withStack("new", name, template.name), workingDirectory = path)
-
         override suspend fun buildProject(path: String) =
-            executeAndParseBuild(commands = withStack("build"), workingDirectory = path)
+            executeAndParse(path = path, args = arrayOf("build"), parser = ::parseBuildOutput)
 
         override suspend fun runProject(path: String) =
-            executeAndParseRun(commands = withStack("run"), workingDirectory = path)
+            executeAndParse(path = path, args = arrayOf("run"), parser = ::parseRunOutput)
 
         override suspend fun testProject(path: String) =
-            executeAndParseTest(commands = withStack("test"), workingDirectory = path)
+            executeAndParse(path = path, args = arrayOf("test"), parser = ::parseTestOutput)
 
         override suspend fun cleanProject(path: String) =
-            executeAndParseBuild(commands = withStack("clean"), workingDirectory = path)
+            executeAndParse(path = path, args = arrayOf("clean"), parser = ::parseBuildOutput)
 
         override suspend fun getDependencies(path: String) =
-            executeAndParseDependencies(commands = withStack("ls", "dependencies"), workingDirectory = path)
+            executeAndParse(path = path, args = arrayOf("ls", "dependencies"), parser = ::parseDependencyOutput)
 
         override suspend fun addDependency(path: String, dependency: String) =
-            executeAndParseBuild(commands = withStack("build", "--package", dependency), workingDirectory = path)
+            executeAndParse(path = path, args = arrayOf("build", "--package", dependency), parser = ::parseBuildOutput)
     }
 }

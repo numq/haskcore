@@ -1,6 +1,6 @@
 package io.github.numq.haskcore.stack
 
-sealed interface StackTemplate {
+internal sealed interface StackTemplate {
     val name: String
 
     data object Simple : StackTemplate {

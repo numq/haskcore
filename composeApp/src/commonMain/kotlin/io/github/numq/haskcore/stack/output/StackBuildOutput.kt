@@ -2,7 +2,7 @@ package io.github.numq.haskcore.stack.output
 
 import kotlin.time.Duration
 
-sealed interface StackBuildOutput {
+internal sealed interface StackBuildOutput {
     data class Progress(val module: String, val message: String) : StackBuildOutput
 
     data class Warning(val message: String) : StackBuildOutput
