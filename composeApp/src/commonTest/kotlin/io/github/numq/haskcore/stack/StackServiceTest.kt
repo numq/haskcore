@@ -22,8 +22,10 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import kotlin.io.path.Path
 import kotlin.io.path.absolutePathString
-import kotlin.test.*
-import kotlin.test.DefaultAsserter.assertTrue
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertIs
+import kotlin.test.assertTrue
 import kotlin.time.Duration
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -33,7 +35,7 @@ class StackServiceTest {
     private lateinit var stackService: StackService
 
     @BeforeEach
-    fun setup() {
+    fun setUp() {
         Dispatchers.setMain(StandardTestDispatcher())
         fileSystemService = mockk()
         processService = mockk()
@@ -46,164 +48,118 @@ class StackServiceTest {
     }
 
     @Test
-    fun `hasStack returns true when stack exists`() = runTest {
-        coEvery { processService.execute(any(), ".") } returns Result.success(
-            ProcessOutput("Version 2.11.1", 0, Duration.ZERO)
-        )
-        val result = stackService.hasStack().getOrThrow()
-        assertTrue(result)
-    }
-
-    @Test
-    fun `hasStack returns false when stack not found`() = runTest {
-        coEvery { processService.execute(any(), ".") } returns Result.success(
-            ProcessOutput("not found", 127, Duration.ZERO)
-        )
-        val result = stackService.hasStack().getOrThrow()
-        assertFalse(result)
-    }
-
-    @Test
-    fun `getStackVersion parses version`() = runTest {
-        coEvery { processService.execute(any(), ".") } returns Result.success(
-            ProcessOutput("Version 2.9.3", 0, Duration.ZERO)
-        )
-        val version = stackService.getStackVersion().getOrThrow()
-        assertEquals("2.9.3", version)
-    }
-
-    @Test
-    fun `getStackVersion returns null if regex fails`() = runTest {
-        coEvery { processService.execute(any(), ".") } returns Result.success(
-            ProcessOutput("garbage", 0, Duration.ZERO)
-        )
-        val version = stackService.getStackVersion().getOrThrow()
-        assertNull(version)
-    }
-
-    @Test
-    fun `getGhcVersion parses ghc version`() = runTest {
-        coEvery { processService.execute(any(), "proj") } returns Result.success(
-            ProcessOutput("version 9.2.5", 0, Duration.ZERO)
-        )
-        val result = stackService.getGhcVersion("proj").getOrThrow()
-        assertEquals("9.2.5", result)
-    }
-
-    @Test
-    fun `getGhcVersion returns null if output malformed`() = runTest {
-        coEvery { processService.execute(any(), "proj") } returns Result.success(
-            ProcessOutput("no version", 0, Duration.ZERO)
-        )
-        val result = stackService.getGhcVersion("proj").getOrThrow()
-        assertNull(result)
-    }
-
-    @Test
-    fun `getResolver extracts resolver`() = runTest {
-        val stackYamlPath = Path("proj", "stack.yaml").absolutePathString()
-
-        coEvery { fileSystemService.exists("proj") } returns Result.success(true)
-        coEvery { fileSystemService.isDirectory("proj") } returns Result.success(true)
-        coEvery { fileSystemService.exists(stackYamlPath) } returns Result.success(true)
-        coEvery { fileSystemService.readLines(stackYamlPath) } returns Result.success(listOf("resolver: lts-20.10"))
-        val resolver = stackService.getResolver("proj").getOrThrow()
-        assertEquals("lts-20.10", resolver)
-    }
-
-    @Test
-    fun `getResolver returns null if no stack yaml`() = runTest {
-        val stackYamlPath = Path("proj", "stack.yaml").absolutePathString()
-
-        coEvery { fileSystemService.exists("proj") } returns Result.success(true)
-        coEvery { fileSystemService.isDirectory("proj") } returns Result.success(true)
-        coEvery { fileSystemService.exists(stackYamlPath) } returns Result.success(false)
-        val resolver = stackService.getResolver("proj").getOrThrow()
-        assertNull(resolver)
-    }
-
-    @Test
-    fun `getProject returns None if path missing`() = runTest {
-        coEvery { fileSystemService.exists("proj") } returns Result.success(false)
-        coEvery { fileSystemService.isDirectory("proj") } returns Result.success(false)
-        val project = stackService.getProject("proj").getOrThrow()
-        assertIs<StackProject.None>(project)
-        assertEquals("unknown", project.name)
-    }
-
-    @Test
-    fun `getProject returns Incomplete if stack yaml missing`() = runTest {
-        val stackYamlPath = Path("proj", "stack.yaml").absolutePathString()
-
-        coEvery { fileSystemService.exists("proj") } returns Result.success(true)
-        coEvery { fileSystemService.isDirectory("proj") } returns Result.success(true)
-        coEvery { fileSystemService.exists(stackYamlPath) } returns Result.success(false)
-        val project = stackService.getProject("proj").getOrThrow()
-        assertIs<StackProject.Incomplete>(project)
-        assertEquals("proj", project.name)
-        assertTrue(StackProject.Requirement.STACK in project.missingRequirements)
-    }
-
-    @Test
-    fun `getProject returns Incomplete with missing requirements`() = runTest {
+    fun `getProject returns valid project when all data available`() = runTest {
         val stackYamlPath = Path("proj", "stack.yaml").absolutePathString()
         val packageYamlPath = Path("proj", "package.yaml").absolutePathString()
 
-        coEvery { fileSystemService.exists("proj") } returns Result.success(true)
         coEvery { fileSystemService.isDirectory("proj") } returns Result.success(true)
         coEvery { fileSystemService.exists(stackYamlPath) } returns Result.success(true)
+        coEvery { fileSystemService.exists(packageYamlPath) } returns Result.success(true)
+        coEvery { fileSystemService.readLines(stackYamlPath) } returns Result.success(listOf("resolver: lts-20.10"))
+        coEvery { fileSystemService.readLines(packageYamlPath) } returns Result.success(
+            listOf("name: my-project", "dependencies:", "- base", "- text")
+        )
+        coEvery { fileSystemService.listDirectory("proj") } returns Result.success(emptyList())
+        coEvery { processService.execute(any(), "proj") } returns Result.success(
+            ProcessOutput("version 9.2.5", 0, Duration.ZERO)
+        )
+
+        val project = stackService.getProject("proj").getOrThrow()
+
+        assertEquals("proj", project.path)
+        assertEquals("my-project", project.name)
+        assertEquals("lts-20.10", project.resolver)
+        assertEquals("9.2.5", project.ghcVersion)
+        assertEquals(listOf("base", "text"), project.dependencies)
+    }
+
+    @Test
+    fun `getProject returns failure for invalid directory`() = runTest {
+        coEvery { fileSystemService.isDirectory("proj") } returns Result.success(false)
+
+        val result = stackService.getProject("proj")
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull()?.message?.contains("Invalid directory") == true)
+    }
+
+    @Test
+    fun `getProject returns failure when no stack yaml`() = runTest {
+        val stackYamlPath = Path("proj", "stack.yaml").absolutePathString()
+
+        coEvery { fileSystemService.isDirectory("proj") } returns Result.success(true)
+        coEvery { fileSystemService.exists(stackYamlPath) } returns Result.success(false)
+
+        val result = stackService.getProject("proj")
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull()?.message?.contains("No stack.yaml found") == true)
+    }
+
+    @Test
+    fun `getProject returns failure when no resolver`() = runTest {
+        val stackYamlPath = Path("proj", "stack.yaml").absolutePathString()
+        val packageYamlPath = Path("proj", "package.yaml").absolutePathString()
+
+        coEvery { fileSystemService.isDirectory("proj") } returns Result.success(true)
+        coEvery { fileSystemService.exists(stackYamlPath) } returns Result.success(true)
+        coEvery { fileSystemService.exists(packageYamlPath) } returns Result.success(true)
         coEvery { fileSystemService.readLines(stackYamlPath) } returns Result.success(listOf("other: value"))
-        coEvery { fileSystemService.exists(packageYamlPath) } returns Result.success(false)
+        coEvery { fileSystemService.readLines(packageYamlPath) } returns Result.success(listOf("name: my-project"))
+        coEvery { fileSystemService.listDirectory("proj") } returns Result.success(emptyList())
+        coEvery { processService.execute(any(), "proj") } returns Result.success(
+            ProcessOutput("version 9.2.5", 0, Duration.ZERO)
+        )
+
+        val result = stackService.getProject("proj")
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull()?.message?.contains("No resolver found") == true)
+    }
+
+    @Test
+    fun `getProject returns failure when no GHC version`() = runTest {
+        val stackYamlPath = Path("proj", "stack.yaml").absolutePathString()
+        val packageYamlPath = Path("proj", "package.yaml").absolutePathString()
+
+        coEvery { fileSystemService.isDirectory("proj") } returns Result.success(true)
+        coEvery { fileSystemService.exists(stackYamlPath) } returns Result.success(true)
+        coEvery { fileSystemService.exists(packageYamlPath) } returns Result.success(true)
+        coEvery { fileSystemService.readLines(stackYamlPath) } returns Result.success(listOf("resolver: lts-20.10"))
+        coEvery { fileSystemService.readLines(packageYamlPath) } returns Result.success(listOf("name: my-project"))
         coEvery { fileSystemService.listDirectory("proj") } returns Result.success(emptyList())
         coEvery { processService.execute(any(), "proj") } returns Result.success(
             ProcessOutput("garbage output", 0, Duration.ZERO)
         )
 
-        val project = stackService.getProject("proj").getOrThrow()
-        assertIs<StackProject.Incomplete>(project)
-        assertEquals("unknown", project.name)
-        assertTrue("RESOLVER should be missing", StackProject.Requirement.RESOLVER in project.missingRequirements)
-        assertTrue("GHC_VERSION should be missing", StackProject.Requirement.GHC_VERSION in project.missingRequirements)
+        val result = stackService.getProject("proj")
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull()?.message?.contains("No GHC found") == true)
     }
 
     @Test
-    fun `getProject returns Invalid if parsing errors occur`() = runTest {
+    fun `getProject extracts name from cabal file when package yaml missing`() = runTest {
         val stackYamlPath = Path("proj", "stack.yaml").absolutePathString()
+        val packageYamlPath = Path("proj", "package.yaml").absolutePathString()
+        val cabalFile = "my-project.cabal"
+        val fullCabalPath = Path("proj", cabalFile).absolutePathString()
 
-        coEvery { fileSystemService.exists("proj") } returns Result.success(true)
         coEvery { fileSystemService.isDirectory("proj") } returns Result.success(true)
         coEvery { fileSystemService.exists(stackYamlPath) } returns Result.success(true)
-        coEvery { fileSystemService.readLines(stackYamlPath) } returns Result.failure(IllegalStateException("Parse error"))
+        coEvery { fileSystemService.exists(packageYamlPath) } returns Result.success(false)
+        coEvery { fileSystemService.listDirectory("proj") } returns Result.success(listOf(cabalFile))
+        coEvery { fileSystemService.readLines(fullCabalPath) } returns Result.success(listOf("name: my-cabal-project"))
+        coEvery { fileSystemService.readLines(stackYamlPath) } returns Result.success(listOf("resolver: lts-20.10"))
         coEvery { processService.execute(any(), "proj") } returns Result.success(
             ProcessOutput("version 9.2.5", 0, Duration.ZERO)
         )
 
         val project = stackService.getProject("proj").getOrThrow()
-        assertIs<StackProject.Invalid>(project)
-        assertEquals("unknown", project.name)
-        assertTrue(project.errors.isNotEmpty())
-    }
-
-    @Test
-    fun `createProject streams build outputs`() = runTest {
-        coEvery { processService.stream(any(), "proj", any()) } returns Result.success(
-            flowOf(
-                ProcessOutputChunk.Line("Building foo"),
-                ProcessOutputChunk.Completed(0, Duration.ZERO)
-            )
-        )
-        val flow = stackService.createProject("foo", "proj", StackTemplate.Simple).getOrThrow()
-        val outputs = flow.toList()
-        assertIs<StackBuildOutput.Progress>(outputs[0])
-        assertIs<StackBuildOutput.Completion>(outputs[1])
+        assertEquals("my-cabal-project", project.name)
     }
 
     @Test
     fun `buildProject streams build outputs`() = runTest {
         coEvery { processService.stream(any(), "proj", any()) } returns Result.success(
             flowOf(
-                ProcessOutputChunk.Line("Building bar"),
-                ProcessOutputChunk.Completed(0, Duration.ZERO)
+                ProcessOutputChunk.Line("Building bar"), ProcessOutputChunk.Completed(0, Duration.ZERO)
             )
         )
         val flow = stackService.buildProject("proj").getOrThrow()
@@ -216,8 +172,7 @@ class StackServiceTest {
     fun `runProject streams run outputs`() = runTest {
         coEvery { processService.stream(any(), "proj", any()) } returns Result.success(
             flowOf(
-                ProcessOutputChunk.Line("Hello"),
-                ProcessOutputChunk.Completed(0, Duration.ZERO)
+                ProcessOutputChunk.Line("Hello"), ProcessOutputChunk.Completed(0, Duration.ZERO)
             )
         )
         val flow = stackService.runProject("proj").getOrThrow()
@@ -230,8 +185,7 @@ class StackServiceTest {
     fun `testProject streams test outputs`() = runTest {
         coEvery { processService.stream(any(), "proj", any()) } returns Result.success(
             flowOf(
-                ProcessOutputChunk.Line("PASS: Spec1"),
-                ProcessOutputChunk.Completed(0, Duration.ZERO)
+                ProcessOutputChunk.Line("PASS: Spec1"), ProcessOutputChunk.Completed(0, Duration.ZERO)
             )
         )
         val flow = stackService.testProject("proj").getOrThrow()
@@ -244,8 +198,7 @@ class StackServiceTest {
     fun `cleanProject streams build outputs`() = runTest {
         coEvery { processService.stream(any(), "proj", any()) } returns Result.success(
             flowOf(
-                ProcessOutputChunk.Line("Cleaning"),
-                ProcessOutputChunk.Completed(0, Duration.ZERO)
+                ProcessOutputChunk.Line("Cleaning"), ProcessOutputChunk.Completed(0, Duration.ZERO)
             )
         )
         val flow = stackService.cleanProject("proj").getOrThrow()
@@ -258,8 +211,7 @@ class StackServiceTest {
     fun `getDependencies streams dependency outputs`() = runTest {
         coEvery { processService.stream(any(), "proj", any()) } returns Result.success(
             flowOf(
-                ProcessOutputChunk.Line("aeson-2.0.3.0"),
-                ProcessOutputChunk.Completed(0, Duration.ZERO)
+                ProcessOutputChunk.Line("aeson-2.0.3.0"), ProcessOutputChunk.Completed(0, Duration.ZERO)
             )
         )
         val flow = stackService.getDependencies("proj").getOrThrow()
@@ -274,8 +226,7 @@ class StackServiceTest {
     fun `addDependency streams build outputs`() = runTest {
         coEvery { processService.stream(any(), "proj", any()) } returns Result.success(
             flowOf(
-                ProcessOutputChunk.Line("Building with dependency text"),
-                ProcessOutputChunk.Completed(0, Duration.ZERO)
+                ProcessOutputChunk.Line("Building with dependency text"), ProcessOutputChunk.Completed(0, Duration.ZERO)
             )
         )
         val flow = stackService.addDependency("proj", "text").getOrThrow()
