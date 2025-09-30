@@ -156,6 +156,152 @@ class StackServiceTest {
     }
 
     @Test
+    fun `createProject streams build outputs for simple template`() = runTest {
+        coEvery { processService.stream(any(), "projects", any()) } returns Result.success(
+            flowOf(
+                ProcessOutputChunk.Line("Downloading template"),
+                ProcessOutputChunk.Line("Building project my-project"),
+                ProcessOutputChunk.Completed(0, Duration.ZERO)
+            )
+        )
+
+        val flow = stackService.createProject(
+            name = "my-project",
+            path = "projects",
+            template = StackTemplate.Simple
+        ).getOrThrow()
+
+        val outputs = flow.toList()
+
+        val firstOutput = outputs[0] as StackBuildOutput.Progress
+        assertEquals("Downloading template", firstOutput.message)
+
+        val secondOutput = outputs[1] as StackBuildOutput.Progress
+        assertEquals("Building project my-project", secondOutput.message)
+
+        val completion = outputs[2] as StackBuildOutput.Completion
+        assertEquals(0, completion.exitCode)
+    }
+
+    @Test
+    fun `createProject streams build outputs for library template`() = runTest {
+        coEvery { processService.stream(any(), "libs", any()) } returns Result.success(
+            flowOf(
+                ProcessOutputChunk.Line("Creating library my-lib"),
+                ProcessOutputChunk.Line("Writing files..."),
+                ProcessOutputChunk.Completed(0, Duration.ZERO)
+            )
+        )
+
+        val flow = stackService.createProject(
+            name = "my-lib",
+            path = "libs",
+            template = StackTemplate.Library
+        ).getOrThrow()
+
+        val outputs = flow.toList()
+        assertEquals(3, outputs.size)
+        assertIs<StackBuildOutput.Progress>(outputs[0])
+        assertIs<StackBuildOutput.Progress>(outputs[1])
+        assertIs<StackBuildOutput.Completion>(outputs[2])
+    }
+
+    @Test
+    fun `createProject handles warnings during project creation`() = runTest {
+        coEvery { processService.stream(any(), "projects", any()) } returns Result.success(
+            flowOf(
+                ProcessOutputChunk.Line("Warning: Using default resolver"),
+                ProcessOutputChunk.Line("Building project test-project"),
+                ProcessOutputChunk.Completed(0, Duration.ZERO)
+            )
+        )
+
+        val flow = stackService.createProject(
+            name = "test-project",
+            path = "projects",
+            template = StackTemplate.Executable
+        ).getOrThrow()
+
+        val outputs = flow.toList()
+
+        val warning = outputs[0] as StackBuildOutput.Warning
+        assertEquals("Warning: Using default resolver", warning.message)
+
+        assertIs<StackBuildOutput.Progress>(outputs[1])
+        assertIs<StackBuildOutput.Completion>(outputs[2])
+    }
+
+    @Test
+    fun `createProject handles errors during project creation`() = runTest {
+        coEvery { processService.stream(any(), "projects", any()) } returns Result.success(
+            flowOf(
+                ProcessOutputChunk.Line("Error: Project name already exists"),
+                ProcessOutputChunk.Completed(1, Duration.ZERO)
+            )
+        )
+
+        val flow = stackService.createProject(
+            name = "existing-project",
+            path = "projects",
+            template = StackTemplate.Simple
+        ).getOrThrow()
+
+        val outputs = flow.toList()
+
+        val error = outputs[0] as StackBuildOutput.Error
+        assertEquals("Error: Project name already exists", error.message)
+
+        val completion = outputs[1] as StackBuildOutput.Completion
+        assertEquals(1, completion.exitCode)
+    }
+
+    @Test
+    fun `createProject works with all template types`() = runTest {
+        val templates = listOf(
+            StackTemplate.Simple,
+            StackTemplate.Library,
+            StackTemplate.Executable,
+            StackTemplate.TestSuite,
+            StackTemplate.Full
+        )
+
+        coEvery { processService.stream(any(), "test", any()) } returns Result.success(
+            flowOf(
+                ProcessOutputChunk.Line("Project created successfully"),
+                ProcessOutputChunk.Completed(0, Duration.ZERO)
+            )
+        )
+
+        templates.forEach { template ->
+            val flow = stackService.createProject(
+                name = "test-project",
+                path = "test",
+                template = template
+            ).getOrThrow()
+
+            val outputs = flow.toList()
+            assertIs<StackBuildOutput.Progress>(outputs[0])
+            assertIs<StackBuildOutput.Completion>(outputs[1])
+        }
+    }
+
+    @Test
+    fun `createProject returns failure when process service fails`() = runTest {
+        coEvery { processService.stream(any(), "projects", any()) } returns Result.failure(
+            RuntimeException("Process execution failed")
+        )
+
+        val result = stackService.createProject(
+            name = "my-project",
+            path = "projects",
+            template = StackTemplate.Simple
+        )
+
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull()?.message?.contains("Process execution failed") == true)
+    }
+
+    @Test
     fun `buildProject streams build outputs`() = runTest {
         coEvery { processService.stream(any(), "proj", any()) } returns Result.success(
             flowOf(

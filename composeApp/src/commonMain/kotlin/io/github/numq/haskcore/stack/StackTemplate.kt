@@ -1,6 +1,10 @@
 package io.github.numq.haskcore.stack
 
 internal sealed interface StackTemplate {
+    companion object {
+        val values = setOf(Simple, Library, Executable, TestSuite, Full)
+    }
+
     val name: String
 
     data object Simple : StackTemplate {

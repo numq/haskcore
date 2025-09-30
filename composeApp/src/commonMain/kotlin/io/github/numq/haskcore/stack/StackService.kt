@@ -15,6 +15,8 @@ import kotlin.io.path.absolutePathString
 internal interface StackService {
     suspend fun getProject(path: String): Result<StackProject>
 
+    suspend fun createProject(name: String, path: String, template: StackTemplate): Result<Flow<StackBuildOutput>>
+
     suspend fun buildProject(path: String): Result<Flow<StackBuildOutput>>
 
     suspend fun runProject(path: String): Result<Flow<StackRunOutput>>
@@ -214,6 +216,9 @@ internal interface StackService {
                 dependencies = parseDependencies(projectPath = path)
             )
         }
+
+        override suspend fun createProject(name: String, path: String, template: StackTemplate) =
+            executeAndParse(path = path, args = arrayOf("new", name, template.name), parser = ::parseBuildOutput)
 
         override suspend fun buildProject(path: String) =
             executeAndParse(path = path, args = arrayOf("build"), parser = ::parseBuildOutput)
