@@ -12,10 +12,8 @@ import java.io.File
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import kotlin.io.path.absolutePathString
-import kotlin.time.ExperimentalTime
 
-@OptIn(ExperimentalTime::class)
-interface FileSystemService {
+internal interface FileSystemService {
     suspend fun exists(path: String): Result<Boolean>
 
     suspend fun isFile(path: String): Result<Boolean>
@@ -27,6 +25,10 @@ interface FileSystemService {
     suspend fun readText(path: String): Result<String>
 
     suspend fun readLines(path: String): Result<List<String>>
+
+    suspend fun writeBytes(path: String, bytes: ByteArray): Result<Unit>
+
+    suspend fun writeText(path: String, text: String): Result<Unit>
 
     suspend fun listDirectory(path: String): Result<List<String>>
 
@@ -113,6 +115,14 @@ interface FileSystemService {
             checkPath(path = path).readLines()
         }
 
+        override suspend fun writeBytes(path: String, bytes: ByteArray) = withFileSystem {
+            checkPath(path = path).writeBytes(array = bytes)
+        }
+
+        override suspend fun writeText(path: String, text: String) = withFileSystem {
+            checkPath(path = path).writeText(text = text)
+        }
+
         override suspend fun listDirectory(path: String) = withFileSystem {
             with(checkPath(path = path)) {
                 check(isDirectory) { "Path $path is not a directory" }
@@ -136,22 +146,19 @@ interface FileSystemService {
                         when (event.eventType()) {
                             DirectoryChangeEvent.EventType.CREATE -> trySend(
                                 FileSystemChange.Created(
-                                    path = path,
-                                    parentPath = parentPath
+                                    path = path, parentPath = parentPath
                                 )
                             )
 
                             DirectoryChangeEvent.EventType.MODIFY -> trySend(
                                 FileSystemChange.Modified(
-                                    path = path,
-                                    parentPath = parentPath
+                                    path = path, parentPath = parentPath
                                 )
                             )
 
                             DirectoryChangeEvent.EventType.DELETE -> trySend(
                                 FileSystemChange.Deleted(
-                                    path = path,
-                                    parentPath = parentPath
+                                    path = path, parentPath = parentPath
                                 )
                             )
 

@@ -11,7 +11,10 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
+import kotlin.test.assertContentEquals
+import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -22,7 +25,7 @@ class FileSystemServiceTest {
     private lateinit var tempDir: File
 
     @BeforeEach
-    fun setup() {
+    fun setUp() {
         Dispatchers.setMain(StandardTestDispatcher())
         fileSystemService = FileSystemService.Default()
     }
@@ -39,6 +42,32 @@ class FileSystemServiceTest {
         assertFailsWith<FileSystemException> {
             fileSystemService.readText(path).getOrThrow()
         }
+    }
+
+    @Test
+    fun `writeBytes writes content`() = runTest {
+        val path = File(tempDir, "test.bin").also(File::createNewFile).absolutePath
+
+        val testBytes = byteArrayOf(0x01, 0x02, 0x03, 0x04)
+
+        val result = fileSystemService.writeBytes(path, testBytes)
+
+        assertTrue(result.isSuccess)
+        assertTrue(File(path).exists())
+        assertContentEquals(testBytes, File(path).readBytes())
+    }
+
+    @Test
+    fun `writeText writes content`() = runTest {
+        val path = File(tempDir, "test.txt").also(File::createNewFile).absolutePath
+
+        val testString = "test"
+
+        val result = fileSystemService.writeText(path, testString)
+
+        assertTrue(result.isSuccess)
+        assertTrue(File(path).exists())
+        assertEquals(testString, File(path).readText())
     }
 
     @Test
