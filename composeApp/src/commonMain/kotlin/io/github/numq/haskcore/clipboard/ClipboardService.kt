@@ -4,8 +4,11 @@ import io.github.numq.haskcore.filesystem.FileSystemService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlin.io.path.Path
+import kotlin.io.path.absolutePathString
+import kotlin.io.path.name
 
-interface ClipboardService {
+internal interface ClipboardService {
     val clipboard: StateFlow<Clipboard>
 
     suspend fun cut(paths: List<String>): Result<Unit>
@@ -37,7 +40,7 @@ interface ClipboardService {
 
                 is Clipboard.Cut -> {
                     clipboard.paths.forEach { fromPath ->
-                        val toPath = "$path/${fromPath.substringAfterLast("/")}"
+                        val toPath = Path(path, Path(fromPath).name).absolutePathString()
 
                         fileSystemService.move(fromPath = fromPath, toPath = toPath, overwrite = false).getOrThrow()
                     }
@@ -46,7 +49,7 @@ interface ClipboardService {
                 }
 
                 is Clipboard.Copy -> clipboard.paths.forEach { fromPath ->
-                    val toPath = "$path/${fromPath.substringAfterLast("/")}"
+                    val toPath = Path(path, Path(fromPath).name).absolutePathString()
 
                     fileSystemService.copy(fromPath = fromPath, toPath = toPath, overwrite = false).getOrThrow()
                 }
