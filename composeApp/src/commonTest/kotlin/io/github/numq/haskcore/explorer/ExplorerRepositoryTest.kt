@@ -39,7 +39,7 @@ class ExplorerRepositoryTest {
     )
 
     @BeforeEach
-    fun setup() {
+    fun setUp() {
         Dispatchers.setMain(StandardTestDispatcher())
         fileSystemService = mockk()
         clipboardService = mockk()

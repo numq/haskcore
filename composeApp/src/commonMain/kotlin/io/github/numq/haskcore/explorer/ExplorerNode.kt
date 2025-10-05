@@ -1,6 +1,6 @@
 package io.github.numq.haskcore.explorer
 
-sealed interface ExplorerNode {
+internal sealed interface ExplorerNode {
     val name: String
 
     val path: String

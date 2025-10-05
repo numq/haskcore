@@ -1,6 +1,6 @@
 package io.github.numq.haskcore.explorer
 
-object ExplorerNodeComparator : Comparator<ExplorerNode> {
+internal object ExplorerNodeComparator : Comparator<ExplorerNode> {
     override fun compare(a: ExplorerNode, b: ExplorerNode): Int {
         val aIsDir = a is ExplorerNode.Directory
 

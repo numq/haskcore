@@ -4,7 +4,7 @@ import io.github.numq.haskcore.explorer.ExplorerNode
 import io.github.numq.haskcore.explorer.ExplorerRepository
 import io.github.numq.haskcore.usecase.UseCase
 
-class CollapseNode(
+internal class CollapseNode(
     private val explorerRepository: ExplorerRepository
 ) : UseCase<CollapseNode.Input, Unit> {
     data class Input(val directory: ExplorerNode.Directory)

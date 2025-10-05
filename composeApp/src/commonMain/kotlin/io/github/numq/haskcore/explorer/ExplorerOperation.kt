@@ -2,7 +2,7 @@ package io.github.numq.haskcore.explorer
 
 import io.github.numq.haskcore.filesystem.FileSystemChange
 
-sealed interface ExplorerOperation {
+internal sealed interface ExplorerOperation {
     data class Change(val change: FileSystemChange) : ExplorerOperation
 
     data class Expand(val directory: ExplorerNode.Directory) : ExplorerOperation

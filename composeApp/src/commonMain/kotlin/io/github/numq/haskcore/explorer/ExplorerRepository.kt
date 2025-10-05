@@ -8,10 +8,8 @@ import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.collections.immutable.toPersistentSet
 import kotlinx.coroutines.flow.*
 import kotlin.io.path.*
-import kotlin.time.ExperimentalTime
 
-@OptIn(ExperimentalTime::class)
-interface ExplorerRepository {
+internal interface ExplorerRepository {
     suspend fun getNodes(rootPath: String): Result<Flow<List<ExplorerNode>>>
 
     suspend fun createFile(destination: ExplorerNode, name: String): Result<Unit>
