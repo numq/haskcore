@@ -1,5 +1,8 @@
 package io.github.numq.haskcore.stack
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 internal data class StackProject(
     val path: String,
     val name: String,

@@ -13,6 +13,8 @@ import kotlin.io.path.Path
 import kotlin.io.path.absolutePathString
 
 internal interface StackService {
+    suspend fun hasProject(path: String): Result<Boolean>
+
     suspend fun getProject(path: String): Result<StackProject>
 
     suspend fun createProject(name: String, path: String, template: StackTemplate): Result<Flow<StackBuildOutput>>
@@ -192,6 +194,8 @@ internal interface StackService {
         ) = processService.stream(
             commands = listOf("stack", *args, "--color=never"), workingDirectory = path, environment = emptyMap()
         ).mapCatching { chunks -> chunks.map(parser) }
+
+        override suspend fun hasProject(path: String) = runCatching { hasStackYaml(path = path) }
 
         override suspend fun getProject(path: String) = runCatching {
             val name = parseProjectName(path)
