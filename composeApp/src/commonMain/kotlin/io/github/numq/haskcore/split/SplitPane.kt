@@ -1,7 +1,10 @@
 package io.github.numq.haskcore.split
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -84,6 +87,9 @@ internal fun WindowScope.SplitPane(
             }
         }
 
+        val contentModifier = Modifier.background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .border(1.dp, MaterialTheme.colorScheme.outline)
+
         DisposableEffect(cursor) {
             SwingUtilities.invokeLater {
                 window.cursor = cursor
@@ -103,7 +109,9 @@ internal fun WindowScope.SplitPane(
                 SplitPaneOrientation.VERTICAL -> height(offset).fillMaxWidth()
             }
         }) {
-            first(offset)
+            Box(modifier = contentModifier) {
+                first(offset)
+            }
         }
 
         Box(modifier = Modifier.fillMaxSize().composed {
@@ -113,7 +121,9 @@ internal fun WindowScope.SplitPane(
                 SplitPaneOrientation.VERTICAL -> padding(top = offset)
             }
         }) {
-            second(containerSize - offset)
+            Box(modifier = contentModifier) {
+                second(containerSize - offset)
+            }
         }
 
         Box(modifier = Modifier.composed {
