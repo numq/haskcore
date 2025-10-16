@@ -4,7 +4,7 @@ import org.koin.dsl.bind
 import org.koin.dsl.module
 
 internal val clipboardModule = module {
-    single { ClipboardService.Default(fileSystemService = get()) } bind ClipboardService::class
+    single { ClipboardRepository.Default(fileSystemService = get()) } bind ClipboardRepository::class
 
-    single { GetClipboard(clipboardService = get()) }
+    single { GetClipboard(clipboardRepository = get()) }
 }

@@ -8,7 +8,7 @@ import kotlin.io.path.Path
 import kotlin.io.path.absolutePathString
 import kotlin.io.path.name
 
-internal interface ClipboardService {
+internal interface ClipboardRepository {
     val clipboard: StateFlow<Clipboard>
 
     suspend fun cut(paths: List<String>): Result<Unit>
@@ -21,7 +21,7 @@ internal interface ClipboardService {
 
     suspend fun clearClipboard(): Result<Unit>
 
-    class Default(private val fileSystemService: FileSystemService) : ClipboardService {
+    class Default(private val fileSystemService: FileSystemService) : ClipboardRepository {
         private val _clipboard = MutableStateFlow<Clipboard>(Clipboard.Empty)
 
         override val clipboard = _clipboard.asStateFlow()
