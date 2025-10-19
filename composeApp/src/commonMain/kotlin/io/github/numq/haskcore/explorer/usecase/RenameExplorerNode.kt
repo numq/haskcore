@@ -4,7 +4,7 @@ import io.github.numq.haskcore.explorer.ExplorerNode
 import io.github.numq.haskcore.explorer.ExplorerRepository
 import io.github.numq.haskcore.usecase.UseCase
 
-internal class RenameNode(private val explorerRepository: ExplorerRepository) : UseCase<RenameNode.Input, Unit> {
+internal class RenameExplorerNode(private val explorerRepository: ExplorerRepository) : UseCase<RenameExplorerNode.Input, Unit> {
     data class Input(val node: ExplorerNode, val name: String)
 
     override suspend fun execute(input: Input) = with(input) {

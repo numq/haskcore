@@ -4,7 +4,7 @@ import io.github.numq.haskcore.explorer.ExplorerNode
 import io.github.numq.haskcore.explorer.ExplorerRepository
 import io.github.numq.haskcore.usecase.UseCase
 
-internal class CreateNode(private val explorerRepository: ExplorerRepository) : UseCase<CreateNode.Input, Unit> {
+internal class CreateExplorerNode(private val explorerRepository: ExplorerRepository) : UseCase<CreateExplorerNode.Input, Unit> {
     sealed interface Input {
         val destination: ExplorerNode
 
