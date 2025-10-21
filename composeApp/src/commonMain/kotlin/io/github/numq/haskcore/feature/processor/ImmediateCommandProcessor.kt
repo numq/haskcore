@@ -17,9 +17,7 @@ internal class ImmediateCommandProcessor<Command>(
 
                 try {
                     checkTimeout {
-                        with(action) {
-                            block(command)
-                        }
+                        with(action) { block(command) }
                     }
                 } catch (throwable: Throwable) {
                     onFailure?.invoke(throwable)

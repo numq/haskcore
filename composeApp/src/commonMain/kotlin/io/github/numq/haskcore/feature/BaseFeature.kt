@@ -113,14 +113,12 @@ internal class BaseFeature<Command, State>(
         }
     }
 
-    override suspend fun <Type> stopCollecting(event: Event.Collectable<Type>, joinCancellation: Boolean) {
+    override suspend fun <T> stopCollecting(key: T, joinCancellation: Boolean) {
         jobsMutex.withLock {
             try {
                 requireOpen()
 
-                val key = event.key.toString()
-
-                val job = jobs.remove(key) ?: return
+                val job = jobs.remove("$key") ?: return
 
                 job.cancel()
 

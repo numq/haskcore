@@ -1,16 +1,14 @@
 package io.github.numq.haskcore.feature.processor
 
+import io.github.numq.haskcore.timestamp.Timestamp
 import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeout
 import kotlin.concurrent.Volatile
-import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.ExperimentalTime
 
-@OptIn(ExperimentalTime::class)
 abstract class BaseCommandProcessor<Command>(
     private val debounceMillis: Long?,
     private val timeoutMillis: Long?,
@@ -42,7 +40,7 @@ abstract class BaseCommandProcessor<Command>(
         val debounceTime = debounceMillis?.milliseconds ?: return block()
 
         debounceMutex.withLock {
-            val currentTime = Clock.System.now().toEpochMilliseconds().milliseconds
+            val currentTime = Timestamp.now().milliseconds
 
             when {
                 previousTime.isInfinite() -> {

@@ -14,7 +14,7 @@ interface Feature<Command, State> {
         event: Event.Collectable<T>, joinCancellation: Boolean, action: suspend (T) -> Unit
     )
 
-    suspend fun <T> stopCollecting(event: Event.Collectable<T>, joinCancellation: Boolean)
+    suspend fun <T> stopCollecting(key: T, joinCancellation: Boolean)
 
     suspend fun stopCollectingAll(joinCancellation: Boolean)
 
