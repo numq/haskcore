@@ -1,16 +1,25 @@
 package io.github.numq.haskcore.explorer
 
-import io.github.numq.haskcore.clipboard.ClipboardService
+import io.github.numq.haskcore.clipboard.ClipboardRepository
+import io.github.numq.haskcore.editor.EditorException
 import io.github.numq.haskcore.filesystem.FileSystemChange
 import io.github.numq.haskcore.filesystem.FileSystemService
 import kotlinx.collections.immutable.PersistentSet
 import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.collections.immutable.toPersistentSet
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+import java.io.Closeable
 import kotlin.io.path.*
 
-internal interface ExplorerRepository {
-    suspend fun getNodes(rootPath: String): Result<Flow<List<ExplorerNode>>>
+internal interface ExplorerRepository : Closeable {
+    val explorer: StateFlow<Explorer?>
+
+    suspend fun openExplorer(path: String): Result<Unit>
+
+    suspend fun updateExplorer(explorer: Explorer): Result<Unit>
+
+    suspend fun closeExplorer(): Result<Unit>
 
     suspend fun createFile(destination: ExplorerNode, name: String): Result<Unit>
 
@@ -33,9 +42,19 @@ internal interface ExplorerRepository {
     suspend fun deleteNodes(nodes: Set<ExplorerNode>): Result<Unit>
 
     class Default(
-        private val clipboardService: ClipboardService, private val fileSystemService: FileSystemService
+        private val explorerDataSource: ExplorerDataSource,
+        private val clipboardRepository: ClipboardRepository,
+        private val fileSystemService: FileSystemService,
     ) : ExplorerRepository {
+        private val coroutineScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+
+        private var job: Job? = null
+
         private val operations = MutableSharedFlow<ExplorerOperation>()
+
+        private val _explorer = MutableStateFlow<Explorer?>(null)
+
+        override val explorer = _explorer.asStateFlow()
 
         private suspend fun buildNode(rootPath: String, path: String) = Path(path).runCatching {
             val parentPath = when (path) {
@@ -76,7 +95,7 @@ internal interface ExplorerRepository {
         }.getOrNull()
 
         private suspend fun buildChildren(
-            rootPath: String, path: String
+            rootPath: String, path: String,
         ) = fileSystemService.listDirectory(path = path).getOrThrow().mapNotNull { childPath ->
             buildNode(rootPath = rootPath, path = childPath)
         }.toPersistentSet()
@@ -115,7 +134,7 @@ internal interface ExplorerRepository {
         }
 
         private fun updateNodeInTree(
-            tree: ExplorerTree, updatedNode: ExplorerNode.Directory, children: PersistentSet<ExplorerNode>? = null
+            tree: ExplorerTree, updatedNode: ExplorerNode.Directory, children: PersistentSet<ExplorerNode>? = null,
         ) = when {
             updatedNode.path == tree.root.path -> {
                 var newChildrenByPath = tree.childrenByPath
@@ -149,7 +168,7 @@ internal interface ExplorerRepository {
         private suspend fun handleChange(
             tree: ExplorerTree,
             change: FileSystemChange,
-            rootPath: String
+            rootPath: String,
         ) = when (change) {
             is FileSystemChange.Created -> handleCreated(tree = tree, change = change, rootPath = rootPath)
 
@@ -159,7 +178,7 @@ internal interface ExplorerRepository {
         }
 
         private suspend fun handleCreated(
-            tree: ExplorerTree, change: FileSystemChange.Created, rootPath: String
+            tree: ExplorerTree, change: FileSystemChange.Created, rootPath: String,
         ): ExplorerTree {
             val parentPath = change.parentPath ?: rootPath
 
@@ -232,7 +251,7 @@ internal interface ExplorerRepository {
         }
 
         private suspend fun handleModified(
-            tree: ExplorerTree, change: FileSystemChange.Modified, rootPath: String
+            tree: ExplorerTree, change: FileSystemChange.Modified, rootPath: String,
         ): ExplorerTree {
             val parentPath = change.parentPath ?: rootPath
 
@@ -287,47 +306,69 @@ internal interface ExplorerRepository {
             return tree.copy(childrenByPath = newChildrenByPath)
         }
 
-        override suspend fun getNodes(rootPath: String) = runCatching {
-            require(rootPath.isNotBlank()) { "Root path cannot be blank" }
+        override suspend fun openExplorer(path: String) = runCatching {
+            if (!explorerDataSource.exists(path).getOrThrow()) {
+                throw EditorException("Invalid path: $path - not a directory")
+            }
 
-            val root = with(Path(rootPath)) {
+            job?.cancel()
+
+            _explorer.value = explorerDataSource.readExplorer(path = path).getOrThrow() ?: Explorer(path = path)
+
+            val root = with(Path(path)) {
                 ExplorerNode.Directory(
                     name = name,
-                    path = rootPath,
-                    parentPath = rootPath,
+                    path = path,
+                    parentPath = path,
                     depth = 0,
                     lastModified = getLastModifiedTime().toMillis(),
                     expanded = false
                 )
             }
 
-            val rootChildren = buildChildren(rootPath = rootPath, path = rootPath)
+            val rootChildren = buildChildren(rootPath = path, path = path)
 
-            val initialTree = ExplorerTree(root = root, childrenByPath = persistentMapOf(rootPath to rootChildren))
+            val initialTree = ExplorerTree(root = root, childrenByPath = persistentMapOf(path to rootChildren))
 
-            val changes = fileSystemService.observeDirectoryChanges(path = rootPath).getOrThrow()
+            _explorer.update { explorer ->
+                explorer?.copy(nodes = buildFlattened(tree = initialTree))
+            }
 
-            merge(operations, changes.map(ExplorerOperation::Change)).scan(initialTree) { tree, operation ->
+            val changes = fileSystemService.observeDirectoryChanges(path = path).getOrThrow()
+
+            job = merge(operations, changes.map(ExplorerOperation::Change)).scan(initialTree) { tree, operation ->
                 when (operation) {
                     is ExplorerOperation.Expand -> handleExpand(
-                        tree = tree,
-                        directory = operation.directory,
-                        rootPath = rootPath
+                        tree = tree, directory = operation.directory, rootPath = path
                     )
 
                     is ExplorerOperation.Collapse -> handleCollapse(tree = tree, directory = operation.directory)
 
                     is ExplorerOperation.Change -> handleChange(
-                        tree = tree,
-                        change = operation.change,
-                        rootPath = rootPath
+                        tree = tree, change = operation.change, rootPath = path
                     )
                 }
-            }.map { tree ->
-                buildFlattened(tree = tree)
-            }.onStart {
-                emit(buildFlattened(tree = initialTree))
-            }.distinctUntilChanged()
+            }.onEach { tree ->
+                _explorer.updateAndGet { explorer ->
+                    explorer?.copy(nodes = buildFlattened(tree = initialTree))
+                }?.let { explorer ->
+                    explorerDataSource.writeExplorer(explorer = explorer).getOrThrow()
+                }
+            }.launchIn(coroutineScope)
+        }
+
+        override suspend fun updateExplorer(explorer: Explorer) = runCatching {
+            explorerDataSource.writeExplorer(explorer = explorer).getOrThrow()
+
+            _explorer.value = explorer
+        }
+
+        override suspend fun closeExplorer() = runCatching {
+            job?.cancel()
+
+            job = null
+
+            _explorer.value = null
         }
 
         override suspend fun expandDirectory(directory: ExplorerNode.Directory) = runCatching {
@@ -379,11 +420,11 @@ internal interface ExplorerRepository {
         }
 
         override suspend fun cutNodes(nodes: Set<ExplorerNode>) = runCatching {
-            clipboardService.cut(paths = nodes.map(ExplorerNode::path)).getOrThrow()
+            clipboardRepository.cut(paths = nodes.map(ExplorerNode::path)).getOrThrow()
         }
 
         override suspend fun copyNodes(nodes: Set<ExplorerNode>) = runCatching {
-            clipboardService.copy(paths = nodes.map(ExplorerNode::path)).getOrThrow()
+            clipboardRepository.copy(paths = nodes.map(ExplorerNode::path)).getOrThrow()
         }
 
         override suspend fun pasteNodes(destination: ExplorerNode) = runCatching {
@@ -393,7 +434,7 @@ internal interface ExplorerRepository {
                 is ExplorerNode.Directory -> destination.path
             }
 
-            clipboardService.paste(path = destinationPath).getOrThrow()
+            clipboardRepository.paste(path = destinationPath).getOrThrow()
         }
 
         override suspend fun moveNodes(nodes: Set<ExplorerNode>, destination: ExplorerNode) = runCatching {
@@ -417,5 +458,7 @@ internal interface ExplorerRepository {
                 fileSystemService.delete(path = node.path).getOrThrow()
             }
         }
+
+        override fun close() = coroutineScope.cancel()
     }
 }
