@@ -350,7 +350,7 @@ internal interface ExplorerRepository : Closeable {
                 }
             }.onEach { tree ->
                 _explorer.updateAndGet { explorer ->
-                    explorer?.copy(nodes = buildFlattened(tree = initialTree))
+                    explorer?.copy(nodes = buildFlattened(tree = tree))
                 }?.let { explorer ->
                     explorerDataSource.writeExplorer(explorer = explorer).getOrThrow()
                 }

@@ -30,6 +30,8 @@ internal val explorerModule = module {
 
     single { MoveExplorerNodes(explorerRepository = get()) }
 
+    single { OpenExplorer(explorerRepository = get()) }
+
     single { PasteExplorerNodes(explorerRepository = get()) }
 
     single { RenameExplorerNode(explorerRepository = get()) }
