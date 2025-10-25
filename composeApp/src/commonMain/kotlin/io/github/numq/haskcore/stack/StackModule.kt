@@ -9,6 +9,8 @@ internal val stackModule = module {
 
     single { StackRepository.Default(stackService = get()) } bind StackRepository::class
 
+    single { GetStackProject(stackRepository = get()) }
+
     single { CreateStackProject(stackRepository = get()) }
 
     single { BuildStackProject(stackRepository = get()) }
