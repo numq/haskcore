@@ -9,15 +9,15 @@ internal val stackModule = module {
 
     single { StackRepository.Default(stackService = get()) } bind StackRepository::class
 
-    single { GetStackProject(stackRepository = get()) }
+    single { ObserveStackProject(stackRepository = get()) }
 
-    single { CreateStackProject(stackRepository = get()) }
+    single { CreateStackProject(outputRepository = get(), stackRepository = get()) }
 
-    single { BuildStackProject(stackRepository = get()) }
+    single { BuildStackProject(outputRepository = get(), stackRepository = get()) }
 
-    single { RunStackProject(stackRepository = get()) }
+    single { RunStackProject(outputRepository = get(), stackRepository = get()) }
 
-    single { TestStackProject(stackRepository = get()) }
+    single { TestStackProject(outputRepository = get(), stackRepository = get()) }
 
-    single { CleanStackProject(stackRepository = get()) }
+    single { CleanStackProject(outputRepository = get(), stackRepository = get()) }
 }

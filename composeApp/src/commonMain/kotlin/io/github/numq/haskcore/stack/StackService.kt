@@ -109,10 +109,10 @@ internal interface StackService {
                 }
 
                 send(completion)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                throw StackException("Failed to execute stack command: ${e.message}")
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (throwable: Throwable) {
+                throw StackException("Failed to execute stack command: ${throwable.message}")
             }
 
             awaitClose {
@@ -187,10 +187,10 @@ internal interface StackService {
 
             GHC_VERSION_PATTERN.find(output)?.groupValues?.get(1)
                 ?: throw StackException("Could not parse GHC version from: $output")
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            throw StackException("Failed to get GHC version: ${e.message}")
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (throwable: Throwable) {
+            throw StackException("Failed to get GHC version: ${throwable.message}")
         }
 
         private fun parseDependencies(projectPath: Path): List<String> {
