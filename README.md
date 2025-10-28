@@ -1,8 +1,9 @@
-# haskcore
+<h1 align="center" title="Haskell IDE - Modern Desktop Development Environment">haskcore</h1>
 
 ![Java](https://img.shields.io/badge/Java-24-000000.svg?style=flat&logo=openjdk&logoColor=white)
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.2.20-000000.svg?style=flat&logo=kotlin&logoColor=white)
 ![Compose](https://img.shields.io/badge/Compose_Desktop-000000.svg?style=flat&logo=jetpackcompose&logoColor=white)
+![Haskell](https://img.shields.io/badge/Haskell-LSP%20Support-black)
 ![Status](https://img.shields.io/badge/Status-WIP-000000.svg?style=flat)
 
 |                                                                  🖤                                                                   |                  Support this project                   |               
@@ -13,9 +14,23 @@
 
 ___
 
+<br>
+
 <div align="center"><img src="media/logo.webp" alt="haskcore logo"></div>
 
-<p align="center">Because Haskell deserves its own IDE</p>
+<br>
+
+<p align="center">A modern, lightweight standalone desktop IDE with LSP support, built with Kotlin & Compose Desktop for Haskell development</p>
+
+<br>
+
+<p align="center"><b>Because Haskell deserves its own IDE</b></p>
+
+<br>
+
+> [!NOTE]
+> The application was designed using the [Reduce & Conquer](https://github.com/numq/reduce-and-conquer) architectural
+> pattern
 
 # Development
 
