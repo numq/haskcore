@@ -22,7 +22,7 @@ ___
 
 <p align="center">A modern, lightweight standalone desktop IDE with LSP support, built with Kotlin & Compose Desktop for Haskell development</p>
 
-<br>
+___
 
 <p align="center"><b>Because Haskell deserves its own IDE</b></p>
 
@@ -34,7 +34,7 @@ ___
 
 # Development
 
-> [!NOTE]
+> [!IMPORTANT]
 > This is an approximate status and may change as development progresses
 
 | 📦 Package | 🎯 Functionality        | 🏗️ Layer | ✅ Status        |
