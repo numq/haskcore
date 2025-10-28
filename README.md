@@ -26,8 +26,6 @@ ___
 
 <p align="center"><b>Because Haskell deserves its own IDE</b></p>
 
-<br>
-
 > [!NOTE]
 > The application was designed using the [Reduce & Conquer](https://github.com/numq/reduce-and-conquer) architectural
 > pattern
