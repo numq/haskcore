@@ -313,7 +313,7 @@ internal interface ExplorerRepository : Closeable {
 
             job?.cancel()
 
-            _explorer.value = explorerDataSource.readExplorer(path = path).getOrThrow() ?: Explorer(path = path)
+            _explorer.value = explorerDataSource.readData(path = path).getOrThrow() ?: Explorer(path = path)
 
             val root = with(Path(path)) {
                 ExplorerNode.Directory(
@@ -352,13 +352,13 @@ internal interface ExplorerRepository : Closeable {
                 _explorer.updateAndGet { explorer ->
                     explorer?.copy(nodes = buildFlattened(tree = tree))
                 }?.let { explorer ->
-                    explorerDataSource.writeExplorer(explorer = explorer).getOrThrow()
+                    explorerDataSource.writeData(dataPath = explorer.path, data = explorer).getOrThrow()
                 }
             }.launchIn(coroutineScope)
         }
 
         override suspend fun updateExplorer(explorer: Explorer) = runCatching {
-            explorerDataSource.writeExplorer(explorer = explorer).getOrThrow()
+            explorerDataSource.writeData(dataPath = explorer.path, data = explorer).getOrThrow()
 
             _explorer.value = explorer
         }
