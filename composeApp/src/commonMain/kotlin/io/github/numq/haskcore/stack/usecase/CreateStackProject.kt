@@ -1,22 +1,16 @@
 package io.github.numq.haskcore.stack.usecase
 
-import io.github.numq.haskcore.output.OutputRepository
-import io.github.numq.haskcore.stack.StackOutputMapper
-import io.github.numq.haskcore.stack.StackRepository
+import io.github.numq.haskcore.stack.StackOutput
+import io.github.numq.haskcore.stack.StackService
 import io.github.numq.haskcore.usecase.UseCase
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 
 internal class CreateStackProject(
-    private val outputRepository: OutputRepository, private val stackRepository: StackRepository
-) : UseCase<CreateStackProject.Input, Flow<Unit>> {
-    data class Input(val path: String, val name: String, val template: String)
+    private val stackService: StackService
+) : UseCase<CreateStackProject.Input, Flow<StackOutput>> {
+    data class Input(val path: String, val name: String, val template: String?)
 
     override suspend fun execute(input: Input) = with(input) {
-        stackRepository.create(path = path, name = name, template = template).mapCatching { stackOutput ->
-            stackOutput.map { output ->
-                outputRepository.send(message = StackOutputMapper.transform(output = output)).getOrThrow()
-            }
-        }
+        stackService.createProject(path = path, name = name, template = template)
     }
 }
