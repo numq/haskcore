@@ -11,9 +11,9 @@ internal sealed interface StackOutput {
 
     data class BuildModule(val module: String, val message: String) : StackOutput
 
-    data class TestResult(val module: String, val passed: Boolean) : StackOutput
+    data class RunOutput(val message: String) : StackOutput
 
-    data class RunOutput(val text: String) : StackOutput
+    data class TestResult(val module: String, val passed: Boolean, val message: String) : StackOutput
 
     sealed interface Completion : StackOutput {
         val exitCode: Int

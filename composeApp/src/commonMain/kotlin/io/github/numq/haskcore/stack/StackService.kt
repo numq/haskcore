@@ -11,13 +11,18 @@ import kotlinx.coroutines.runInterruptible
 import java.io.Reader
 import java.nio.file.Files
 import java.nio.file.Path
+import kotlin.io.path.absolutePathString
 import kotlin.jvm.optionals.getOrNull
 import kotlin.time.Duration.Companion.milliseconds
 
 internal interface StackService {
+    suspend fun isAvailable(): Result<Boolean>
+
+    suspend fun isStackProject(path: String): Result<Boolean>
+
     suspend fun getProject(path: String): Result<StackProject>
 
-    suspend fun create(path: String, name: String, template: String): Result<Flow<StackOutput>>
+    suspend fun createProject(path: String, name: String, template: String?): Result<Flow<StackOutput>>
 
     suspend fun build(path: String): Result<Flow<StackOutput>>
 
@@ -51,7 +56,7 @@ internal interface StackService {
 
             val module = match?.groupValues?.getOrNull(2) ?: "unknown"
 
-            return StackOutput.TestResult(module, passed)
+            return StackOutput.TestResult(module, passed, line)
         }
 
         private fun parseStackOutput(line: String, operation: String) = when {
@@ -142,7 +147,9 @@ internal interface StackService {
             }
 
             Files.list(projectPath).use { stream ->
-                stream.filter { it.fileName.toString().endsWith(".cabal") }.findFirst().getOrNull()?.let { cabalFile ->
+                stream.filter { path ->
+                    path.fileName.absolutePathString().endsWith(".cabal")
+                }.findFirst().getOrNull()?.let { cabalFile ->
                     Files.readAllLines(cabalFile).forEach { line ->
                         if (line.trim().startsWith("name:")) {
                             return line.trim().removePrefix("name:").trim()
@@ -193,28 +200,136 @@ internal interface StackService {
             throw StackException("Failed to get GHC version: ${throwable.message}")
         }
 
-        private fun parseDependencies(projectPath: Path): List<String> {
-            val packageYaml = projectPath.resolve("package.yaml")
+        private fun parsePackages(projectPath: Path) = buildList {
+            Files.list(projectPath).use { stream ->
+                stream.filter(Files::isDirectory).forEach { dir ->
+                    val cabalFiles = Files.list(dir).use { files ->
+                        files.filter { path ->
+                            path.fileName.absolutePathString().endsWith(".cabal")
+                        }.toList()
+                    }
 
-            if (!Files.exists(packageYaml)) return emptyList()
+                    if (cabalFiles.isNotEmpty()) {
+                        val packageName = parseCabalPackageName(cabalFiles.first())
 
-            val dependencies = mutableListOf<String>()
+                        val components = parseCabalComponents(cabalFiles.first())
 
-            var inDependencies = false
+                        add(
+                            StackPackage(
+                                path = dir.absolutePathString(),
+                                name = packageName,
+                                components = components,
+                                configFile = cabalFiles.first().absolutePathString()
+                            )
+                        )
+                    }
+                }
+            }
+        }
 
-            Files.readAllLines(packageYaml).forEach { line ->
-                val trimmed = line.trim()
-
-                when {
-                    trimmed == "dependencies:" -> inDependencies = true
-
-                    inDependencies && trimmed.startsWith("-") -> dependencies.add(trimmed.removePrefix("-").trim())
-
-                    inDependencies && trimmed.isNotEmpty() && !trimmed.startsWith("-") -> inDependencies = false
+        private fun parseCabalPackageName(cabalFile: Path): String {
+            Files.readAllLines(cabalFile).forEach { line ->
+                if (line.trim().startsWith("name:")) {
+                    return line.trim().removePrefix("name:").trim()
                 }
             }
 
-            return dependencies
+            return "unknown"
+        }
+
+        private fun parseCabalComponents(cabalFile: Path) = buildList {
+            val lines = Files.readAllLines(cabalFile)
+
+            for (line in lines) {
+                val trimmed = line.trim()
+
+                when {
+                    trimmed.startsWith("library") -> {
+                        val componentName = trimmed.removePrefix("library").trim().ifEmpty { "lib" }
+
+                        add(
+                            StackComponent.Library(
+                                path = cabalFile.parent.resolve("src").absolutePathString(),
+                                name = componentName,
+                                exposedModules = emptyList()
+                            )
+                        )
+                    }
+
+                    trimmed.startsWith("executable") -> {
+                        val componentName = trimmed.removePrefix("executable").trim()
+
+                        add(
+                            StackComponent.Executable(
+                                path = cabalFile.parent.resolve("app").absolutePathString(),
+                                name = componentName,
+                                mainFile = null
+                            )
+                        )
+                    }
+
+                    trimmed.startsWith("test-suite") -> {
+                        val componentName = trimmed.removePrefix("test-suite").trim()
+
+                        add(
+                            StackComponent.Test(
+                                path = cabalFile.parent.resolve("test").absolutePathString(),
+                                name = componentName,
+                                mainFile = null
+                            )
+                        )
+                    }
+
+                    trimmed.startsWith("benchmark") -> {
+                        val componentName = trimmed.removePrefix("benchmark").trim()
+
+                        add(
+                            StackComponent.Benchmark(
+                                path = cabalFile.parent.resolve("bench").absolutePathString(),
+                                name = componentName,
+                                mainFile = null
+                            )
+                        )
+                    }
+
+                    else -> {
+                        val lastIndex = lastIndex
+
+                        if (lastIndex >= 0) {
+                            val lastComponent = get(lastIndex)
+
+                            when {
+                                trimmed.startsWith("exposed-modules:") && lastComponent is StackComponent.Library -> {
+                                    val exposedModules = trimmed.removePrefix("exposed-modules:").trim().split(' ')
+                                        .filter(String::isNotBlank)
+
+                                    set(lastIndex, lastComponent.copy(exposedModules = exposedModules))
+                                }
+
+                                trimmed.startsWith("main-is:") -> {
+                                    val mainFile = trimmed.removePrefix("main-is:").trim()
+
+                                    when (lastComponent) {
+                                        is StackComponent.Executable -> set(
+                                            lastIndex, lastComponent.copy(mainFile = mainFile)
+                                        )
+
+                                        is StackComponent.Test -> set(
+                                            lastIndex, lastComponent.copy(mainFile = mainFile)
+                                        )
+
+                                        is StackComponent.Benchmark -> set(
+                                            lastIndex, lastComponent.copy(mainFile = mainFile)
+                                        )
+
+                                        else -> Unit
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         private fun validateStackProject(projectPath: Path) {
@@ -227,6 +342,20 @@ internal interface StackService {
             if (!Files.exists(stackYaml)) {
                 throw StackException("Not a stack project (no stack.yaml): $projectPath")
             }
+        }
+
+        override suspend fun isAvailable() = runCatching {
+            val process = ProcessBuilder(listOf("stack", "--version")).start()
+
+            val exitCode = runInterruptible { process.waitFor() }
+
+            exitCode == 0
+        }
+
+        override suspend fun isStackProject(path: String) = runCatching {
+            val projectPath = Path.of(path)
+
+            Files.isDirectory(projectPath) && Files.exists(projectPath.resolve("stack.yaml"))
         }
 
         override suspend fun getProject(path: String) = runCatching {
@@ -248,22 +377,28 @@ internal interface StackService {
 
             val ghcVersion = getGhcVersion(projectPath)
 
-            val dependencies = parseDependencies(projectPath)
+            val packages = parsePackages(projectPath)
 
             StackProject(
-                path = path, name = name, resolver = resolver, ghcVersion = ghcVersion, dependencies = dependencies
+                path = path, name = name, packages = packages, resolver = resolver, ghcVersion = ghcVersion
             )
         }
 
-        override suspend fun create(path: String, name: String, template: String) = runCatching {
+        override suspend fun createProject(path: String, name: String, template: String?) = runCatching {
             val projectPath = Path.of(path)
 
             if (!Files.isDirectory(projectPath)) {
                 throw StackException("Path is not a directory: $path")
             }
 
+            val args = when (template) {
+                null -> arrayOf("new", name, "--bare")
+
+                else -> arrayOf("new", name, template, "--bare")
+            }
+
             executeStackCommand(
-                workingDirectory = projectPath, args = arrayOf("new", name, template, "--bare"), operation = "create"
+                workingDirectory = projectPath, args = args, operation = "create"
             )
         }
 
