@@ -33,7 +33,7 @@ internal interface SnapshotDataSource {
         }
 
         override suspend fun getCurrentSnapshot() = runCatching {
-            dataStore.data.map(::createSnapshot).first().also(::println)
+            dataStore.data.map(::createSnapshot).first()
         }
 
         override suspend fun save(snapshot: Snapshot) = runCatching {

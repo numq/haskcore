@@ -162,7 +162,7 @@ internal interface FileSystemService {
                                 )
                             )
 
-                            else -> Unit
+                            else -> return@listener
                         }
                     }.build()
 
