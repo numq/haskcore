@@ -99,27 +99,15 @@ internal interface BuildSystemRepository : Closeable {
 
         private suspend fun performSynchronization() {
             _buildSystemStatus.value = try {
-                val buildProject = when {
-                    stackService.isStackProject(path = path).getOrThrow() -> stackService.getProject(
-                        path = path
-                    ).getOrThrow().toBuildProject()
+                val artifacts = when (_buildSystem.value) {
+                    BuildSystem.GHC -> discoveryService.discoverHaskellFiles(rootPath = path)
 
-                    else -> null
-                }
+                    BuildSystem.RUN_HASKELL -> discoveryService.discoverLiterateScripts(rootPath = path)
 
-                val haskellFiles = discoveryService.discoverHaskellFiles(rootPath = path).getOrThrow()
+                    BuildSystem.STACK -> discoveryService.discoverStackProjects(rootPath = path)
 
-                val scripts = discoveryService.discoverLiterateScripts(rootPath = path).getOrThrow()
-
-                val artifacts = buildList {
-                    if (buildProject != null) {
-                        add(buildProject)
-                    }
-
-                    addAll(haskellFiles)
-
-                    addAll(scripts)
-                }
+                    BuildSystem.CABAL -> discoveryService.discoverCabalProjects(rootPath = path)
+                }.getOrThrow()
 
                 BuildSystemStatus.Synced.Idle(system = _buildSystem.value, artifacts = artifacts)
             } catch (throwable: Throwable) {

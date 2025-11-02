@@ -7,6 +7,47 @@ internal sealed interface BuildSystemArtifact {
 
     val displayName: String
 
+    val isBuildable: Boolean
+        get() = when (this) {
+            is BuildComponent -> true
+
+            is BuildProject -> packages.isNotEmpty()
+
+            is HaskellFile -> true
+
+            else -> false
+        }
+
+    val isExecutable: Boolean
+        get() = when (this) {
+            is BuildComponent.Executable -> true
+
+            is BuildProject -> packages.any { pkg ->
+                pkg.components.any { component ->
+                    component.type == BuildType.EXECUTABLE
+                }
+            }
+
+            is HaskellFile -> true
+
+            is LiterateScript -> true
+
+            else -> false
+        }
+
+    val isTestable: Boolean
+        get() = when (this) {
+            is BuildComponent.Test -> true
+
+            is BuildProject -> packages.any { pkg ->
+                pkg.components.any { component ->
+                    component.type == BuildType.TEST
+                }
+            }
+
+            else -> false
+        }
+
     data class HaskellFile(
         override val path: String, override val name: String
     ) : BuildSystemArtifact {
@@ -75,24 +116,12 @@ internal sealed interface BuildSystemArtifact {
         val configFile: String
     ) : BuildSystemArtifact {
         override val displayName = "$name (${buildSystem.name.lowercase()})"
-
-        val isRunnable get() = components.any { component -> component.type == BuildType.EXECUTABLE }
-
-        val isTestable get() = components.any { component -> component.type == BuildType.TEST }
-
-        val isBuildable get() = components.isNotEmpty()
     }
 
     sealed interface BuildProject : BuildSystemArtifact {
         val packages: List<BuildPackage>
 
         val buildSystem: BuildSystem
-
-        val isRunnable get() = packages.any(BuildPackage::isRunnable)
-
-        val isTestable get() = packages.any(BuildPackage::isTestable)
-
-        val isBuildable get() = packages.any(BuildPackage::isBuildable)
 
         data class Stack(
             override val path: String,
