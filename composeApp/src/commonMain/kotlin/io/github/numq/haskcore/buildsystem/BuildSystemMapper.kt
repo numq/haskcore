@@ -6,7 +6,33 @@ import io.github.numq.haskcore.stack.StackPackage
 import io.github.numq.haskcore.stack.StackProject
 import io.github.numq.haskcore.timestamp.Timestamp
 
-internal fun StackProject.toBuildProject() = BuildSystemArtifact.BuildProject.Stack(
+private fun StackComponent.toBuildSystemComponent(packageName: String) = when (this) {
+    is StackComponent.Library -> BuildComponent.Library(
+        path = path, name = name, packageName = packageName, exposedModules = exposedModules
+    )
+
+    is StackComponent.Executable -> BuildComponent.Executable(
+        path = path, name = name, packageName = packageName, mainFile = mainFile
+    )
+
+    is StackComponent.Test -> BuildComponent.Test(
+        path = path, name = name, packageName = packageName
+    )
+
+    is StackComponent.Benchmark -> BuildComponent.Benchmark(
+        path = path, name = name, packageName = packageName
+    )
+}
+
+private fun StackPackage.toBuildPackage() = BuildPackage(
+    path = path,
+    name = name,
+    components = components.map { component -> component.toBuildSystemComponent(packageName = name) },
+    buildSystem = BuildSystem.STACK,
+    configFile = configFile
+)
+
+internal fun StackProject.toBuildProject() = BuildTarget.BuildProject.Stack(
     path = path,
     name = name,
     packages = packages.map(StackPackage::toBuildPackage),
@@ -14,62 +40,36 @@ internal fun StackProject.toBuildProject() = BuildSystemArtifact.BuildProject.St
     ghcVersion = ghcVersion
 )
 
-private fun StackPackage.toBuildPackage() = BuildSystemArtifact.BuildPackage(
-    path = path,
-    name = name,
-    components = components.map { component -> component.toBuildComponent(packageName = name) },
-    buildSystem = BuildSystem.STACK,
-    configFile = configFile
-)
-
-private fun StackComponent.toBuildComponent(packageName: String) = when (this) {
-    is StackComponent.Library -> BuildSystemArtifact.BuildComponent.Library(
-        path = path, name = name, packageName = packageName, exposedModules = exposedModules
+internal fun StackOutput.toBuildOutput(target: BuildTarget) = when (this) {
+    is StackOutput.Progress -> BuildOutput.Progress(
+        target = target, message = message, timestamp = Timestamp.now()
     )
 
-    is StackComponent.Executable -> BuildSystemArtifact.BuildComponent.Executable(
-        path = path, name = name, packageName = packageName, mainFile = mainFile
+    is StackOutput.BuildModule -> BuildOutput.BuildModule(
+        module = module, target = target, message = message, timestamp = Timestamp.now()
     )
 
-    is StackComponent.Test -> BuildSystemArtifact.BuildComponent.Test(
-        path = path, name = name, packageName = packageName
+    is StackOutput.TestResult -> BuildOutput.TestResult(
+        module = module, passed = passed, target = target, message = message, timestamp = Timestamp.now()
     )
 
-    is StackComponent.Benchmark -> BuildSystemArtifact.BuildComponent.Benchmark(
-        path = path, name = name, packageName = packageName
-    )
-}
-
-internal fun StackOutput.toBuildOutput(): BuildOutput = when (this) {
-    is StackOutput.Progress -> BuildOutput.ProgressOutput(
-        message = message, timestamp = Timestamp.now()
+    is StackOutput.Warning -> BuildOutput.Warning(
+        target = target, message = message, timestamp = Timestamp.now()
     )
 
-    is StackOutput.Warning -> BuildOutput.WarningOutput(
-        message = message, timestamp = Timestamp.now()
+    is StackOutput.Error -> BuildOutput.Error(
+        target = target, message = message, timestamp = Timestamp.now()
     )
 
-    is StackOutput.Error -> BuildOutput.ErrorOutput(
-        message = message, timestamp = Timestamp.now()
+    is StackOutput.RunOutput -> BuildOutput.Run(
+        target = target, message = message, timestamp = Timestamp.now()
     )
 
-    is StackOutput.BuildModule -> BuildOutput.BuildModuleOutput(
-        module = module, message = message, timestamp = Timestamp.now()
+    is StackOutput.Completion.Success -> BuildOutput.Completion.Success(
+        exitCode = exitCode, duration = duration, target = target, timestamp = Timestamp.now()
     )
 
-    is StackOutput.RunOutput -> BuildOutput.RunOutput(
-        message = message, timestamp = Timestamp.now()
-    )
-
-    is StackOutput.TestResult -> BuildOutput.TestResultOutput(
-        module = module, passed = passed, message = message, timestamp = Timestamp.now()
-    )
-
-    is StackOutput.Completion.Success -> BuildOutput.CompletionOutput.Success(
-        exitCode = exitCode, duration = duration, timestamp = Timestamp.now()
-    )
-
-    is StackOutput.Completion.Failure -> BuildOutput.CompletionOutput.Failure(
-        exitCode = exitCode, duration = duration, error = error, timestamp = Timestamp.now()
+    is StackOutput.Completion.Failure -> BuildOutput.Completion.Failure(
+        error = error, exitCode = exitCode, duration = duration, target = target, timestamp = Timestamp.now()
     )
 }

@@ -7,6 +7,7 @@ import io.github.numq.haskcore.stack.StackOutput
 import io.github.numq.haskcore.stack.StackService
 import io.methvin.watcher.DirectoryChangeEvent
 import io.methvin.watcher.DirectoryWatcher
+import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import java.io.Closeable
@@ -16,46 +17,38 @@ import kotlin.io.path.Path
 import kotlin.io.path.absolutePathString
 
 internal interface BuildSystemRepository : Closeable {
-    val buildSystemStatus: StateFlow<BuildSystemStatus>
-
-    val buildOutput: Flow<BuildOutput>
-
-    suspend fun clearBuildOutput(): Result<Unit>
+    val status: StateFlow<BuildStatus>
 
     suspend fun synchronize(): Result<Unit>
 
-    suspend fun build(target: BuildSystemArtifact): Result<Flow<Unit>>
+    suspend fun build(target: BuildTarget): Result<Flow<BuildOutput>>
 
-    suspend fun test(target: BuildSystemArtifact): Result<Flow<Unit>>
+    suspend fun test(target: BuildTarget): Result<Flow<BuildOutput>>
 
-    suspend fun run(target: BuildSystemArtifact): Result<Flow<Unit>>
+    suspend fun run(target: BuildTarget): Result<Flow<BuildOutput>>
 
-    suspend fun clean(target: BuildSystemArtifact): Result<Flow<Unit>>
+    suspend fun clean(target: BuildTarget): Result<Flow<BuildOutput>>
 
-    suspend fun compileFile(file: BuildSystemArtifact.HaskellFile): Result<Flow<Unit>>
+    suspend fun compileFile(target: BuildTarget.HaskellFile): Result<Flow<BuildOutput>>
 
-    suspend fun runFile(file: BuildSystemArtifact.HaskellFile): Result<Flow<Unit>>
+    suspend fun runFile(target: BuildTarget.HaskellFile): Result<Flow<BuildOutput>>
 
-    suspend fun runScript(script: BuildSystemArtifact.LiterateScript): Result<Flow<Unit>>
+    suspend fun runScript(target: BuildTarget.LiterateScript): Result<Flow<BuildOutput>>
 
-    suspend fun getDependencies(artifact: BuildSystemArtifact): Result<List<String>>
+    suspend fun getDependencies(target: BuildTarget): Result<List<String>>
 
-    suspend fun getSourceFiles(artifact: BuildSystemArtifact): Result<List<BuildSystemArtifact.HaskellFile>>
+    suspend fun getSourceFiles(target: BuildTarget): Result<List<BuildTarget.HaskellFile>>
 
     class Default(
         private val path: String, private val discoveryService: DiscoveryService, private val stackService: StackService
     ) : BuildSystemRepository {
         private val coroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-        private val _buildSystem = MutableStateFlow(BuildSystem.STACK)
+        private val buildSystem = atomic(BuildSystem.STACK)
 
-        private val _buildSystemStatus = MutableStateFlow<BuildSystemStatus>(BuildSystemStatus.OutOfSync())
+        private val _status = MutableStateFlow<BuildStatus>(BuildStatus.OutOfSync())
 
-        override val buildSystemStatus = _buildSystemStatus.asStateFlow()
-
-        private val _buildOutput = MutableSharedFlow<BuildOutput>(replay = 100, extraBufferCapacity = 64)
-
-        override val buildOutput = _buildOutput.asSharedFlow()
+        override val status = _status.asStateFlow()
 
         private fun isBuildConfigFile(path: Path) = with(path.fileName.absolutePathString()) {
             equals("stack.yaml") || equals("package.yaml") || endsWith(".cabal")
@@ -92,14 +85,14 @@ internal interface BuildSystemRepository : Closeable {
         }
 
         private fun markAsOutOfSync() {
-            if (_buildSystemStatus.value is BuildSystemStatus.Synced) {
-                _buildSystemStatus.value = BuildSystemStatus.OutOfSync()
+            if (_status.value is BuildStatus.Synced) {
+                _status.value = BuildStatus.OutOfSync()
             }
         }
 
         private suspend fun performSynchronization() {
-            _buildSystemStatus.value = try {
-                val artifacts = when (_buildSystem.value) {
+            _status.value = try {
+                val targets = when (buildSystem.value) {
                     BuildSystem.GHC -> discoveryService.discoverHaskellFiles(rootPath = path)
 
                     BuildSystem.RUN_HASKELL -> discoveryService.discoverLiterateScripts(rootPath = path)
@@ -109,88 +102,159 @@ internal interface BuildSystemRepository : Closeable {
                     BuildSystem.CABAL -> discoveryService.discoverCabalProjects(rootPath = path)
                 }.getOrThrow()
 
-                BuildSystemStatus.Synced.Idle(system = _buildSystem.value, artifacts = artifacts)
+                BuildStatus.Synced.Idle(system = buildSystem.value, targets = targets)
             } catch (throwable: Throwable) {
-                BuildSystemStatus.Error(throwable = throwable)
+                BuildStatus.Error(throwable = throwable)
             }
         }
 
-        private suspend fun <T : BuildSystemStatus.Synced.Active> executeOperation(
-            artifact: BuildSystemArtifact,
-            createStatus: (BuildSystem, List<BuildSystemArtifact>, BuildSystemArtifact) -> T,
+        private suspend fun <T : BuildStatus.Synced.Active> executeDefaultConfiguration(
+            target: BuildTarget,
+            createStatus: (BuildSystem, List<BuildTarget>, BuildTarget) -> T,
             body: suspend () -> Result<Flow<BuildOutput>>
-        ) = when (val currentStatus = _buildSystemStatus.value) {
-            is BuildSystemStatus.Synced -> {
-                val buildSystem = when (artifact) {
-                    is BuildSystemArtifact.BuildProject -> artifact.buildSystem
+        ) = when (val currentStatus = _status.value) {
+            is BuildStatus.Synced -> {
+                val buildSystem = when (target) {
+                    is BuildTarget.BuildProject -> target.buildSystem
 
-                    is BuildSystemArtifact.BuildPackage -> artifact.buildSystem
+                    is BuildTarget.HaskellFile -> BuildSystem.GHC
 
-                    is BuildSystemArtifact.BuildComponent -> BuildSystem.STACK
-
-                    is BuildSystemArtifact.HaskellFile -> BuildSystem.GHC
-
-                    is BuildSystemArtifact.LiterateScript -> BuildSystem.RUN_HASKELL
+                    is BuildTarget.LiterateScript -> BuildSystem.RUN_HASKELL
                 }
 
-                val activeStatus = createStatus(buildSystem, currentStatus.artifacts, artifact)
+                val activeStatus = createStatus(buildSystem, currentStatus.targets, target)
 
-                _buildSystemStatus.value = activeStatus
+                _status.value = activeStatus
 
-                body().onSuccess { outputFlow ->
-                    coroutineScope.launch {
-                        outputFlow.collect { buildOutput ->
-                            _buildOutput.emit(buildOutput)
-                        }
-                    }
-
-                    _buildSystemStatus.value = BuildSystemStatus.Synced.Idle(
-                        system = currentStatus.system, artifacts = currentStatus.artifacts
+                body().onSuccess {
+                    _status.value = BuildStatus.Synced.Idle(
+                        system = currentStatus.system, targets = currentStatus.targets
                     )
                 }.onFailure { throwable ->
-                    _buildSystemStatus.value = BuildSystemStatus.Error(throwable = throwable)
-                }.map { flow -> flow.map { Unit } }
+                    _status.value = BuildStatus.Error(throwable = throwable)
+                }
             }
 
-            else -> Result.failure(BuildSystemException("System not in synced state"))
+            is BuildStatus.OutOfSync -> Result.failure(BuildSystemException("System out of sync"))
+
+            is BuildStatus.Syncing -> Result.failure(BuildSystemException("System syncing"))
+
+            is BuildStatus.Error -> Result.failure(BuildSystemException("System in error state"))
         }
 
-        private suspend fun executeStackOperation(
-            artifact: BuildSystemArtifact,
-            operation: BuildOperation,
+        private suspend fun executeDefaultStackConfiguration(
+            target: BuildTarget,
+            projectOperation: BuildProjectOperation,
             stackCommand: suspend (String) -> Result<Flow<StackOutput>>
-        ): Result<Flow<Unit>> {
-            val path = when (artifact) {
-                is BuildSystemArtifact.BuildProject.Stack -> artifact.path
+        ): Result<Flow<BuildOutput>> {
+            val path = when (target) {
+                is BuildTarget.BuildProject.Stack -> target.path
 
-                is BuildSystemArtifact.BuildPackage -> artifact.path
-
-                else -> return Result.failure(BuildSystemException("Cannot execute stack operation on $artifact"))
+                else -> return Result.failure(BuildSystemException("Cannot execute stack project operation on $target"))
             }
 
-            return executeOperation(artifact = artifact, createStatus = { system, artifacts, currentArtifact ->
-                when (operation) {
-                    BuildOperation.BUILD -> BuildSystemStatus.Synced.Active.Building(
-                        system = system, artifacts = artifacts, currentArtifact = currentArtifact
-                    )
+            return executeDefaultConfiguration(
+                target = target, createStatus = { system, targets, currentTarget ->
+                    when (projectOperation) {
+                        BuildProjectOperation.BUILD -> BuildStatus.Synced.Active.Building(
+                            system = system, targets = targets, currentTarget = currentTarget
+                        )
 
-                    BuildOperation.TEST -> BuildSystemStatus.Synced.Active.Testing(
-                        system = system, artifacts = artifacts, currentArtifact = currentArtifact
-                    )
+                        BuildProjectOperation.TEST -> BuildStatus.Synced.Active.Testing(
+                            system = system, targets = targets, currentTarget = currentTarget
+                        )
 
-                    BuildOperation.RUN -> BuildSystemStatus.Synced.Active.Running(
-                        system = system, artifacts = artifacts, currentArtifact = currentArtifact
-                    )
+                        BuildProjectOperation.RUN -> BuildStatus.Synced.Active.Running(
+                            system = system, targets = targets, currentTarget = currentTarget
+                        )
 
-                    BuildOperation.CLEAN -> BuildSystemStatus.Synced.Active.Building(
-                        system = system, artifacts = artifacts, currentArtifact = currentArtifact
-                    )
-
-                    else -> throw BuildSystemException("Unsupported operation: $operation")
+                        BuildProjectOperation.CLEAN -> BuildStatus.Synced.Active.Building(
+                            system = system, targets = targets, currentTarget = currentTarget
+                        )
+                    }
+                }) {
+                stackCommand(path).map { flow ->
+                    flow.map { stackOutput ->
+                        stackOutput.toBuildOutput(target = target)
+                    }
                 }
-            }) {
-                stackCommand(path).map { flow -> flow.map { stackOutput -> stackOutput.toBuildOutput() } }
             }
+        }
+
+        override suspend fun build(target: BuildTarget) = when (target) {
+            is BuildTarget.BuildProject.Stack -> executeDefaultStackConfiguration(
+                target = target, projectOperation = BuildProjectOperation.BUILD
+            ) { path ->
+                stackService.build(path)
+            }
+
+            else -> Result.failure(BuildSystemException("Cannot build ${target.name}"))
+        }
+
+        override suspend fun test(target: BuildTarget) = when (target) {
+            is BuildTarget.BuildProject.Stack -> executeDefaultStackConfiguration(
+                target = target, projectOperation = BuildProjectOperation.TEST
+            ) { path ->
+                stackService.test(path)
+            }
+
+            else -> Result.failure(BuildSystemException("Cannot test ${target.name}"))
+        }
+
+        override suspend fun run(target: BuildTarget) = when (target) {
+            is BuildTarget.BuildProject.Stack -> executeDefaultStackConfiguration(
+                target = target, projectOperation = BuildProjectOperation.RUN
+            ) { path ->
+                stackService.run(path)
+            }
+
+            is BuildTarget.HaskellFile -> runFile(target = target)
+
+            is BuildTarget.LiterateScript -> runScript(target = target)
+
+            else -> Result.failure(BuildSystemException("Cannot run ${target.name}"))
+        }
+
+        override suspend fun clean(target: BuildTarget) = when (target) {
+            is BuildTarget.BuildProject.Stack -> executeDefaultStackConfiguration(
+                target = target, projectOperation = BuildProjectOperation.CLEAN
+            ) { path ->
+                stackService.clean(path)
+            }
+
+            else -> Result.failure(BuildSystemException("Cannot clean ${target.name}"))
+        }
+
+        override suspend fun compileFile(target: BuildTarget.HaskellFile) = executeDefaultConfiguration(
+            target = target, createStatus = { system, targets, currentTarget ->
+                BuildStatus.Synced.Active.Compiling(
+                    system = system, targets = targets, currentTarget = currentTarget
+                )
+            }) {
+            // TODO: Implement GHC compilation
+            Result.failure(UnsupportedBuildSystemException)
+        }
+
+        override suspend fun runFile(target: BuildTarget.HaskellFile) = executeDefaultConfiguration(
+            target = target, createStatus = { system, targets, currentTarget ->
+                BuildStatus.Synced.Active.Running(
+                    system = system, targets = targets, currentTarget = currentTarget
+                )
+            }) {
+            // TODO: Implement runghc execution
+            Result.failure(UnsupportedBuildSystemException)
+        }
+
+        override suspend fun runScript(target: BuildTarget.LiterateScript) = executeDefaultConfiguration(
+            target = target, createStatus = { system, targets, currentTarget ->
+                BuildStatus.Synced.Active.Running(
+                    system = system,
+                    targets = targets,
+                    currentTarget = currentTarget,
+                )
+            }) {
+            // TODO: Implement runghc for literate scripts
+            Result.failure(UnsupportedBuildSystemException)
         }
 
         init {
@@ -199,15 +263,10 @@ internal interface BuildSystemRepository : Closeable {
             }
         }
 
-        @OptIn(ExperimentalCoroutinesApi::class)
-        override suspend fun clearBuildOutput() = runCatching {
-            _buildOutput.resetReplayCache()
-        }
-
         override suspend fun synchronize() = runCatching {
-            when (_buildSystemStatus.value) {
-                is BuildSystemStatus.OutOfSync, is BuildSystemStatus.Synced, is BuildSystemStatus.Error -> {
-                    _buildSystemStatus.value = BuildSystemStatus.Syncing()
+            when (_status.value) {
+                is BuildStatus.OutOfSync, is BuildStatus.Synced, is BuildStatus.Error -> {
+                    _status.value = BuildStatus.Syncing()
 
                     performSynchronization()
                 }
@@ -216,133 +275,20 @@ internal interface BuildSystemRepository : Closeable {
             }
         }
 
-        override suspend fun build(target: BuildSystemArtifact) = when (target) {
-            is BuildSystemArtifact.BuildProject.Stack -> executeStackOperation(
-                artifact = target, operation = BuildOperation.BUILD
-            ) { path ->
-                stackService.build(path)
-            }
-
-            is BuildSystemArtifact.BuildPackage -> executeStackOperation(
-                artifact = target, operation = BuildOperation.BUILD
-            ) { path ->
-                stackService.build(path)
-            }
-
-            else -> Result.failure(BuildSystemException("Cannot build $target"))
-        }
-
-        override suspend fun test(target: BuildSystemArtifact) = when (target) {
-            is BuildSystemArtifact.BuildProject.Stack -> executeStackOperation(
-                artifact = target, operation = BuildOperation.TEST
-            ) { path ->
-                stackService.test(path)
-            }
-
-            is BuildSystemArtifact.BuildPackage -> executeStackOperation(
-                artifact = target, operation = BuildOperation.TEST
-            ) { path ->
-                stackService.test(path)
-            }
-
-            else -> Result.failure(BuildSystemException("Cannot test $target"))
-        }
-
-        override suspend fun run(target: BuildSystemArtifact) = when (target) {
-            is BuildSystemArtifact.BuildProject.Stack -> executeStackOperation(
-                artifact = target, operation = BuildOperation.RUN
-            ) { path ->
-                stackService.run(path)
-            }
-
-            is BuildSystemArtifact.BuildPackage -> executeStackOperation(
-                artifact = target, operation = BuildOperation.RUN
-            ) { path ->
-                stackService.run(path)
-            }
-
-            is BuildSystemArtifact.HaskellFile -> runFile(file = target)
-
-            is BuildSystemArtifact.LiterateScript -> runScript(script = target)
-
-            else -> Result.failure(BuildSystemException("Cannot run $target"))
-        }
-
-        override suspend fun clean(target: BuildSystemArtifact) = when (target) {
-            is BuildSystemArtifact.BuildProject.Stack -> executeStackOperation(
-                artifact = target, operation = BuildOperation.CLEAN
-            ) { path ->
-                stackService.clean(path)
-            }
-
-            is BuildSystemArtifact.BuildPackage -> executeStackOperation(
-                artifact = target, operation = BuildOperation.CLEAN
-            ) { path ->
-                stackService.clean(path)
-            }
-
-            else -> Result.failure(BuildSystemException("Cannot clean $target"))
-        }
-
-        override suspend fun compileFile(file: BuildSystemArtifact.HaskellFile) = executeOperation(
-            artifact = file, createStatus = { system, artifacts, currentArtifact ->
-                BuildSystemStatus.Synced.Active.Compiling(
-                    system = system, artifacts = artifacts, currentArtifact = currentArtifact
-                )
-            }) {
-            // TODO: Implement GHC compilation
-            Result.failure(UnsupportedBuildSystemException)
-        }
-
-        override suspend fun runFile(file: BuildSystemArtifact.HaskellFile) = executeOperation(
-            artifact = file, createStatus = { system, artifacts, currentArtifact ->
-                BuildSystemStatus.Synced.Active.Running(
-                    system = system, artifacts = artifacts, currentArtifact = currentArtifact
-                )
-            }) {
-            // TODO: Implement runghc execution
-            Result.failure(UnsupportedBuildSystemException)
-        }
-
-        override suspend fun runScript(script: BuildSystemArtifact.LiterateScript) = executeOperation(
-            artifact = script, createStatus = { system, artifacts, currentArtifact ->
-                BuildSystemStatus.Synced.Active.Running(
-                    system = system,
-                    artifacts = artifacts,
-                    currentArtifact = currentArtifact,
-                )
-            }) {
-            // TODO: Implement runghc for literate scripts
-            Result.failure(UnsupportedBuildSystemException)
-        }
-
-        override suspend fun getDependencies(artifact: BuildSystemArtifact): Result<List<String>> = runCatching {
-            when (artifact) {
-                is BuildSystemArtifact.BuildProject.Stack -> {
+        override suspend fun getDependencies(target: BuildTarget) = runCatching {
+            when (target) {
+                is BuildTarget.BuildProject.Stack -> {
                     // TODO: Extract dependencies from stack.yaml
                     emptyList()
                 }
 
-                is BuildSystemArtifact.BuildPackage -> {
-                    // TODO: Extract dependencies from .cabal file
-                    emptyList()
-                }
-
-                else -> emptyList()
+                else -> emptyList<String>()
             }
         }
 
-        override suspend fun getSourceFiles(artifact: BuildSystemArtifact) = runCatching {
-            when (artifact) {
-                is BuildSystemArtifact.BuildComponent -> discoveryService.discoverHaskellFiles(
-                    rootPath = artifact.path
-                ).getOrThrow()
-
-                is BuildSystemArtifact.BuildPackage -> artifact.components.flatMap { component ->
-                    discoveryService.discoverHaskellFiles(rootPath = component.path).getOrThrow()
-                }
-
-                is BuildSystemArtifact.BuildProject -> artifact.packages.flatMap { pkg ->
+        override suspend fun getSourceFiles(target: BuildTarget) = runCatching {
+            when (target) {
+                is BuildTarget.BuildProject -> target.packages.flatMap { pkg ->
                     pkg.components.flatMap { component ->
                         discoveryService.discoverHaskellFiles(rootPath = component.path).getOrThrow()
                     }
