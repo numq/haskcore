@@ -7,5 +7,5 @@ import org.koin.dsl.module
 internal val stackModule = module {
     single { StackService.Default() } bind StackService::class
 
-    single { CreateStackProject(stackService = get()) }
+    single { CreateStackProject(stackService = get(), outputRepository = get()) }
 }

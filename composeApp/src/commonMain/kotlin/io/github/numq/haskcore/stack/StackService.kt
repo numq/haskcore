@@ -1,11 +1,13 @@
 package io.github.numq.haskcore.stack
 
+import io.github.numq.haskcore.command.ExecutedCommand
+import io.github.numq.haskcore.output.OutputMessage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.runInterruptible
 import java.io.Reader
@@ -22,15 +24,15 @@ internal interface StackService {
 
     suspend fun getProject(path: String): Result<StackProject>
 
-    suspend fun createProject(path: String, name: String, template: String?): Result<Flow<StackOutput>>
+    suspend fun createProject(path: String, name: String, template: String?, bare: Boolean): Result<ExecutedCommand>
 
-    suspend fun build(path: String): Result<Flow<StackOutput>>
+    suspend fun build(path: String): Result<ExecutedCommand>
 
-    suspend fun run(path: String): Result<Flow<StackOutput>>
+    suspend fun run(path: String): Result<ExecutedCommand>
 
-    suspend fun test(path: String): Result<Flow<StackOutput>>
+    suspend fun test(path: String): Result<ExecutedCommand>
 
-    suspend fun clean(path: String): Result<Flow<StackOutput>>
+    suspend fun clean(path: String): Result<ExecutedCommand>
 
     class Default : StackService {
         private companion object {
@@ -75,55 +77,81 @@ internal interface StackService {
 
         private fun executeStackCommand(
             workingDirectory: Path, args: Array<out String>, operation: String
-        ) = callbackFlow {
-            val startTime = System.currentTimeMillis()
+        ): ExecutedCommand {
+            val args = listOf("stack", *args)
 
-            val process = ProcessBuilder(listOf("stack", *args, "--color=never")).run {
-                directory(workingDirectory.toFile())
+            val command = args.joinToString(" ")
 
-                redirectErrorStream(true)
+            return ExecutedCommand(command = command, messages = callbackFlow {
+                val startTime = System.currentTimeMillis()
 
-                start()
-            }
+                val process = ProcessBuilder(args).run {
+                    directory(workingDirectory.toFile())
 
-            val reader = process.inputStream.bufferedReader()
+                    redirectErrorStream(true)
 
-            var lineCount = 0
-
-            try {
-                while (isActive) {
-                    val line = reader.readLine() ?: break
-
-                    lineCount++
-
-                    val stackOutput = parseStackOutput(line, operation)
-
-                    send(stackOutput)
+                    start()
                 }
 
-                val exitCode = runInterruptible { process.waitFor() }
+                val reader = process.inputStream.bufferedReader()
 
-                val duration = (System.currentTimeMillis() - startTime).milliseconds
+                var lineCount = 0
 
-                val completion = when (exitCode) {
-                    0 -> StackOutput.Completion.Success(exitCode = exitCode, duration = duration)
+                try {
+                    while (isActive) {
+                        val line = reader.readLine() ?: break
 
-                    else -> StackOutput.Completion.Failure(
-                        exitCode = exitCode, duration = duration, error = "$operation failed with exit code $exitCode"
-                    )
+                        lineCount++
+
+                        val stackOutput = parseStackOutput(line, operation)
+
+                        send(stackOutput)
+                    }
+
+                    val exitCode = runInterruptible { process.waitFor() }
+
+                    val duration = (System.currentTimeMillis() - startTime).milliseconds
+
+                    val completion = when (exitCode) {
+                        0 -> StackOutput.Completion.Success(exitCode = exitCode, duration = duration)
+
+                        else -> StackOutput.Completion.Failure(
+                            exitCode = exitCode,
+                            duration = duration,
+                            error = "$operation failed with exit code $exitCode"
+                        )
+                    }
+
+                    send(completion)
+                } catch (exception: CancellationException) {
+                    throw exception
+                } catch (throwable: Throwable) {
+                    throw StackException("Failed to execute stack command: ${throwable.message}")
                 }
 
-                send(completion)
-            } catch (exception: CancellationException) {
-                throw exception
-            } catch (throwable: Throwable) {
-                throw StackException("Failed to execute stack command: ${throwable.message}")
-            }
+                awaitClose {
+                    process?.destroy()
+                }
+            }.map { stackOutput ->
+                when (stackOutput) {
+                    is StackOutput.Progress -> OutputMessage.Info(text = "📝 ${stackOutput.message}")
 
-            awaitClose {
-                process?.destroy()
-            }
-        }.flowOn(Dispatchers.IO)
+                    is StackOutput.Warning -> OutputMessage.Warning(text = "⚠️ ${stackOutput.message}")
+
+                    is StackOutput.Error -> OutputMessage.Error(text = "❌ ${stackOutput.message}")
+
+                    is StackOutput.BuildModule -> OutputMessage.Info(text = "🔨 [${stackOutput.module}] ${stackOutput.message}")
+
+                    is StackOutput.RunOutput -> OutputMessage.Info(text = "🚀 ${stackOutput.message}")
+
+                    is StackOutput.TestResult -> OutputMessage.Info(text = "🧪 [${stackOutput.module}] ${if (stackOutput.passed) "✅" else "❌"} ${stackOutput.message}")
+
+                    is StackOutput.Completion.Success -> OutputMessage.Success(text = "✅ Completed successfully in ${stackOutput.duration}")
+
+                    is StackOutput.Completion.Failure -> OutputMessage.Error(text = "💥 Failed with exit code ${stackOutput.exitCode}: ${stackOutput.error}")
+                }
+            }.flowOn(Dispatchers.IO))
+        }
 
         private fun parseProjectName(projectPath: Path): String {
             val stackYaml = projectPath.resolve("stack.yaml")
@@ -384,18 +412,26 @@ internal interface StackService {
             )
         }
 
-        override suspend fun createProject(path: String, name: String, template: String?) = runCatching {
+        override suspend fun createProject(path: String, name: String, template: String?, bare: Boolean) = runCatching {
             val projectPath = Path.of(path)
 
             if (!Files.isDirectory(projectPath)) {
                 throw StackException("Path is not a directory: $path")
             }
 
-            val args = when (template) {
-                null -> arrayOf("new", name, "--bare")
+            val args = buildList {
+                add("new")
 
-                else -> arrayOf("new", name, template, "--bare")
-            }
+                add(name)
+
+                if (template != null) {
+                    add(template)
+                }
+
+                if (bare) {
+                    add("--bare")
+                }
+            }.toTypedArray()
 
             executeStackCommand(
                 workingDirectory = projectPath, args = args, operation = "create"
