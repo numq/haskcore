@@ -52,6 +52,8 @@ internal fun WindowScope.ToolbarView(feature: ToolbarFeature) {
                 }, modifier = Modifier.widthIn(min = 128.dp)) {
                     Text(
                         text = state.activeWorkspace?.name ?: "No workspace",
+                        fontSize = MaterialTheme.typography.titleMedium.fontSize,
+                        style = MaterialTheme.typography.titleMedium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
