@@ -1,4 +1,4 @@
-package io.github.numq.haskcore.stack
+package io.github.numq.haskcore.buildsystem.stack
 
 internal enum class StackTemplate(val template: String, val description: String) {
     SIMPLE("simple", "Minimal project template with executable"), SIMPLE_LIBRARY(

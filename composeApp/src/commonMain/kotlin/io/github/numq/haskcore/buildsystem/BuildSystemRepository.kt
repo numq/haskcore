@@ -1,63 +1,131 @@
 package io.github.numq.haskcore.buildsystem
 
+import io.github.numq.haskcore.buildsystem.cabal.CabalBuildSystemService
 import io.github.numq.haskcore.buildsystem.exception.BuildSystemException
-import io.github.numq.haskcore.buildsystem.exception.UnsupportedBuildSystemException
-import io.github.numq.haskcore.discovery.DiscoveryService
-import io.github.numq.haskcore.stack.StackOutput
-import io.github.numq.haskcore.stack.StackService
+import io.github.numq.haskcore.buildsystem.ghc.GhcBuildSystemService
+import io.github.numq.haskcore.buildsystem.runhaskell.RunHaskellBuildSystemService
+import io.github.numq.haskcore.buildsystem.stack.StackBuildSystemService
 import io.methvin.watcher.DirectoryChangeEvent
 import io.methvin.watcher.DirectoryWatcher
-import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.stream.consumeAsFlow
 import java.io.Closeable
+import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
-import kotlin.io.path.Path
 import kotlin.io.path.absolutePathString
+import kotlin.io.path.isDirectory
 
 internal interface BuildSystemRepository : Closeable {
     val status: StateFlow<BuildStatus>
 
     suspend fun synchronize(): Result<Unit>
 
-    suspend fun build(target: BuildTarget): Result<Flow<BuildOutput>>
-
-    suspend fun test(target: BuildTarget): Result<Flow<BuildOutput>>
-
-    suspend fun run(target: BuildTarget): Result<Flow<BuildOutput>>
-
-    suspend fun clean(target: BuildTarget): Result<Flow<BuildOutput>>
-
-    suspend fun compileFile(target: BuildTarget.HaskellFile): Result<Flow<BuildOutput>>
-
-    suspend fun runFile(target: BuildTarget.HaskellFile): Result<Flow<BuildOutput>>
-
-    suspend fun runScript(target: BuildTarget.LiterateScript): Result<Flow<BuildOutput>>
-
-    suspend fun getDependencies(target: BuildTarget): Result<List<String>>
-
-    suspend fun getSourceFiles(target: BuildTarget): Result<List<BuildTarget.HaskellFile>>
+    suspend fun execute(command: BuildCommand): Result<Flow<BuildOutput>>
 
     class Default(
-        private val path: String, private val discoveryService: DiscoveryService, private val stackService: StackService
+        private val path: String,
+        private val customBuildSystemService: BuildSystemService,
+        private val cabalBuildSystemService: CabalBuildSystemService,
+        private val ghcBuildSystemService: GhcBuildSystemService,
+        private val runHaskellBuildSystemService: RunHaskellBuildSystemService,
+        private val stackBuildSystemService: StackBuildSystemService
     ) : BuildSystemRepository {
         private val coroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-        private val buildSystem = atomic(BuildSystem.STACK)
-
-        private val _status = MutableStateFlow<BuildStatus>(BuildStatus.OutOfSync())
+        private val _status = MutableStateFlow<BuildStatus>(BuildStatus.OutOfSynchronization)
 
         override val status = _status.asStateFlow()
+
+        private fun walkDirectory(path: Path) = when {
+            !Files.exists(path) -> emptyFlow()
+
+            !Files.isDirectory(path) -> emptyFlow()
+
+            else -> {
+                try {
+                    Files.walk(path).consumeAsFlow()
+                } catch (_: Throwable) {
+                    emptyFlow()
+                }
+            }
+        }.flowOn(Dispatchers.IO)
+
+        private suspend fun findProjects(paths: List<Path>): List<BuildTarget> = coroutineScope {
+            paths.filter(Path::isDirectory).map { dir ->
+                async {
+                    val path = dir.absolutePathString()
+
+                    when {
+                        cabalBuildSystemService.hasValidProject(path = path)
+                            .getOrNull() == true -> BuildTarget.BuildProject.Cabal(
+                            path = path,
+                            name = dir.fileName.toString()
+                        )
+
+                        stackBuildSystemService.hasValidProject(path = path)
+                            .getOrNull() == true -> BuildTarget.BuildProject.Stack(
+                            path = path,
+                            name = dir.fileName.toString()
+                        )
+
+                        else -> null
+                    }
+                }
+            }.awaitAll().filterNotNull()
+        }
+
+        private suspend fun findHaskellFiles(paths: List<Path>) = paths.filter { path ->
+            ghcBuildSystemService.isValidFile(path = path.absolutePathString()).getOrNull() == true
+        }.map { file ->
+            BuildTarget.HaskellFile(
+                path = file.absolutePathString(), name = file.fileName.toString()
+            )
+        }
+
+        private suspend fun findLiterateScripts(paths: List<Path>) = paths.filter { path ->
+            runHaskellBuildSystemService.isValidScript(path = path.absolutePathString()).getOrNull() == true
+        }.map { file ->
+            BuildTarget.LiterateScript(
+                path = file.absolutePathString(), name = file.fileName.toString()
+            )
+        }
+
+        private suspend fun getBuildTargets(): List<BuildTarget> {
+            val rootPath = Path.of(path)
+
+            if (!Files.isDirectory(rootPath)) {
+                return emptyList()
+            }
+
+            return coroutineScope {
+                val allPaths = walkDirectory(path = rootPath).toList().filterNot { path -> path.startsWith(".") }
+
+                val projects = async { findProjects(allPaths) }
+
+                val haskellFiles = async { findHaskellFiles(allPaths) }
+
+                val literateScripts = async { findLiterateScripts(allPaths) }
+
+                awaitAll(projects, haskellFiles, literateScripts).flatten()
+            }
+        }
 
         private fun isBuildConfigFile(path: Path) = with(path.fileName.absolutePathString()) {
             equals("stack.yaml") || equals("package.yaml") || endsWith(".cabal")
         }
 
+        private fun markAsOutOfSynchronization() {
+            if (_status.value is BuildStatus.Synchronized) {
+                _status.value = BuildStatus.OutOfSynchronization
+            }
+        }
+
         private fun handleFileSystemChange(event: DirectoryChangeEvent) {
             if (isBuildConfigFile(event.path())) {
                 when (event.eventType()) {
-                    DirectoryChangeEvent.EventType.CREATE, DirectoryChangeEvent.EventType.MODIFY, DirectoryChangeEvent.EventType.DELETE -> markAsOutOfSync()
+                    DirectoryChangeEvent.EventType.CREATE, DirectoryChangeEvent.EventType.MODIFY, DirectoryChangeEvent.EventType.DELETE -> markAsOutOfSynchronization()
 
                     else -> return
                 }
@@ -70,7 +138,7 @@ internal interface BuildSystemRepository : Closeable {
             var future: CompletableFuture<Void>? = null
 
             try {
-                watcher = DirectoryWatcher.builder().path(Path(path)).listener { event ->
+                watcher = DirectoryWatcher.builder().path(Path.of(path)).listener { event ->
                     handleFileSystemChange(event)
                 }.build()
 
@@ -84,177 +152,12 @@ internal interface BuildSystemRepository : Closeable {
             }
         }
 
-        private fun markAsOutOfSync() {
-            if (_status.value is BuildStatus.Synced) {
-                _status.value = BuildStatus.OutOfSync()
-            }
-        }
-
         private suspend fun performSynchronization() {
             _status.value = try {
-                val targets = when (buildSystem.value) {
-                    BuildSystem.GHC -> discoveryService.discoverHaskellFiles(rootPath = path)
-
-                    BuildSystem.RUN_HASKELL -> discoveryService.discoverLiterateScripts(rootPath = path)
-
-                    BuildSystem.STACK -> discoveryService.discoverStackProjects(rootPath = path)
-
-                    BuildSystem.CABAL -> discoveryService.discoverCabalProjects(rootPath = path)
-                }.getOrThrow()
-
-                BuildStatus.Synced.Idle(system = buildSystem.value, targets = targets)
+                BuildStatus.Synchronized(targets = getBuildTargets())
             } catch (throwable: Throwable) {
                 BuildStatus.Error(throwable = throwable)
             }
-        }
-
-        private suspend fun <T : BuildStatus.Synced.Active> executeDefaultConfiguration(
-            target: BuildTarget,
-            createStatus: (BuildSystem, List<BuildTarget>, BuildTarget) -> T,
-            body: suspend () -> Result<Flow<BuildOutput>>
-        ) = when (val currentStatus = _status.value) {
-            is BuildStatus.Synced -> {
-                val buildSystem = when (target) {
-                    is BuildTarget.BuildProject -> target.buildSystem
-
-                    is BuildTarget.HaskellFile -> BuildSystem.GHC
-
-                    is BuildTarget.LiterateScript -> BuildSystem.RUN_HASKELL
-                }
-
-                val activeStatus = createStatus(buildSystem, currentStatus.targets, target)
-
-                _status.value = activeStatus
-
-                body().onSuccess {
-                    _status.value = BuildStatus.Synced.Idle(
-                        system = currentStatus.system, targets = currentStatus.targets
-                    )
-                }.onFailure { throwable ->
-                    _status.value = BuildStatus.Error(throwable = throwable)
-                }
-            }
-
-            is BuildStatus.OutOfSync -> Result.failure(BuildSystemException("System out of sync"))
-
-            is BuildStatus.Syncing -> Result.failure(BuildSystemException("System syncing"))
-
-            is BuildStatus.Error -> Result.failure(BuildSystemException("System in error state"))
-        }
-
-        private suspend fun executeDefaultStackConfiguration(
-            target: BuildTarget,
-            projectOperation: BuildProjectOperation,
-            stackCommand: suspend (String) -> Result<Flow<StackOutput>>
-        ): Result<Flow<BuildOutput>> {
-            val path = when (target) {
-                is BuildTarget.BuildProject.Stack -> target.path
-
-                else -> return Result.failure(BuildSystemException("Cannot execute stack project operation on $target"))
-            }
-
-            return executeDefaultConfiguration(
-                target = target, createStatus = { system, targets, currentTarget ->
-                    when (projectOperation) {
-                        BuildProjectOperation.BUILD -> BuildStatus.Synced.Active.Building(
-                            system = system, targets = targets, currentTarget = currentTarget
-                        )
-
-                        BuildProjectOperation.TEST -> BuildStatus.Synced.Active.Testing(
-                            system = system, targets = targets, currentTarget = currentTarget
-                        )
-
-                        BuildProjectOperation.RUN -> BuildStatus.Synced.Active.Running(
-                            system = system, targets = targets, currentTarget = currentTarget
-                        )
-
-                        BuildProjectOperation.CLEAN -> BuildStatus.Synced.Active.Building(
-                            system = system, targets = targets, currentTarget = currentTarget
-                        )
-                    }
-                }) {
-                stackCommand(path).map { flow ->
-                    flow.map { stackOutput ->
-                        stackOutput.toBuildOutput(target = target)
-                    }
-                }
-            }
-        }
-
-        override suspend fun build(target: BuildTarget) = when (target) {
-            is BuildTarget.BuildProject.Stack -> executeDefaultStackConfiguration(
-                target = target, projectOperation = BuildProjectOperation.BUILD
-            ) { path ->
-                stackService.build(path)
-            }
-
-            else -> Result.failure(BuildSystemException("Cannot build ${target.name}"))
-        }
-
-        override suspend fun test(target: BuildTarget) = when (target) {
-            is BuildTarget.BuildProject.Stack -> executeDefaultStackConfiguration(
-                target = target, projectOperation = BuildProjectOperation.TEST
-            ) { path ->
-                stackService.test(path)
-            }
-
-            else -> Result.failure(BuildSystemException("Cannot test ${target.name}"))
-        }
-
-        override suspend fun run(target: BuildTarget) = when (target) {
-            is BuildTarget.BuildProject.Stack -> executeDefaultStackConfiguration(
-                target = target, projectOperation = BuildProjectOperation.RUN
-            ) { path ->
-                stackService.run(path)
-            }
-
-            is BuildTarget.HaskellFile -> runFile(target = target)
-
-            is BuildTarget.LiterateScript -> runScript(target = target)
-
-            else -> Result.failure(BuildSystemException("Cannot run ${target.name}"))
-        }
-
-        override suspend fun clean(target: BuildTarget) = when (target) {
-            is BuildTarget.BuildProject.Stack -> executeDefaultStackConfiguration(
-                target = target, projectOperation = BuildProjectOperation.CLEAN
-            ) { path ->
-                stackService.clean(path)
-            }
-
-            else -> Result.failure(BuildSystemException("Cannot clean ${target.name}"))
-        }
-
-        override suspend fun compileFile(target: BuildTarget.HaskellFile) = executeDefaultConfiguration(
-            target = target, createStatus = { system, targets, currentTarget ->
-                BuildStatus.Synced.Active.Compiling(
-                    system = system, targets = targets, currentTarget = currentTarget
-                )
-            }) {
-            // TODO: Implement GHC compilation
-            Result.failure(UnsupportedBuildSystemException)
-        }
-
-        override suspend fun runFile(target: BuildTarget.HaskellFile) = executeDefaultConfiguration(
-            target = target, createStatus = { system, targets, currentTarget ->
-                BuildStatus.Synced.Active.Running(
-                    system = system, targets = targets, currentTarget = currentTarget
-                )
-            }) {
-            // TODO: Implement runghc execution
-            Result.failure(UnsupportedBuildSystemException)
-        }
-
-        override suspend fun runScript(target: BuildTarget.LiterateScript) = executeDefaultConfiguration(
-            target = target, createStatus = { system, targets, currentTarget ->
-                BuildStatus.Synced.Active.Running(
-                    system = system,
-                    targets = targets,
-                    currentTarget = currentTarget,
-                )
-            }) {
-            // TODO: Implement runghc for literate scripts
-            Result.failure(UnsupportedBuildSystemException)
         }
 
         init {
@@ -265,8 +168,8 @@ internal interface BuildSystemRepository : Closeable {
 
         override suspend fun synchronize() = runCatching {
             when (_status.value) {
-                is BuildStatus.OutOfSync, is BuildStatus.Synced, is BuildStatus.Error -> {
-                    _status.value = BuildStatus.Syncing()
+                is BuildStatus.OutOfSynchronization, is BuildStatus.Synchronized, is BuildStatus.Error -> {
+                    _status.value = BuildStatus.Synchronizing
 
                     performSynchronization()
                 }
@@ -275,27 +178,28 @@ internal interface BuildSystemRepository : Closeable {
             }
         }
 
-        override suspend fun getDependencies(target: BuildTarget) = runCatching {
-            when (target) {
-                is BuildTarget.BuildProject.Stack -> {
-                    // TODO: Extract dependencies from stack.yaml
-                    emptyList()
-                }
+        override suspend fun execute(command: BuildCommand) = when (val currentStatus = _status.value) {
+            is BuildStatus.Synchronized -> when (command) {
+                is BuildCommand.Cabal -> cabalBuildSystemService.execute(command = command)
 
-                else -> emptyList<String>()
+                is BuildCommand.Stack -> stackBuildSystemService.execute(command = command)
+
+                is BuildCommand.Ghc -> ghcBuildSystemService.execute(command = command)
+
+                is BuildCommand.RunHaskell -> runHaskellBuildSystemService.execute(command = command)
+
+                is BuildCommand.Custom -> customBuildSystemService.executeBuildCommand(command = command)
+            }.onSuccess {
+                _status.value = BuildStatus.Synchronized(targets = currentStatus.targets)
+            }.onFailure { throwable ->
+                _status.value = BuildStatus.Error(throwable = throwable)
             }
-        }
 
-        override suspend fun getSourceFiles(target: BuildTarget) = runCatching {
-            when (target) {
-                is BuildTarget.BuildProject -> target.packages.flatMap { pkg ->
-                    pkg.components.flatMap { component ->
-                        discoveryService.discoverHaskellFiles(rootPath = component.path).getOrThrow()
-                    }
-                }
+            is BuildStatus.OutOfSynchronization -> Result.failure(BuildSystemException("System out of synchronization"))
 
-                else -> emptyList()
-            }
+            is BuildStatus.Synchronizing -> Result.failure(BuildSystemException("System synchronizing"))
+
+            is BuildStatus.Error -> Result.failure(BuildSystemException("System in error state"))
         }
 
         override fun close() = coroutineScope.cancel()
