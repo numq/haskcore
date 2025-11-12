@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package haskcore.session;
+
+option java_package = "io.github.numq.haskcore.session";
+option java_multiple_files = true;
+
+message RecentWorkspace {
+  optional string path = 1;
+  map<string, string> recentWorkspaces = 2;
+}
+
+message Session {
+  optional string workspacePath = 1;
+  repeated RecentWorkspace recentWorkspaces = 2;
+}
