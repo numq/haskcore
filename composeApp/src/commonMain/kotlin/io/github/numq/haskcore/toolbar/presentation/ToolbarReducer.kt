@@ -2,13 +2,13 @@ package io.github.numq.haskcore.toolbar.presentation
 
 import io.github.numq.haskcore.feature.Event
 import io.github.numq.haskcore.feature.Reducer
+import io.github.numq.haskcore.session.usecase.ObserveSession
 import io.github.numq.haskcore.workspace.usecase.CloseWorkspace
-import io.github.numq.haskcore.workspace.usecase.ObserveRecentWorkspaces
 import io.github.numq.haskcore.workspace.usecase.ObserveWorkspace
 import io.github.numq.haskcore.workspace.usecase.OpenWorkspace
 
 internal class ToolbarReducer(
-    private val observeRecentWorkspaces: ObserveRecentWorkspaces,
+    private val observeSession: ObserveSession,
     private val observeWorkspace: ObserveWorkspace,
     private val openWorkspace: OpenWorkspace,
     private val closeWorkspace: CloseWorkspace,
@@ -17,7 +17,7 @@ internal class ToolbarReducer(
         is ToolbarCommand.Initialize -> runCatching {
             transition(
                 state,
-                ToolbarEvent.ObserveRecentWorkspaces(flow = observeRecentWorkspaces.execute(input = Unit).getOrThrow()),
+                ToolbarEvent.ObserveSession(flow = observeSession.execute(input = Unit).getOrThrow()),
                 ToolbarEvent.ObserveWorkspace(flow = observeWorkspace.execute(input = Unit).getOrThrow())
             )
         }.getOrElse { throwable ->
@@ -28,7 +28,7 @@ internal class ToolbarReducer(
 
         is ToolbarCommand.UpdateWorkspace -> transition(state.copy(activeWorkspace = command.workspace))
 
-        is ToolbarCommand.OpenWorkspace -> openWorkspace.execute(input = OpenWorkspace.Input(path = command.path))
+        is ToolbarCommand.OpenWorkspace -> openWorkspace.execute(input = OpenWorkspace.Input(workspacePath = command.path))
             .fold(onSuccess = {
                 transition(state)
             }, onFailure = { throwable ->
@@ -41,9 +41,9 @@ internal class ToolbarReducer(
             transition(state, Event.Failure(throwable = throwable))
         })
 
-        is ToolbarCommand.ExpandWorkspaceMenu -> transition(state.copy(workspaceMenuExpanded = true))
+        is ToolbarCommand.OpenMenu -> transition(state.copy(menu = command.menu))
 
-        is ToolbarCommand.CollapseWorkspaceMenu -> transition(state.copy(workspaceMenuExpanded = false))
+        is ToolbarCommand.CloseMenu -> transition(state.copy(menu = null))
 
         is ToolbarCommand.MinimizeWindow -> transition(state, ToolbarEvent.MinimizeWindowRequested)
 

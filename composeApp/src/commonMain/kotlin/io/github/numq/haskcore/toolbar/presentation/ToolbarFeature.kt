@@ -15,9 +15,9 @@ internal class ToolbarFeature(
         coroutineScope.launch {
             events.collect { event ->
                 when (event) {
-                    is ToolbarEvent.ObserveRecentWorkspaces -> collect(
-                        event = event, joinCancellation = false, action = { recentWorkspaces ->
-                            execute(ToolbarCommand.UpdateRecentWorkspaces(recentWorkspaces = recentWorkspaces))
+                    is ToolbarEvent.ObserveSession -> collect(
+                        event = event, joinCancellation = false, action = { session ->
+                            execute(ToolbarCommand.UpdateRecentWorkspaces(recentWorkspaces = session.recentWorkspaces))
                         })
 
                     is ToolbarEvent.ObserveWorkspace -> collect(

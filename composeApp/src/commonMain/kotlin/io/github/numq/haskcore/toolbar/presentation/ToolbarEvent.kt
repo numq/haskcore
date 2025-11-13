@@ -1,20 +1,21 @@
 package io.github.numq.haskcore.toolbar.presentation
 
 import io.github.numq.haskcore.feature.Event
+import io.github.numq.haskcore.session.Session
 import io.github.numq.haskcore.timestamp.Timestamp
 import io.github.numq.haskcore.workspace.Workspace
 import kotlinx.coroutines.flow.Flow
 
 internal sealed interface ToolbarEvent {
-    data class ObserveRecentWorkspaces(
-        override val flow: Flow<List<Workspace>>
-    ) : ToolbarEvent, Event.Collectable<List<Workspace>>() {
-        override val key = ToolbarEventKey.OBSERVE_RECENT_WORKSPACES
+    data class ObserveSession(
+        override val flow: Flow<Session>
+    ) : ToolbarEvent, Event.Collectable<Session>() {
+        override val key = ToolbarEventKey.OBSERVE_SESSION
     }
 
     data class ObserveWorkspace(
-        override val flow: Flow<Workspace?>
-    ) : ToolbarEvent, Event.Collectable<Workspace?>() {
+        override val flow: Flow<Workspace>
+    ) : ToolbarEvent, Event.Collectable<Workspace>() {
         override val key = ToolbarEventKey.OBSERVE_WORKSPACE
     }
 
