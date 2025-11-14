@@ -6,7 +6,7 @@ internal sealed interface ApplicationState {
     data object Splash : ApplicationState
 
     data class Content(
-        val dividerPercentage: Float = .7f,
+        val dividerPercentage: Float = .75f,
         val dialog: ApplicationDialog? = null
     ) : ApplicationState
 }

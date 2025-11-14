@@ -18,19 +18,21 @@ internal class ApplicationReducer(
         is ApplicationCommand.Initialize -> coroutineScope {
             val openRecentWorkspace = async {
                 getSession.execute(input = Unit).mapCatching { session ->
-                    when (val path = session.workspacePath) {
+                    when (val workspacePath = session.workspacePath) {
                         null -> Unit
 
-                        else -> openWorkspace.execute(input = OpenWorkspace.Input(path = path)).getOrThrow()
+                        else -> openWorkspace.execute(
+                            input = OpenWorkspace.Input(workspacePath = workspacePath)
+                        ).getOrThrow()
                     }
-                }.fold(onSuccess = { session ->
-                    transition(state)
+                }.fold(onSuccess = {
+                    transition(ApplicationState.Content())
                 }) { throwable ->
                     transition(state, Event.Failure(throwable = throwable))
                 }
             }
 
-            delay(1.seconds)
+            delay(2.seconds)
 
             openRecentWorkspace.await()
         }
