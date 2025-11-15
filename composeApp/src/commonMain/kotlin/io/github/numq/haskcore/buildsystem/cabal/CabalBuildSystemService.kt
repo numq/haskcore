@@ -18,10 +18,10 @@ internal interface CabalBuildSystemService {
     suspend fun execute(command: BuildCommand.Cabal, requireProject: Boolean = true): Result<Flow<BuildOutput>>
 
     class Default : BuildSystemService(), CabalBuildSystemService {
-        override val baseCommand = listOf("stack", "exec", "cabal")
+        private val regex = """(?i)cabal-install\s+version\s+(\d+\.\d+\.\d+\.\d+)""".toRegex()
 
         override suspend fun getCabalVersion() = runCatching {
-            ProcessBuilder(*baseCommand.toTypedArray(), "--", "--version")
+            ProcessBuilder("stack", "exec", "cabal", "--", "--version")
                 .redirectErrorStream(true)
                 .start()
                 .also { process ->
@@ -30,15 +30,12 @@ internal interface CabalBuildSystemService {
                     if (exitCode != 0) {
                         throw BuildSystemException("Cabal version command failed with exit code: $exitCode")
                     }
-                }
-                .inputStream
-                .bufferedReader()
-                .use { reader -> reader.readText().trim() }
-                .lineSequence()
-                .find { line -> line.contains("cabal-install version", ignoreCase = true) }
-                ?.substringAfter("version")
-                ?.trim()
-                ?.takeIf(String::isNotBlank) ?: throw BuildSystemException("Empty or invalid Cabal version output")
+                }.inputStream.bufferedReader().use { reader ->
+                    reader.readText().trim()
+                }.let { input ->
+                    regex.find(input)?.groupValues?.get(1)
+                }?.trim()?.takeIf(String::isNotBlank)
+                ?: throw BuildSystemException("Empty or invalid Cabal version output")
         }
 
         override suspend fun hasValidProject(path: String) = runCatching {

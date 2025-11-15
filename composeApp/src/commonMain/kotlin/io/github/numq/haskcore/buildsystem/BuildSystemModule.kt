@@ -5,8 +5,7 @@ import io.github.numq.haskcore.buildsystem.ghc.GhcBuildSystemService
 import io.github.numq.haskcore.buildsystem.runhaskell.RunHaskellBuildSystemService
 import io.github.numq.haskcore.buildsystem.stack.StackBuildSystemService
 import io.github.numq.haskcore.buildsystem.usecase.ObserveBuildStatus
-import io.github.numq.haskcore.buildsystem.usecase.Synchronize
-import org.koin.core.parameter.parametersOf
+import io.github.numq.haskcore.buildsystem.usecase.SynchronizeBuildSystem
 import org.koin.dsl.bind
 import org.koin.dsl.module
 import org.koin.dsl.onClose
@@ -22,9 +21,8 @@ internal val buildSystemModule = module {
 
     single { StackBuildSystemService.Default() } bind StackBuildSystemService::class
 
-    single { (path: String) ->
+    single {
         BuildSystemRepository.Default(
-            path = path,
             customBuildSystemService = get(),
             cabalBuildSystemService = get(),
             ghcBuildSystemService = get(),
@@ -33,11 +31,11 @@ internal val buildSystemModule = module {
         )
     } bind BuildSystemRepository::class onClose { it?.close() }
 
-    single { (path: String) ->
-        ObserveBuildStatus(buildSystemRepository = get { parametersOf(path) })
+    single {
+        ObserveBuildStatus(buildSystemRepository = get())
     }
 
-    single { (path: String) ->
-        Synchronize(buildSystemRepository = get { parametersOf(path) })
+    single {
+        SynchronizeBuildSystem(buildSystemRepository = get())
     }
 }

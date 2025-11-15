@@ -18,10 +18,10 @@ internal interface StackBuildSystemService {
     suspend fun execute(command: BuildCommand.Stack, requireProject: Boolean = true): Result<Flow<BuildOutput>>
 
     class Default : BuildSystemService(), StackBuildSystemService {
-        override val baseCommand = listOf("stack")
+        private val regex = """(?i)Version\s+(\d+\.\d+\.\d+)""".toRegex()
 
         override suspend fun getStackVersion() = runCatching {
-            ProcessBuilder(*baseCommand.toTypedArray(), "--version")
+            ProcessBuilder("stack", "--version")
                 .redirectErrorStream(true)
                 .start()
                 .also { process ->
@@ -30,14 +30,12 @@ internal interface StackBuildSystemService {
                     if (exitCode != 0) {
                         throw BuildSystemException("Stack version command failed with exit code: $exitCode")
                     }
-                }
-                .inputStream
-                .bufferedReader()
-                .use { reader -> reader.readText().trim() }
-                .substringAfter("Version")
-                .substringBefore(",")
-                .trim()
-                .takeIf(String::isNotBlank) ?: throw BuildSystemException("Empty or invalid Stack version output")
+                }.inputStream.bufferedReader().use { reader ->
+                    reader.readText().trim()
+                }.let { input ->
+                    regex.find(input)?.groupValues?.get(1)
+                }?.trim()?.takeIf(String::isNotBlank)
+                ?: throw BuildSystemException("Empty or invalid Stack version output")
         }
 
         override suspend fun hasValidProject(path: String) = runCatching {

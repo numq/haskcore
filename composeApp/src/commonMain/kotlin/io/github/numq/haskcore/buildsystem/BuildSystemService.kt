@@ -12,8 +12,6 @@ import java.nio.file.Path
 import kotlin.time.Duration.Companion.milliseconds
 
 internal open class BuildSystemService {
-    protected open val baseCommand = emptyList<String>()
-
     fun executeBuildCommand(command: BuildCommand) = runCatching {
         callbackFlow {
             val startTime = System.currentTimeMillis()
@@ -21,7 +19,7 @@ internal open class BuildSystemService {
             val workingDirectory = Path.of(command.path)
 
             val process = try {
-                ProcessBuilder(baseCommand + command.fullCommand).run {
+                ProcessBuilder(command.command + command.arguments).run {
                     directory(workingDirectory.toFile())
 
                     redirectErrorStream(true)
