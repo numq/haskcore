@@ -1,22 +1,36 @@
 package io.github.numq.haskcore.output
 
-import io.github.numq.haskcore.output.usecase.ClearOutput
-import io.github.numq.haskcore.output.usecase.ExportOutput
-import io.github.numq.haskcore.output.usecase.GetOutputExportPath
-import io.github.numq.haskcore.output.usecase.ObserveOutputMessages
+import io.github.numq.haskcore.feature.factory.CommandStrategy
+import io.github.numq.haskcore.feature.factory.FeatureFactory
+import io.github.numq.haskcore.output.presentation.OutputFeature
+import io.github.numq.haskcore.output.presentation.OutputReducer
+import io.github.numq.haskcore.output.presentation.OutputState
+import io.github.numq.haskcore.output.usecase.CloseOutput
+import io.github.numq.haskcore.output.usecase.ObserveOutputs
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import org.koin.dsl.bind
 import org.koin.dsl.module
+import org.koin.dsl.onClose
 
+@OptIn(DelicateCoroutinesApi::class)
 internal val outputModule = module {
-    single { OutputDataSource() }
+    single { OutputRepository.Default() } bind OutputRepository::class
 
-    single { OutputRepository.Default(outputDataSource = get()) } bind OutputRepository::class
+    single { ObserveOutputs(outputRepository = get()) }
 
-    single { ClearOutput(outputRepository = get()) }
+    single { CloseOutput(outputRepository = get()) }
 
-    single { ExportOutput(outputRepository = get()) }
-
-    single { GetOutputExportPath(outputRepository = get()) }
-
-    single { ObserveOutputMessages(outputRepository = get()) }
+    single {
+        OutputFeature(
+            feature = FeatureFactory().create(
+                initialState = OutputState(), reducer = OutputReducer(
+                    closeOutput = get(),
+                    observeOutputs = get(),
+                    observeWorkspace = get()
+                ), strategy = CommandStrategy.Immediate
+            )
+        )
+    } onClose { GlobalScope.launch { it?.close() } }
 }

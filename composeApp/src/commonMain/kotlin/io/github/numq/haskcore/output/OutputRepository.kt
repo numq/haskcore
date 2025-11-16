@@ -6,35 +6,39 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
 internal interface OutputRepository {
-    val exportPath: String
+    val outputs: StateFlow<List<Output>>
 
-    val messages: StateFlow<List<OutputMessage>>
+    suspend fun open(output: Output): Result<Unit>
 
-    suspend fun send(message: OutputMessage): Result<Unit>
+    suspend fun addMessage(outputId: String, outputMessage: OutputMessage): Result<Unit>
 
-    suspend fun export(): Result<Unit>
+    suspend fun close(output: Output): Result<Unit>
 
-    suspend fun clear(): Result<Unit>
+    class Default : OutputRepository {
+        private val _outputs = MutableStateFlow(emptyList<Output>())
 
-    class Default(private val outputDataSource: OutputDataSource) : OutputRepository {
-        override val exportPath = outputDataSource.dirName
+        override val outputs = _outputs.asStateFlow()
 
-        private val _messages = MutableStateFlow(emptyList<OutputMessage>())
-
-        override val messages = _messages.asStateFlow()
-
-        override suspend fun send(message: OutputMessage) = runCatching {
-            _messages.update { messages -> messages + message }
+        override suspend fun open(output: Output) = runCatching {
+            _outputs.update { outputs -> outputs + output }
         }
 
-        override suspend fun export() = outputDataSource.writeData(
-            dataPath = exportPath, data = _messages.value
-        ).recoverCatching { throwable ->
-            throw OutputException(throwable.message ?: "Failed to export output")
+        override suspend fun addMessage(outputId: String, outputMessage: OutputMessage) = runCatching {
+            _outputs.update { outputs ->
+                outputs.map { thisOutput ->
+                    when (thisOutput.id) {
+                        outputId -> thisOutput.copy(outputMessages = thisOutput.outputMessages + outputMessage)
+
+                        else -> thisOutput
+                    }
+                }
+            }
         }
 
-        override suspend fun clear() = runCatching {
-            _messages.update { emptyList() }
+        override suspend fun close(output: Output) = runCatching {
+            _outputs.update { outputs ->
+                outputs.filterNot { thisOutput -> thisOutput.id == output.id }
+            }
         }
     }
 }
