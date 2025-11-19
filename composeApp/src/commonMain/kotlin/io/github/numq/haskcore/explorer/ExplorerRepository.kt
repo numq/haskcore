@@ -1,25 +1,23 @@
 package io.github.numq.haskcore.explorer
 
-import io.github.numq.haskcore.clipboard.ClipboardRepository
-import io.github.numq.haskcore.editor.EditorException
-import io.github.numq.haskcore.filesystem.FileSystemChange
-import io.github.numq.haskcore.filesystem.FileSystemService
+import androidx.datastore.core.Closeable
+import io.methvin.watcher.DirectoryChangeEvent
+import io.methvin.watcher.DirectoryWatcher
 import kotlinx.collections.immutable.PersistentSet
 import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.collections.immutable.toPersistentSet
 import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.*
-import java.io.Closeable
+import java.io.File
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.StandardCopyOption
 import kotlin.io.path.*
 
 internal interface ExplorerRepository : Closeable {
-    val explorer: StateFlow<Explorer?>
-
-    suspend fun openExplorer(path: String): Result<Unit>
-
-    suspend fun updateExplorer(explorer: Explorer): Result<Unit>
-
-    suspend fun closeExplorer(): Result<Unit>
+    val explorer: Flow<Explorer>
 
     suspend fun createFile(destination: ExplorerNode, name: String): Result<Unit>
 
@@ -31,97 +29,189 @@ internal interface ExplorerRepository : Closeable {
 
     suspend fun renameNode(node: ExplorerNode, name: String): Result<Unit>
 
-    suspend fun cutNodes(nodes: Set<ExplorerNode>): Result<Unit>
+    suspend fun copyNodes(nodes: Set<ExplorerNode>, destination: ExplorerNode, overwrite: Boolean): Result<Unit>
 
-    suspend fun copyNodes(nodes: Set<ExplorerNode>): Result<Unit>
-
-    suspend fun pasteNodes(destination: ExplorerNode): Result<Unit>
-
-    suspend fun moveNodes(nodes: Set<ExplorerNode>, destination: ExplorerNode): Result<Unit>
+    suspend fun moveNodes(nodes: Set<ExplorerNode>, destination: ExplorerNode, overwrite: Boolean): Result<Unit>
 
     suspend fun deleteNodes(nodes: Set<ExplorerNode>): Result<Unit>
 
     class Default(
-        private val explorerDataSource: ExplorerDataSource,
-        private val clipboardRepository: ClipboardRepository,
-        private val fileSystemService: FileSystemService,
+        private val rootPath: String, private val explorerSnapshotDataSource: ExplorerSnapshotDataSource
     ) : ExplorerRepository {
         private val coroutineScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
-        private var job: Job? = null
+        private val _explorerTree = MutableStateFlow<ExplorerTree?>(null)
 
-        private val operations = MutableSharedFlow<ExplorerOperation>()
+        private val changeEvents = callbackFlow {
+            val watcher = DirectoryWatcher.builder().path(Path.of(rootPath)).listener(::trySend).build()
 
-        private val _explorer = MutableStateFlow<Explorer?>(null)
+            val future = watcher.watchAsync()
 
-        override val explorer = _explorer.asStateFlow()
+            awaitClose {
+                future.cancel(true)
 
-        private suspend fun buildNode(rootPath: String, path: String) = Path(path).runCatching {
-            val parentPath = when (path) {
-                rootPath -> path
-
-                else -> parent?.absolutePathString() ?: return@runCatching null
+                watcher.close()
             }
+        }.buffer(Channel.UNLIMITED).distinctUntilChanged().flowOn(Dispatchers.IO)
+
+        override val explorer = flow {
+            emit(Explorer.Loading)
+
+            _explorerTree.collect { tree ->
+                if (tree != null) {
+                    emit(Explorer.Loaded(rootPath = rootPath, nodes = tree.flatten()))
+                }
+            }
+        }
+
+        init {
+            coroutineScope.launch {
+                val validatedSnapshot = explorerSnapshotDataSource.update { snapshot ->
+                    val expandedDirectoryPaths = snapshot.expandedDirectoryPaths.filter { path ->
+                        File(path).isDirectory
+                    }
+
+                    snapshot.copy(expandedDirectoryPaths = expandedDirectoryPaths)
+                }.getOrThrow()
+
+                _explorerTree.value = buildInitialTree().applySnapshot(validatedSnapshot)
+
+                changeEvents.collect { event ->
+                    _explorerTree.updateAndGet { tree ->
+                        tree?.let { tree ->
+                            handleChange(tree = tree, event = event)
+                        }
+                    }
+                }
+            }
+        }
+
+        private fun checkFile(path: Path) {
+            if (!path.isRegularFile()) {
+                throw ExplorerException("Path '${path.absolutePathString()}' is not a regular file")
+            }
+        }
+
+        private fun checkDirectory(path: Path) {
+            if (!path.isDirectory()) {
+                throw ExplorerException("Path '${path.absolutePathString()}' is not a directory")
+            }
+        }
+
+        private fun checkPathExists(path: Path) {
+            if (path.notExists()) {
+                throw ExplorerException("Path '${path.absolutePathString()}' does not exist")
+            }
+        }
+
+        private fun checkPathNotExists(path: Path, overwrite: Boolean) {
+            if (path.exists() && !overwrite) {
+                throw ExplorerException("Path '${path.absolutePathString()}' already exists")
+            }
+        }
+
+        private fun checkTransferPaths(src: Path, dst: Path, overwrite: Boolean) {
+            checkPathExists(path = src)
+
+            checkPathNotExists(path = dst, overwrite = overwrite)
+        }
+
+        private fun transfer(src: Path, dst: Path, overwrite: Boolean, copy: Boolean) {
+            checkTransferPaths(src = src, dst = dst, overwrite = overwrite)
+
+            val options = when {
+                overwrite -> arrayOf(StandardCopyOption.REPLACE_EXISTING)
+
+                else -> emptyArray()
+            }
+
+            when {
+                copy -> Files.copy(src, dst, *options)
+
+                else -> Files.move(src, dst, *options)
+            }
+        }
+
+        private fun buildFileNode(rootPath: Path, path: Path): ExplorerNode.File {
+            checkFile(path = path)
 
             val depth = when (path) {
                 rootPath -> 0
 
-                else -> Path(rootPath).relativize(Path(path)).nameCount
+                else -> rootPath.relativize(path).nameCount
             }
 
-            val lastModified = getLastModifiedTime().toMillis()
+            val lastModified = path.getLastModifiedTime().toMillis()
 
-            when {
-                fileSystemService.isFile(path = path).getOrThrow() -> ExplorerNode.File(
+            return with(path) {
+                ExplorerNode.File(
                     name = name,
-                    path = path,
-                    parentPath = parentPath,
+                    path = absolutePathString(),
+                    parentPath = parent.absolutePathString(),
                     depth = depth,
                     lastModified = lastModified,
-                    extension = extension
+                    extension = extension,
+                    nameWithoutExtension = nameWithoutExtension,
                 )
+            }
+        }
 
-                fileSystemService.isDirectory(path = path).getOrThrow() -> ExplorerNode.Directory(
+        private fun buildDirectoryNode(rootPath: Path, path: Path): ExplorerNode.Directory {
+            checkDirectory(path = path)
+
+            val depth = when (path) {
+                rootPath -> 0
+
+                else -> rootPath.relativize(path).nameCount
+            }
+
+            val lastModified = path.getLastModifiedTime().toMillis()
+
+            return with(path) {
+                ExplorerNode.Directory(
                     name = name,
-                    path = path,
-                    parentPath = parentPath,
+                    path = absolutePathString(),
+                    parentPath = parent.absolutePathString(),
                     depth = depth,
                     lastModified = lastModified,
                     expanded = false
                 )
-
-                else -> null
             }
-        }.getOrNull()
+        }
 
-        private suspend fun buildChildren(
-            rootPath: String, path: String,
-        ) = fileSystemService.listDirectory(path = path).getOrThrow().mapNotNull { childPath ->
+        private fun buildNode(rootPath: Path, path: Path) = when {
+            path.isRegularFile() -> buildFileNode(rootPath = rootPath, path = path)
+
+            path.isDirectory() -> buildDirectoryNode(rootPath = rootPath, path = path)
+
+            else -> null
+        }
+
+        private fun buildChildren(rootPath: Path, path: Path) = path.listDirectoryEntries().mapNotNull { childPath ->
             buildNode(rootPath = rootPath, path = childPath)
         }.toPersistentSet()
 
-        private fun buildFlattened(tree: ExplorerTree) = buildList {
-            fun visit(node: ExplorerNode) {
-                add(node)
+        private fun buildInitialTree(): ExplorerTree {
+            val rootPath = Path.of(rootPath)
 
-                if (node is ExplorerNode.Directory && node.expanded) {
-                    tree.childrenByPath[node.path].orEmpty().sortedWith(ExplorerNodeComparator).forEach(::visit)
-                }
-            }
+            val rootNode = buildDirectoryNode(rootPath = rootPath, path = rootPath)
 
-            visit(node = tree.root)
+            val rootChildren = buildChildren(rootPath = rootPath, path = rootPath)
+
+            val childrenByPath = persistentMapOf(rootPath.absolutePathString() to rootChildren)
+
+            return ExplorerTree(rootNode = rootNode, childrenByPath = childrenByPath)
         }
 
-        private suspend fun handleExpand(tree: ExplorerTree, directory: ExplorerNode.Directory, rootPath: String) =
-            when {
-                directory.expanded -> tree
+        private fun handleExpand(tree: ExplorerTree, directory: ExplorerNode.Directory) = when {
+            directory.expanded -> tree
 
-                else -> updateNodeInTree(
-                    tree = tree,
-                    updatedNode = directory.copy(expanded = true),
-                    children = buildChildren(rootPath = rootPath, path = directory.path)
-                )
-            }
+            else -> updateNodeInTree(
+                tree = tree,
+                updatedNode = directory.copy(expanded = true),
+                children = buildChildren(rootPath = Path.of(tree.rootNode.path), path = Path.of(directory.path))
+            )
+        }
 
         private fun handleCollapse(tree: ExplorerTree, directory: ExplorerNode.Directory) = when {
             !directory.expanded -> tree
@@ -134,16 +224,18 @@ internal interface ExplorerRepository : Closeable {
         }
 
         private fun updateNodeInTree(
-            tree: ExplorerTree, updatedNode: ExplorerNode.Directory, children: PersistentSet<ExplorerNode>? = null,
+            tree: ExplorerTree,
+            updatedNode: ExplorerNode.Directory,
+            children: PersistentSet<ExplorerNode>? = null,
         ) = when {
-            updatedNode.path == tree.root.path -> {
+            updatedNode.path == tree.rootNode.path -> {
                 var newChildrenByPath = tree.childrenByPath
 
                 children?.let { childNode ->
                     newChildrenByPath = newChildrenByPath.put(updatedNode.path, childNode)
                 }
 
-                tree.copy(root = updatedNode, childrenByPath = newChildrenByPath)
+                tree.copy(rootNode = updatedNode, childrenByPath = newChildrenByPath)
             }
 
             else -> {
@@ -152,7 +244,11 @@ internal interface ExplorerRepository : Closeable {
                 val currentChildren = tree.childrenByPath[parentPath] ?: return tree
 
                 val newChildren = currentChildren.map { node ->
-                    if (node.path == updatedNode.path) updatedNode else node
+                    when (node.path) {
+                        updatedNode.path -> updatedNode
+
+                        else -> node
+                    }
                 }.toPersistentSet()
 
                 var newChildrenByPath = tree.childrenByPath.put(parentPath, newChildren)
@@ -165,70 +261,9 @@ internal interface ExplorerRepository : Closeable {
             }
         }
 
-        private suspend fun handleChange(
-            tree: ExplorerTree,
-            change: FileSystemChange,
-            rootPath: String,
-        ) = when (change) {
-            is FileSystemChange.Created -> handleCreated(tree = tree, change = change, rootPath = rootPath)
-
-            is FileSystemChange.Modified -> handleModified(tree = tree, change = change, rootPath = rootPath)
-
-            is FileSystemChange.Deleted -> handleDeleted(tree = tree, change = change)
-        }
-
-        private suspend fun handleCreated(
-            tree: ExplorerTree, change: FileSystemChange.Created, rootPath: String,
-        ): ExplorerTree {
-            val parentPath = change.parentPath ?: rootPath
-
-            val newNode = buildNode(rootPath = rootPath, path = change.path) ?: return tree
-
-            val currentChildren = tree.childrenByPath[parentPath] ?: emptyList()
-
-            val newChildren = when {
-                currentChildren.any { childNode -> childNode.path == change.path } -> currentChildren.map { childNode ->
-                    when {
-                        childNode.path == change.path -> newNode
-
-                        else -> childNode
-                    }
-                }
-
-                else -> currentChildren + newNode
-            }.toPersistentSet()
-
-            var newTree = tree.copy(childrenByPath = tree.childrenByPath.put(parentPath, newChildren))
-
-            if (newNode is ExplorerNode.Directory) {
-                val parentDirectory = findDirectoryInTree(tree = tree, path = parentPath)
-
-                if (parentDirectory != null && parentDirectory.expanded) {
-                    val expandedNewNode = newNode.copy(expanded = true)
-
-                    val newChildrenForParent = newChildren.map { childNode ->
-                        when {
-                            childNode.path == change.path -> expandedNewNode
-
-                            else -> childNode
-                        }
-                    }.toPersistentSet()
-
-                    val childrenOfNewNode = buildChildren(rootPath = rootPath, path = expandedNewNode.path)
-
-                    newTree = newTree.copy(
-                        childrenByPath = newTree.childrenByPath.put(parentPath, newChildrenForParent)
-                            .put(expandedNewNode.path, childrenOfNewNode)
-                    )
-                }
-            }
-
-            return newTree
-        }
-
         private fun findDirectoryInTree(tree: ExplorerTree, path: String): ExplorerNode.Directory? {
-            if (tree.root.path == path) {
-                return tree.root
+            if (tree.rootNode.path == path) {
+                return tree.rootNode
             }
 
             fun findInChildren(children: PersistentSet<ExplorerNode>): ExplorerNode.Directory? {
@@ -247,23 +282,70 @@ internal interface ExplorerRepository : Closeable {
                 return null
             }
 
-            return tree.childrenByPath[tree.root.path]?.let(::findInChildren)
+            return tree.childrenByPath[tree.rootNode.path]?.let(::findInChildren)
         }
 
-        private suspend fun handleModified(
-            tree: ExplorerTree, change: FileSystemChange.Modified, rootPath: String,
-        ): ExplorerTree {
-            val parentPath = change.parentPath ?: rootPath
+        private fun handleCreate(tree: ExplorerTree, rootPath: Path, path: Path): ExplorerTree {
+            val parentPath = path.parent ?: rootPath
 
-            val modifiedNode = buildNode(rootPath = rootPath, path = change.path) ?: return tree
+            val newNode = buildNode(rootPath = rootPath, path = path) ?: return tree
+
+            val currentChildren = tree.childrenByPath[parentPath.absolutePathString()] ?: emptyList()
+
+            val newChildren = when {
+                currentChildren.any { childNode -> childNode.path == path.absolutePathString() } -> currentChildren.map { childNode ->
+                    when {
+                        childNode.path == path.absolutePathString() -> newNode
+
+                        else -> childNode
+                    }
+                }
+
+                else -> currentChildren + newNode
+            }.toPersistentSet()
+
+            var newTree =
+                tree.copy(childrenByPath = tree.childrenByPath.put(parentPath.absolutePathString(), newChildren))
+
+            if (newNode is ExplorerNode.Directory) {
+                val parentDirectory = findDirectoryInTree(tree = tree, path = parentPath.absolutePathString())
+
+                if (parentDirectory != null && parentDirectory.expanded) {
+                    val expandedNewNode = newNode.copy(expanded = true)
+
+                    val newChildrenForParent = newChildren.map { childNode ->
+                        when {
+                            childNode.path == path.absolutePathString() -> expandedNewNode
+
+                            else -> childNode
+                        }
+                    }.toPersistentSet()
+
+                    val childrenOfNewNode = buildChildren(rootPath = rootPath, path = Path.of(expandedNewNode.path))
+
+                    newTree = newTree.copy(
+                        childrenByPath = newTree.childrenByPath.put(
+                            parentPath.absolutePathString(), newChildrenForParent
+                        ).put(expandedNewNode.path, childrenOfNewNode)
+                    )
+                }
+            }
+
+            return newTree
+        }
+
+        private fun handleModify(tree: ExplorerTree, rootPath: Path, path: Path): ExplorerTree {
+            val parentPath = path.parent.absolutePathString()
+
+            val modifiedNode = buildNode(rootPath = rootPath, path = path) ?: return tree
 
             val currentChildren = tree.childrenByPath[parentPath] ?: return tree
 
-            val oldNode = currentChildren.find { childNode -> childNode.path == change.path }
+            val oldNode = currentChildren.find { childNode -> childNode.path == path.absolutePathString() }
 
             val newChildren = currentChildren.map { node ->
                 when {
-                    node.path == change.path -> when {
+                    node.path == path.absolutePathString() -> when {
                         modifiedNode is ExplorerNode.Directory -> modifiedNode.copy(expanded = false)
 
                         else -> modifiedNode
@@ -276,13 +358,13 @@ internal interface ExplorerRepository : Closeable {
             var newChildrenByPath = tree.childrenByPath.put(parentPath, newChildren)
 
             if (modifiedNode is ExplorerNode.Directory) {
-                newChildrenByPath = newChildrenByPath.remove(change.path)
+                newChildrenByPath = newChildrenByPath.remove(path.absolutePathString())
 
                 val wasExpanded = oldNode is ExplorerNode.Directory && oldNode.expanded
 
                 if (wasExpanded) {
-                    val pathsToRemove = tree.childrenByPath.keys.filter { path ->
-                        path.startsWith(change.path) && path != change.path
+                    val pathsToRemove = tree.childrenByPath.keys.filter { pathToRemove ->
+                        pathToRemove.startsWith(path.absolutePathString()) && pathToRemove != path.absolutePathString()
                     }
 
                     pathsToRemove.forEach { path ->
@@ -294,168 +376,165 @@ internal interface ExplorerRepository : Closeable {
             return tree.copy(childrenByPath = newChildrenByPath)
         }
 
-        private fun handleDeleted(tree: ExplorerTree, change: FileSystemChange.Deleted): ExplorerTree {
-            val parentPath = change.parentPath ?: return tree
+        private fun handleDelete(tree: ExplorerTree, path: Path): ExplorerTree {
+            val parentPath = path.parent.absolutePathString()
 
             val currentChildren = tree.childrenByPath[parentPath] ?: return tree
 
-            val newChildren = currentChildren.filter { childNode -> childNode.path != change.path }.toPersistentSet()
+            val newChildren = currentChildren.filter { childNode ->
+                childNode.path != path.absolutePathString()
+            }.toPersistentSet()
 
             val newChildrenByPath = tree.childrenByPath.put(parentPath, newChildren)
 
             return tree.copy(childrenByPath = newChildrenByPath)
         }
 
-        override suspend fun openExplorer(path: String) = runCatching {
-            if (!explorerDataSource.exists(path).getOrThrow()) {
-                throw EditorException("Invalid path: $path - not a directory")
-            }
+        private fun handleOverflow(tree: ExplorerTree) = tree // TODO: handle overflow
 
-            job?.cancel()
+        private fun handleChange(tree: ExplorerTree, event: DirectoryChangeEvent) = when (event.eventType()) {
+            DirectoryChangeEvent.EventType.CREATE -> handleCreate(
+                tree = tree, rootPath = event.rootPath(), path = event.path()
+            )
 
-            _explorer.value = explorerDataSource.readData(path = path).getOrThrow() ?: Explorer(path = path)
+            DirectoryChangeEvent.EventType.MODIFY -> handleModify(
+                tree = tree, rootPath = event.rootPath(), path = event.path()
+            )
 
-            val root = with(Path(path)) {
-                ExplorerNode.Directory(
-                    name = name,
-                    path = path,
-                    parentPath = path,
-                    depth = 0,
-                    lastModified = getLastModifiedTime().toMillis(),
-                    expanded = false
-                )
-            }
+            DirectoryChangeEvent.EventType.DELETE -> handleDelete(tree = tree, path = event.path())
 
-            val rootChildren = buildChildren(rootPath = path, path = path)
-
-            val initialTree = ExplorerTree(root = root, childrenByPath = persistentMapOf(path to rootChildren))
-
-            _explorer.update { explorer ->
-                explorer?.copy(nodes = buildFlattened(tree = initialTree))
-            }
-
-            val changes = fileSystemService.observeDirectoryChanges(path = path).getOrThrow()
-
-            job = merge(operations, changes.map(ExplorerOperation::Change)).scan(initialTree) { tree, operation ->
-                when (operation) {
-                    is ExplorerOperation.Expand -> handleExpand(
-                        tree = tree, directory = operation.directory, rootPath = path
-                    )
-
-                    is ExplorerOperation.Collapse -> handleCollapse(tree = tree, directory = operation.directory)
-
-                    is ExplorerOperation.Change -> handleChange(
-                        tree = tree, change = operation.change, rootPath = path
-                    )
-                }
-            }.onEach { tree ->
-                _explorer.updateAndGet { explorer ->
-                    explorer?.copy(nodes = buildFlattened(tree = tree))
-                }?.let { explorer ->
-                    explorerDataSource.writeData(dataPath = explorer.path, data = explorer).getOrThrow()
-                }
-            }.launchIn(coroutineScope)
-        }
-
-        override suspend fun updateExplorer(explorer: Explorer) = runCatching {
-            explorerDataSource.writeData(dataPath = explorer.path, data = explorer).getOrThrow()
-
-            _explorer.value = explorer
-        }
-
-        override suspend fun closeExplorer() = runCatching {
-            job?.cancel()
-
-            job = null
-
-            _explorer.value = null
+            DirectoryChangeEvent.EventType.OVERFLOW -> handleOverflow(tree = tree)
         }
 
         override suspend fun expandDirectory(directory: ExplorerNode.Directory) = runCatching {
-            operations.emit(ExplorerOperation.Expand(directory))
+            _explorerTree.update { tree ->
+                tree?.let { tree ->
+                    val updatedTree = handleExpand(tree = tree, directory = directory)
+
+                    val expandedPaths = updatedTree.getExpandedPaths().toList()
+
+                    explorerSnapshotDataSource.update { snapshot ->
+                        snapshot.copy(expandedDirectoryPaths = expandedPaths)
+                    }.getOrThrow()
+
+                    updatedTree
+                }
+            }
         }
 
         override suspend fun collapseDirectory(directory: ExplorerNode.Directory) = runCatching {
-            operations.emit(ExplorerOperation.Collapse(directory))
+            _explorerTree.update { tree ->
+                tree?.let { tree ->
+                    val updatedTree = handleCollapse(tree = tree, directory = directory)
+
+                    val expandedPaths = updatedTree.getExpandedPaths().toList()
+
+                    explorerSnapshotDataSource.update { snapshot ->
+                        snapshot.copy(expandedDirectoryPaths = expandedPaths)
+                    }.getOrThrow()
+
+                    updatedTree
+                }
+            }
         }
 
         override suspend fun createFile(destination: ExplorerNode, name: String) = runCatching {
-            require(name.isNotBlank()) { "File name cannot be blank" }
-
-            require(!name.contains("/")) { "File name cannot contain path separators" }
-
-            val destinationPath = when (destination) {
+            val dstPath = when (destination) {
                 is ExplorerNode.File -> destination.parentPath
 
                 is ExplorerNode.Directory -> destination.path
             }
 
-            val path = Path(destinationPath, name).absolutePathString()
+            val path = Path.of(dstPath).resolve(name)
 
-            fileSystemService.createFile(path = path, bytes = byteArrayOf()).getOrThrow()
+            checkPathNotExists(path = path, overwrite = false)
+
+            path.createParentDirectories()
+
+            path.createFile()
+
+            checkPathExists(path = path)
         }
 
         override suspend fun createDirectory(destination: ExplorerNode, name: String) = runCatching {
-            require(name.isNotBlank()) { "Directory name cannot be blank" }
-
-            require(!name.contains("/")) { "Directory name cannot contain path separators" }
-
-            val destinationPath = when (destination) {
+            val dstPath = when (destination) {
                 is ExplorerNode.File -> destination.parentPath
 
                 is ExplorerNode.Directory -> destination.path
             }
 
-            val path = Path(destinationPath, name).absolutePathString()
+            val path = Path.of(dstPath).resolve(name)
 
-            fileSystemService.createDirectory(path = path).getOrThrow()
+            checkPathNotExists(path = path, overwrite = false)
+
+            path.createDirectories()
+
+            checkPathExists(path = path)
         }
 
         override suspend fun renameNode(node: ExplorerNode, name: String) = runCatching {
-            require(name.isNotBlank()) { "Name cannot be blank" }
+            val src = Path.of(node.path)
 
-            require(!name.contains("/")) { "Name cannot contain path separators" }
+            val dst = src.resolveSibling(name)
 
-            fileSystemService.rename(path = node.path, name = name).getOrThrow()
-        }
-
-        override suspend fun cutNodes(nodes: Set<ExplorerNode>) = runCatching {
-            clipboardRepository.cut(paths = nodes.map(ExplorerNode::path)).getOrThrow()
-        }
-
-        override suspend fun copyNodes(nodes: Set<ExplorerNode>) = runCatching {
-            clipboardRepository.copy(paths = nodes.map(ExplorerNode::path)).getOrThrow()
-        }
-
-        override suspend fun pasteNodes(destination: ExplorerNode) = runCatching {
-            val destinationPath = when (destination) {
-                is ExplorerNode.File -> destination.parentPath
-
-                is ExplorerNode.Directory -> destination.path
+            if (Files.isSameFile(src, dst)) {
+                return@runCatching
             }
 
-            clipboardRepository.paste(path = destinationPath).getOrThrow()
+            transfer(src = src, dst = dst, overwrite = false, copy = false)
         }
 
-        override suspend fun moveNodes(nodes: Set<ExplorerNode>, destination: ExplorerNode) = runCatching {
-            val destinationPath = when (destination) {
-                is ExplorerNode.File -> destination.parentPath
-
-                is ExplorerNode.Directory -> destination.path
-            }
-
+        override suspend fun copyNodes(
+            nodes: Set<ExplorerNode>, destination: ExplorerNode, overwrite: Boolean
+        ) = runCatching {
             nodes.forEach { node ->
-                val fromPath = node.path
+                val src = Path.of(node.path)
 
-                val toPath = Path(destinationPath, node.name).absolutePathString()
+                val dstPath = when (destination) {
+                    is ExplorerNode.File -> destination.parentPath
 
-                fileSystemService.move(fromPath = fromPath, toPath = toPath, overwrite = false).getOrThrow()
+                    is ExplorerNode.Directory -> destination.path
+                }
+
+                val dst = Path.of(dstPath).resolve(src.name)
+
+                transfer(src = src, dst = dst, overwrite = overwrite, copy = true)
+            }
+        }
+
+        override suspend fun moveNodes(
+            nodes: Set<ExplorerNode>, destination: ExplorerNode, overwrite: Boolean
+        ) = runCatching {
+            nodes.forEach { node ->
+                val src = Path.of(node.path)
+
+                val dstPath = when (destination) {
+                    is ExplorerNode.File -> destination.parentPath
+
+                    is ExplorerNode.Directory -> destination.path
+                }
+
+                val dst = Path.of(dstPath)
+
+                transfer(src = src, dst = dst, overwrite = overwrite, copy = false)
             }
         }
 
         override suspend fun deleteNodes(nodes: Set<ExplorerNode>) = runCatching {
             nodes.forEach { node ->
-                fileSystemService.delete(path = node.path).getOrThrow()
+                val path = Path.of(node.path)
+
+                checkPathExists(path = path)
+
+                when {
+                    path.isRegularFile() -> if (!path.toFile().delete()) {
+                        throw ExplorerException("Failed to delete '${path.absolutePathString()}' file")
+                    }
+
+                    path.isDirectory() -> if (!path.toFile().deleteRecursively()) {
+                        throw ExplorerException("Failed to delete '${path.absolutePathString()}' directory")
+                    }
+                }
             }
         }
 

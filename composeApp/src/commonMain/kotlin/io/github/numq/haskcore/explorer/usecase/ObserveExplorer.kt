@@ -5,10 +5,8 @@ import io.github.numq.haskcore.explorer.ExplorerRepository
 import io.github.numq.haskcore.usecase.UseCase
 import kotlinx.coroutines.flow.Flow
 
-internal class GetExplorer(
+internal class ObserveExplorer(
     private val explorerRepository: ExplorerRepository,
-) : UseCase<GetExplorer.Input, Flow<Explorer?>> {
-    data class Input(val path: String)
-
-    override suspend fun execute(input: Input) = Result.success(explorerRepository.explorer)
+) : UseCase<Unit, Flow<Explorer>> {
+    override suspend fun execute(input: Unit) = Result.success(explorerRepository.explorer)
 }

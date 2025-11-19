@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package haskcore.explorer;
+
+option java_package = "io.github.numq.haskcore.explorer";
+option java_multiple_files = true;
+
+message ExplorerNode {
+  message File {
+    string name = 1;
+    string path = 2;
+    string parent_path = 3;
+    int32 depth = 4;
+    int64 last_modified = 5;
+    string extension = 6;
+    string name_without_extension = 7;
+  }
+
+  message Directory {
+    string name = 1;
+    string path = 2;
+    string parent_path = 3;
+    int32 depth = 4;
+    int64 last_modified = 5;
+    bool expanded = 6;
+  }
+}
+
+message Explorer {
+  string path = 1;
+  repeated ExplorerNode nodes = 2;
+}
+
+message ExplorerNodeList {
+  repeated ExplorerNode nodes = 1;
+}
+
+message ExplorerTree {
+  ExplorerNode.Directory root = 1;
+  map<string, ExplorerNodeList> children_by_path = 2;
+}
+
+message ExplorerSnapshot {
+  repeated string expandedDirectoryPaths = 1;
+}

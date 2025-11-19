@@ -1,8 +1,5 @@
 package io.github.numq.haskcore.explorer
 
-import kotlinx.serialization.Serializable
-
-@Serializable
 internal sealed interface ExplorerNode {
     val name: String
 
@@ -14,17 +11,16 @@ internal sealed interface ExplorerNode {
 
     val lastModified: Long
 
-    @Serializable
     data class File(
         override val name: String,
         override val path: String,
         override val parentPath: String,
         override val depth: Int,
         override val lastModified: Long,
-        val extension: String
+        val extension: String,
+        val nameWithoutExtension: String
     ) : ExplorerNode
 
-    @Serializable
     data class Directory(
         override val name: String,
         override val path: String,

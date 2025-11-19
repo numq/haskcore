@@ -1,69 +1,86 @@
 package io.github.numq.haskcore.explorer
 
+import androidx.datastore.core.DataStoreFactory
 import io.github.numq.haskcore.explorer.presentation.ExplorerFeature
 import io.github.numq.haskcore.explorer.presentation.ExplorerState
-import io.github.numq.haskcore.explorer.presentation.reducer.*
+import io.github.numq.haskcore.explorer.presentation.reducer.ExplorerOperationReducer
+import io.github.numq.haskcore.explorer.presentation.reducer.ExplorerReducer
+import io.github.numq.haskcore.explorer.presentation.reducer.ExplorerSelectionReducer
 import io.github.numq.haskcore.explorer.usecase.*
 import io.github.numq.haskcore.feature.factory.CommandStrategy
 import io.github.numq.haskcore.feature.factory.FeatureFactory
+import io.github.numq.haskcore.workspace.WorkspaceScopeQualifier
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import org.koin.dsl.bind
 import org.koin.dsl.module
 import org.koin.dsl.onClose
+import java.nio.file.Files
+import java.nio.file.Path
 
+@OptIn(DelicateCoroutinesApi::class)
 internal val explorerModule = module {
-    single { ExplorerDataSource() }
+    scope(WorkspaceScopeQualifier) {
+        scoped {
+            val workspacePath = get<String>()
 
-    single {
-        ExplorerRepository.Default(
-            explorerDataSource = get(), clipboardRepository = get(), fileSystemService = get()
-        )
-    } bind ExplorerRepository::class onClose { it?.close() }
+            val dataStore = DataStoreFactory.create(serializer = ExplorerSnapshotSerializer, produceFile = {
+                Path.of(workspacePath, ".haskcore").also { dir ->
+                    Files.createDirectories(dir)
+                }.resolve("explorer.pb").toFile()
+            })
 
-    single { CollapseExplorerNode(explorerRepository = get()) }
+            ExplorerSnapshotDataSource.Default(dataStore = dataStore)
+        } bind ExplorerSnapshotDataSource::class
 
-    single { CopyExplorerNodes(explorerRepository = get()) }
+        scoped {
+            val workspacePath = get<String>()
 
-    single { CreateExplorerNode(explorerRepository = get()) }
+            ExplorerRepository.Default(rootPath = workspacePath, explorerSnapshotDataSource = get())
+        } bind ExplorerRepository::class
 
-    single { CutExplorerNodes(explorerRepository = get()) }
+        scoped { CollapseExplorerNode(explorerRepository = get()) }
 
-    single { DeleteExplorerNodes(explorerRepository = get()) }
+        scoped { CopyExplorerNodes(clipboardRepository = get()) }
 
-    single { ExpandExplorerNode(explorerRepository = get()) }
+        scoped { CreateExplorerNode(explorerRepository = get()) }
 
-    single { GetExplorer(explorerRepository = get()) }
+        scoped { CutExplorerNodes(explorerRepository = get()) }
 
-    single { MoveExplorerNodes(explorerRepository = get()) }
+        scoped { DeleteExplorerNodes(explorerRepository = get()) }
 
-    single { OpenExplorer(explorerRepository = get()) }
+        scoped { ExpandExplorerNode(explorerRepository = get()) }
 
-    single { PasteExplorerNodes(explorerRepository = get()) }
+        scoped { MoveExplorerNodes(explorerRepository = get()) }
 
-    single { RenameExplorerNode(explorerRepository = get()) }
+        scoped { ObserveExplorer(explorerRepository = get()) }
 
-    single { (path: String) ->
-        ExplorerFeature(
-            path = path, feature = FeatureFactory().create(
-                initialState = ExplorerState(), reducer = ExplorerReducer(
-                    getExplorer = get(),
-                    openExplorer = get(),
-                    explorerContextMenuReducer = ExplorerContextMenuReducer(),
-                    explorerDialogReducer = ExplorerDialogReducer(),
-                    explorerOperationReducer = ExplorerOperationReducer(
-                        collapseExplorerNode = get(),
-                        copyExplorerNodes = get(),
-                        createExplorerNode = get(),
-                        cutExplorerNodes = get(),
-                        deleteExplorerNodes = get(),
-                        expandExplorerNode = get(),
-                        moveExplorerNodes = get(),
-                        pasteExplorerNodes = get(),
-                        renameExplorerNode = get(),
-                        openDocument = get(),
-                    ),
-                    explorerSelectionReducer = ExplorerSelectionReducer(),
-                ), strategy = CommandStrategy.Immediate
+        scoped { PasteExplorerNodes(explorerRepository = get()) }
+
+        scoped { RenameExplorerNode(explorerRepository = get()) }
+
+        scoped {
+            ExplorerFeature(
+                feature = FeatureFactory().create(
+                    initialState = ExplorerState(), reducer = ExplorerReducer(
+                        observeExplorer = get(),
+                        explorerOperationReducer = ExplorerOperationReducer(
+                            collapseExplorerNode = get(),
+                            copyExplorerNodes = get(),
+                            createExplorerNode = get(),
+                            cutExplorerNodes = get(),
+                            deleteExplorerNodes = get(),
+                            expandExplorerNode = get(),
+                            moveExplorerNodes = get(),
+                            pasteExplorerNodes = get(),
+                            renameExplorerNode = get(),
+                            openDocument = get(),
+                        ),
+                        explorerSelectionReducer = ExplorerSelectionReducer(),
+                    ), strategy = CommandStrategy.Immediate
+                )
             )
-        )
+        } onClose { GlobalScope.launch { it?.close() } }
     }
 }
