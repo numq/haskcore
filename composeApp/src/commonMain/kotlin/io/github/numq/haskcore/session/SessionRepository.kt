@@ -1,29 +1,19 @@
 package io.github.numq.haskcore.session
 
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.stateIn
-import java.io.Closeable
+import kotlinx.coroutines.flow.Flow
 
-internal interface SessionRepository : Closeable {
-    val session: StateFlow<Session>
+internal interface SessionRepository {
+    val session: Flow<Session>
 
-    suspend fun updateSession(session: Session): Result<Unit>
+    suspend fun getSession(): Result<Session?>
+
+    suspend fun updateSession(transform: (Session) -> Session): Result<Session>
 
     class Default(private val sessionDataSource: SessionDataSource) : SessionRepository {
-        private val coroutineScope = CoroutineScope(Dispatchers.Default)
+        override val session = sessionDataSource.session
 
-        override val session = sessionDataSource.session.stateIn(
-            scope = coroutineScope,
-            started = SharingStarted.Lazily,
-            initialValue = Session()
-        )
+        override suspend fun getSession() = sessionDataSource.get()
 
-        override suspend fun updateSession(session: Session) = sessionDataSource.update(session = session)
-
-        override fun close() = coroutineScope.cancel()
+        override suspend fun updateSession(transform: (Session) -> Session) = sessionDataSource.update(transform)
     }
 }

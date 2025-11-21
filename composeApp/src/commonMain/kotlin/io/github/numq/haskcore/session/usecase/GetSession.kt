@@ -6,6 +6,6 @@ import io.github.numq.haskcore.usecase.UseCase
 
 internal class GetSession(
     private val sessionRepository: SessionRepository
-) : UseCase<Unit, Session> {
-    override suspend fun execute(input: Unit) = Result.success(sessionRepository.session.value)
+) : UseCase<Unit, Session?> {
+    override suspend fun execute(input: Unit) = sessionRepository.getSession()
 }
