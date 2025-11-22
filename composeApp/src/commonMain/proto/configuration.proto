@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package haskcore.configuration;
+
+option java_package = "io.github.numq.haskcore.configuration";
+option java_multiple_files = true;
+
+message Configuration {
+  string id = 1;
+  string path = 2;
+  string name = 3;
+  string command = 4;
+}
+
+message ConfigurationList {
+  repeated Configuration configurations = 1;
+}
