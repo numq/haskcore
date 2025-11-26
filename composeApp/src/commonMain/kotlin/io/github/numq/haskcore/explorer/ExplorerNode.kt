@@ -1,11 +1,13 @@
 package io.github.numq.haskcore.explorer
 
 internal sealed interface ExplorerNode {
-    val name: String
-
     val path: String
 
+    val name: String
+
     val parentPath: String
+
+    val parentName: String
 
     val depth: Int
 
@@ -15,6 +17,7 @@ internal sealed interface ExplorerNode {
         override val name: String,
         override val path: String,
         override val parentPath: String,
+        override val parentName: String,
         override val depth: Int,
         override val lastModified: Long,
         val extension: String,
@@ -25,6 +28,7 @@ internal sealed interface ExplorerNode {
         override val name: String,
         override val path: String,
         override val parentPath: String,
+        override val parentName: String,
         override val depth: Int,
         override val lastModified: Long,
         val expanded: Boolean

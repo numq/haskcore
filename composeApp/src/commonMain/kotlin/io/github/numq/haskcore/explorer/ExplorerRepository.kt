@@ -55,6 +55,8 @@ internal interface ExplorerRepository : Closeable {
         }.buffer(Channel.UNLIMITED).distinctUntilChanged().flowOn(Dispatchers.IO)
 
         override val explorer = flow {
+            checkDirectory(Path.of(rootPath))
+
             emit(Explorer.Loading)
 
             _explorerTree.collect { tree ->
@@ -145,9 +147,10 @@ internal interface ExplorerRepository : Closeable {
 
             return with(path) {
                 ExplorerNode.File(
-                    name = name,
                     path = absolutePathString(),
+                    name = name,
                     parentPath = parent.absolutePathString(),
+                    parentName = parent.name,
                     depth = depth,
                     lastModified = lastModified,
                     extension = extension,
@@ -169,9 +172,10 @@ internal interface ExplorerRepository : Closeable {
 
             return with(path) {
                 ExplorerNode.Directory(
-                    name = name,
                     path = absolutePathString(),
+                    name = name,
                     parentPath = parent.absolutePathString(),
+                    parentName = parent.name,
                     depth = depth,
                     lastModified = lastModified,
                     expanded = false

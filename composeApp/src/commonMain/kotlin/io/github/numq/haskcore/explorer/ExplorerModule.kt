@@ -3,7 +3,6 @@ package io.github.numq.haskcore.explorer
 import androidx.datastore.core.DataStoreFactory
 import io.github.numq.haskcore.explorer.presentation.ExplorerFeature
 import io.github.numq.haskcore.explorer.presentation.ExplorerState
-import io.github.numq.haskcore.explorer.presentation.reducer.ExplorerOperationReducer
 import io.github.numq.haskcore.explorer.presentation.reducer.ExplorerReducer
 import io.github.numq.haskcore.explorer.presentation.reducer.ExplorerSelectionReducer
 import io.github.numq.haskcore.explorer.usecase.*
@@ -64,20 +63,18 @@ internal val explorerModule = module {
             ExplorerFeature(
                 feature = FeatureFactory().create(
                     initialState = ExplorerState(), reducer = ExplorerReducer(
-                        observeExplorer = get(),
-                        explorerOperationReducer = ExplorerOperationReducer(
-                            collapseExplorerNode = get(),
-                            copyExplorerNodes = get(),
-                            createExplorerNode = get(),
-                            cutExplorerNodes = get(),
-                            deleteExplorerNodes = get(),
-                            expandExplorerNode = get(),
-                            moveExplorerNodes = get(),
-                            pasteExplorerNodes = get(),
-                            renameExplorerNode = get(),
-                            openDocument = get(),
-                        ),
                         explorerSelectionReducer = ExplorerSelectionReducer(),
+                        observeExplorer = get(),
+                        collapseExplorerNode = get(),
+                        copyExplorerNodes = get(),
+                        createExplorerNode = get(),
+                        cutExplorerNodes = get(),
+                        deleteExplorerNodes = get(),
+                        expandExplorerNode = get(),
+                        moveExplorerNodes = get(),
+                        pasteExplorerNodes = get(),
+                        renameExplorerNode = get(),
+                        openDocument = get()
                     ), strategy = CommandStrategy.Immediate
                 )
             )
