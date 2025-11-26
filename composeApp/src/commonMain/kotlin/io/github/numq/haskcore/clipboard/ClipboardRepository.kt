@@ -1,12 +1,9 @@
 package io.github.numq.haskcore.clipboard
 
-import io.github.numq.haskcore.filesystem.FileSystemService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlin.io.path.Path
-import kotlin.io.path.absolutePathString
-import kotlin.io.path.name
+import kotlinx.coroutines.flow.update
 
 internal interface ClipboardRepository {
     val clipboard: StateFlow<Clipboard>
@@ -17,11 +14,9 @@ internal interface ClipboardRepository {
 
     suspend fun paste(path: String): Result<Unit>
 
-    suspend fun removeFromClipboard(path: String): Result<Unit>
-
     suspend fun clearClipboard(): Result<Unit>
 
-    class Default(private val fileSystemService: FileSystemService) : ClipboardRepository {
+    class Default() : ClipboardRepository {
         private val _clipboard = MutableStateFlow<Clipboard>(Clipboard.Empty)
 
         override val clipboard = _clipboard.asStateFlow()
@@ -35,41 +30,11 @@ internal interface ClipboardRepository {
         }
 
         override suspend fun paste(path: String) = runCatching {
-            when (val clipboard = clipboard.value) {
-                is Clipboard.Empty -> return@runCatching
+            _clipboard.update { clipboard ->
+                when (clipboard) {
+                    is Clipboard.Empty, is Clipboard.Copy -> clipboard
 
-                is Clipboard.Cut -> {
-                    clipboard.paths.forEach { fromPath ->
-                        val toPath = Path(path, Path(fromPath).name).absolutePathString()
-
-                        fileSystemService.move(fromPath = fromPath, toPath = toPath, overwrite = false).getOrThrow()
-                    }
-
-                    _clipboard.value = Clipboard.Empty
-                }
-
-                is Clipboard.Copy -> clipboard.paths.forEach { fromPath ->
-                    val toPath = Path(path, Path(fromPath).name).absolutePathString()
-
-                    fileSystemService.copy(fromPath = fromPath, toPath = toPath, overwrite = false).getOrThrow()
-                }
-            }
-        }
-
-        override suspend fun removeFromClipboard(path: String) = runCatching {
-            _clipboard.value = when (val clipboard = clipboard.value) {
-                is Clipboard.Empty -> clipboard
-
-                is Clipboard.Cut -> when {
-                    clipboard.paths.size > 1 -> clipboard.copy(paths = clipboard.paths - path)
-
-                    else -> Clipboard.Empty
-                }
-
-                is Clipboard.Copy -> when {
-                    clipboard.paths.size > 1 -> clipboard.copy(paths = clipboard.paths - path)
-
-                    else -> Clipboard.Empty
+                    is Clipboard.Cut -> Clipboard.Empty
                 }
             }
         }
