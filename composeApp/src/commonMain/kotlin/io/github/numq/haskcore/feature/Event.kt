@@ -5,7 +5,7 @@ import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlin.coroutines.cancellation.CancellationException
 
-interface Event {
+internal interface Event {
     val payload: Any?
 
     val timestamp: Timestamp

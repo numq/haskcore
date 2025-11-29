@@ -3,7 +3,7 @@ package io.github.numq.haskcore.feature.metrics
 import io.github.numq.haskcore.feature.Feature
 import kotlin.time.TimeSource
 
-class MetricsFeature<Command, State>(
+internal class MetricsFeature<Command, State>(
     private val feature: Feature<Command, State>, private val metricsCollector: MetricsCollector<Command>
 ) : Feature<Command, State> by feature {
     override suspend fun execute(command: Command) {

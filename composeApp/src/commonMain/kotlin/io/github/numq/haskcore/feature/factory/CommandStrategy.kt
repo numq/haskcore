@@ -1,6 +1,6 @@
 package io.github.numq.haskcore.feature.factory
 
-sealed interface CommandStrategy {
+internal sealed interface CommandStrategy {
     data object Immediate : CommandStrategy
 
     sealed interface Channel : CommandStrategy {

@@ -10,7 +10,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlin.coroutines.CoroutineContext
 
-class FeatureFactory {
+internal class FeatureFactory {
     fun <Command, State> create(
         initialState: State,
         reducer: Reducer<Command, State>,

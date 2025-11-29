@@ -9,7 +9,7 @@ import kotlin.concurrent.Volatile
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
-abstract class BaseCommandProcessor<Command>(
+internal abstract class BaseCommandProcessor<Command>(
     private val debounceMillis: Long?,
     private val timeoutMillis: Long?,
 ) : CommandProcessor<Command> {
