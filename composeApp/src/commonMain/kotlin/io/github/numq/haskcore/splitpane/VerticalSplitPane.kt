@@ -1,4 +1,4 @@
-package io.github.numq.haskcore.split
+package io.github.numq.haskcore.splitpane
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -7,7 +7,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.WindowScope
 
 @Composable
-fun WindowScope.HorizontalSplitPane(
+fun WindowScope.VerticalSplitPane(
     percentage: Float,
     onPercentageChange: (Float) -> Unit,
     modifier: Modifier,
@@ -15,10 +15,10 @@ fun WindowScope.HorizontalSplitPane(
     minPercentage: Float = 0f,
     maxPercentage: Float = 1f,
     enabled: Boolean = true,
-    first: @Composable (size: Dp) -> Unit,
-    second: @Composable (size: Dp) -> Unit,
+    first: @Composable () -> Unit,
+    second: @Composable () -> Unit
 ) = SplitPane(
-    orientation = SplitPaneOrientation.HORIZONTAL,
+    orientation = SplitPaneOrientation.VERTICAL,
     percentage = percentage,
     onPercentageChange = onPercentageChange,
     modifier = modifier,
