@@ -1,11 +1,11 @@
-package io.github.numq.haskcore.buildsystem
+package io.github.numq.haskcore.toolchain
 
-internal abstract class BuildSystemVersion {
-    abstract val major: Int
+internal abstract class ToolchainVersion {
+    protected abstract val major: Int
 
-    abstract val minor: Int
+    protected abstract val minor: Int
 
-    abstract val patch: Int
+    protected abstract val patch: Int
 
     init {
         require(major >= 0) { "Major version must be non-negative" }
@@ -17,7 +17,7 @@ internal abstract class BuildSystemVersion {
 
     override fun toString() = "$major.$minor.$patch"
 
-    open fun compareTo(other: BuildSystemVersion): Int {
+    open fun compareTo(other: ToolchainVersion): Int {
         require(this::class == other::class) { "Cannot compare different version types" }
 
         return when {
