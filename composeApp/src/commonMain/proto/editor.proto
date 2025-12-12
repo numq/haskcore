@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package haskcore.editor;
+
+option java_package = "io.github.numq.haskcore.editor";
+option java_multiple_files = true;
+
+import "timestamp.proto";
+
+message CaretPosition {
+  int32 line = 1;
+  int32 column = 2;
+  CaretPosition selection_start = 3;
+  CaretPosition selection_end = 4;
+}
+
+message Document {
+  message ReadOnly {
+    string id = 1;
+    string path = 2;
+    string name = 3;
+    string content = 4;
+    timestamp.Timestamp opened_at = 5;
+  }
+
+  message Writable {
+    string id = 1;
+    string path = 2;
+    string name = 3;
+    string content = 4;
+    timestamp.Timestamp opened_at = 5;
+    timestamp.Timestamp modified_at = 6;
+    CaretPosition caret_position = 7;
+    bool is_modified = 8;
+  }
+}
+
+message Editor {
+  repeated Document documents = 1;
+  Document active_document = 2;
+}

@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package haskcore.workspace;
+
+option java_package = "io.github.numq.haskcore.workspace";
+option java_multiple_files = true;
+
+import "timestamp.proto";
+
+message Workspace {
+  message None {
+
+  }
+
+  message Loading {
+
+  }
+
+  message Loaded {
+    string path = 1;
+    string name = 2;
+    timestamp.Timestamp created_at = 3;
+    timestamp.Timestamp updated_at = 4;
+    timestamp.Timestamp opened_at = 5;
+  }
+}
