@@ -5,8 +5,13 @@ import io.github.numq.haskcore.feature.factory.FeatureFactory
 import io.github.numq.haskcore.toolbar.presentation.ToolbarFeature
 import io.github.numq.haskcore.toolbar.presentation.ToolbarReducer
 import io.github.numq.haskcore.toolbar.presentation.ToolbarState
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import org.koin.dsl.module
+import org.koin.dsl.onClose
 
+@OptIn(DelicateCoroutinesApi::class)
 internal val toolbarModule = module {
     single { (minimizeWindow: () -> Unit, toggleFullscreen: () -> Unit, exitApplication: () -> Unit) ->
         ToolbarFeature(
@@ -19,5 +24,5 @@ internal val toolbarModule = module {
                 ), strategy = CommandStrategy.Immediate
             )
         )
-    }
+    } onClose { GlobalScope.launch { it?.close() } }
 }

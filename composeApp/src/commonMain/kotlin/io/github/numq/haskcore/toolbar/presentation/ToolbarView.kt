@@ -1,8 +1,8 @@
 package io.github.numq.haskcore.toolbar.presentation
 
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowRight
 import androidx.compose.material.icons.filled.Close
@@ -15,36 +15,35 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.WindowScope
-import io.github.numq.haskcore.configuration.presentation.ConfigurationView
+import androidx.compose.ui.window.WindowPlacement
 import io.github.numq.haskcore.toolbar.presentation.menu.ToolbarMenu
 import io.github.numq.haskcore.workspace.Workspace
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import org.koin.compose.koinInject
-import org.koin.core.parameter.parametersOf
 import javax.swing.JFileChooser
 
+@OptIn(ExperimentalComposeUiApi::class, ExperimentalFoundationApi::class)
 @Composable
-internal fun WindowScope.ToolbarView(feature: ToolbarFeature) {
+internal fun ToolbarView(
+    feature: ToolbarFeature,
+    windowPlacement: WindowPlacement,
+    configurationContent: @Composable () -> Unit
+) {
     val coroutineScope = rememberCoroutineScope()
 
     val state by feature.state.collectAsState()
 
     Row(
-        modifier = Modifier.combinedClickable(enabled = false, onDoubleClick = {
-            coroutineScope.launch {
-                feature.execute(ToolbarCommand.ToggleFullscreen)
-            }
-        }, onClick = {}).fillMaxWidth().padding(4.dp),
+        modifier = Modifier.fillMaxWidth().height(48.dp),
         horizontalArrangement = Arrangement.spacedBy(space = 4.dp, alignment = Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(modifier = Modifier.wrapContentSize(Alignment.TopStart)) {
+        Box(modifier = Modifier.wrapContentSize(Alignment.TopStart).padding(4.dp)) {
             TextButton(onClick = {
                 coroutineScope.launch {
                     val command = when (state.menu) {
@@ -56,15 +55,23 @@ internal fun WindowScope.ToolbarView(feature: ToolbarFeature) {
                     feature.execute(command)
                 }
             }) {
-                Text(text = "Workspace", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text = "Workspace",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.titleMedium
+                )
             }
 
             DropdownMenu(
-                expanded = state.menu is ToolbarMenu.Workspace, onDismissRequest = {
+                expanded = state.menu is ToolbarMenu.Workspace,
+                onDismissRequest = {
                     coroutineScope.launch {
                         feature.execute(ToolbarCommand.CloseMenu)
                     }
-                }, modifier = Modifier.width(256.dp), offset = DpOffset(x = 0.dp, y = 4.dp)
+                },
+                modifier = Modifier.width(256.dp),
+                offset = DpOffset(x = 0.dp, y = 4.dp),
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
             ) {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
@@ -99,38 +106,31 @@ internal fun WindowScope.ToolbarView(feature: ToolbarFeature) {
                     })
 
                     Box(modifier = Modifier.wrapContentSize(Alignment.TopStart)) {
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    text = "Recent Workspaces",
-                                    color = MaterialTheme.colorScheme.onSurface.copy(
-                                        alpha = if (state.recentWorkspaces.isNotEmpty()) 1f else .38f
-                                    ),
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                            },
-                            onClick = {
-                                coroutineScope.launch {
-                                    val command = when (state.menu) {
-                                        ToolbarMenu.Workspace.Root -> ToolbarCommand.OpenMenu(menu = ToolbarMenu.Workspace.RecentWorkspaces)
+                        DropdownMenuItem(text = {
+                            Text(
+                                text = "Recent Workspaces", color = MaterialTheme.colorScheme.onSurface.copy(
+                                    alpha = if (state.recentWorkspaces.isNotEmpty()) 1f else .38f
+                                ), style = MaterialTheme.typography.bodyMedium
+                            )
+                        }, onClick = {
+                            coroutineScope.launch {
+                                val command = when (state.menu) {
+                                    ToolbarMenu.Workspace.Root -> ToolbarCommand.OpenMenu(menu = ToolbarMenu.Workspace.RecentWorkspaces)
 
-                                        ToolbarMenu.Workspace.RecentWorkspaces -> ToolbarCommand.OpenMenu(menu = ToolbarMenu.Workspace.Root)
+                                    ToolbarMenu.Workspace.RecentWorkspaces -> ToolbarCommand.OpenMenu(menu = ToolbarMenu.Workspace.Root)
 
-                                        else -> ToolbarCommand.CloseMenu
-                                    }
-
-                                    feature.execute(command)
+                                    else -> ToolbarCommand.CloseMenu
                                 }
-                            },
-                            enabled = state.recentWorkspaces.isNotEmpty(),
-                            trailingIcon = {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ArrowRight,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp)
-                                )
+
+                                feature.execute(command)
                             }
-                        )
+                        }, enabled = state.recentWorkspaces.isNotEmpty(), trailingIcon = {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowRight,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        })
 
                         DropdownMenu(
                             expanded = state.menu is ToolbarMenu.Workspace.RecentWorkspaces,
@@ -140,7 +140,8 @@ internal fun WindowScope.ToolbarView(feature: ToolbarFeature) {
                                 }
                             },
                             modifier = Modifier.width(256.dp),
-                            offset = DpOffset(x = 256.dp, y = (-56).dp)
+                            offset = DpOffset(x = 256.dp, y = (-56).dp),
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
                         ) {
                             state.recentWorkspaces.forEach { recentWorkspace ->
                                 DropdownMenuItem(
@@ -168,11 +169,9 @@ internal fun WindowScope.ToolbarView(feature: ToolbarFeature) {
 
                     DropdownMenuItem(text = {
                         Text(
-                            text = "Close Workspace",
-                            color = MaterialTheme.colorScheme.onSurface.copy(
+                            text = "Close Workspace", color = MaterialTheme.colorScheme.onSurface.copy(
                                 alpha = if (state.activeWorkspace is Workspace.Loaded) 1f else .38f
-                            ),
-                            style = MaterialTheme.typography.bodyMedium
+                            ), style = MaterialTheme.typography.bodyMedium
                         )
                     }, onClick = {
                         coroutineScope.launch {
@@ -188,44 +187,40 @@ internal fun WindowScope.ToolbarView(feature: ToolbarFeature) {
             horizontalArrangement = Arrangement.spacedBy(space = 4.dp, alignment = Alignment.End),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
-                (state.activeWorkspace as? Workspace.Loaded)?.path?.let { workspacePath ->
-                    ConfigurationView(feature = koinInject {
-                        parametersOf(workspacePath)
-                    })
-                }
+            Box(modifier = Modifier.weight(1f).padding(4.dp), contentAlignment = Alignment.CenterEnd) {
+                configurationContent()
             }
 
-            FilledIconButton(onClick = {
+            Box(modifier = Modifier.clickable {
                 coroutineScope.launch {
                     feature.execute(ToolbarCommand.MinimizeWindow)
                 }
-            }, shape = CircleShape) {
+            }.fillMaxHeight().aspectRatio(1f), contentAlignment = Alignment.Center) {
                 Icon(
-                    imageVector = Icons.Filled.Minimize, contentDescription = null, modifier = Modifier.size(16.dp)
+                    imageVector = Icons.Default.Minimize, contentDescription = null, modifier = Modifier.size(16.dp)
                 )
             }
 
-            FilledIconButton(onClick = {
+            Box(modifier = Modifier.clickable {
                 coroutineScope.launch {
                     feature.execute(ToolbarCommand.ToggleFullscreen)
                 }
-            }, shape = CircleShape) {
+            }.fillMaxHeight().aspectRatio(1f), contentAlignment = Alignment.Center) {
                 Icon(
-                    imageVector = when {
-                        window.isMaximumSizeSet -> Icons.Filled.FullscreenExit
+                    imageVector = when (windowPlacement) {
+                        WindowPlacement.Floating -> Icons.Default.Fullscreen
 
-                        else -> Icons.Filled.Fullscreen
+                        else -> Icons.Default.FullscreenExit
                     }, contentDescription = null, modifier = Modifier.size(16.dp)
                 )
             }
 
-            FilledIconButton(onClick = {
+            Box(modifier = Modifier.clickable {
                 coroutineScope.launch {
                     feature.execute(ToolbarCommand.ExitApplication)
                 }
-            }, shape = CircleShape) {
-                Icon(imageVector = Icons.Filled.Close, contentDescription = null, modifier = Modifier.size(16.dp))
+            }.fillMaxHeight().aspectRatio(1f), contentAlignment = Alignment.Center) {
+                Icon(imageVector = Icons.Default.Close, contentDescription = null, modifier = Modifier.size(16.dp))
             }
         }
     }
