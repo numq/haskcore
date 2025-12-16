@@ -1,6 +1,5 @@
 package io.github.numq.haskcore.buildsystem
 
-import io.github.numq.haskcore.buildsystem.exception.BuildSystemException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.callbackFlow
@@ -11,8 +10,8 @@ import kotlinx.coroutines.withContext
 import java.nio.file.Path
 import kotlin.time.Duration.Companion.milliseconds
 
-internal open class BuildSystemService {
-    fun executeBuildCommand(command: BuildCommand) = runCatching {
+internal abstract class BuildSystemService<Command : BuildCommand> {
+    fun execute(command: Command) = runCatching {
         callbackFlow {
             val startTime = System.currentTimeMillis()
 
