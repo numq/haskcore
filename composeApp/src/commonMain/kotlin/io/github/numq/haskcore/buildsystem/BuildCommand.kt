@@ -1,9 +1,7 @@
 package io.github.numq.haskcore.buildsystem
 
-import io.github.numq.haskcore.buildsystem.exception.BuildSystemException
-import kotlinx.serialization.Serializable
+import io.github.numq.haskcore.buildsystem.stack.StackTemplate
 
-@Serializable
 internal sealed interface BuildCommand {
     companion object {
         private fun parseStackCommand(path: String, arguments: List<String>) = when (arguments.first().lowercase()) {
@@ -74,86 +72,83 @@ internal sealed interface BuildCommand {
 
     val arguments: List<String>
 
-    @Serializable
     sealed interface Stack : BuildCommand {
         override val command get() = listOf("stack")
 
-        @Serializable
+        data class New(override val path: String, val bare: Boolean = false, val template: StackTemplate? = null) :
+            Stack {
+            override val arguments = buildList {
+                add("new")
+
+                if (bare) add("--bare")
+
+                if (template != null) add(template.title)
+            }
+        }
+
         data class Build(override val path: String) : Stack {
             override val arguments = listOf("build")
         }
 
-        @Serializable
         data class Test(override val path: String) : Stack {
             override val arguments = listOf("test")
         }
 
-        @Serializable
         data class Run(override val path: String) : Stack {
             override val arguments = listOf("run")
         }
 
-        @Serializable
         data class Clean(override val path: String) : Stack {
             override val arguments = listOf("clean")
         }
 
-        @Serializable
         data class Custom(override val path: String, override val arguments: List<String>) : Stack
     }
 
-    @Serializable
     sealed interface Cabal : BuildCommand {
         override val command get() = listOf("stack", "exec", "cabal")
 
-        @Serializable
+        data class Init(override val path: String) : Cabal {
+            override val arguments = listOf("init")
+        }
+
         data class Build(override val path: String) : Cabal {
             override val arguments = listOf("build")
         }
 
-        @Serializable
         data class Test(override val path: String) : Cabal {
             override val arguments = listOf("test")
         }
 
-        @Serializable
         data class Run(override val path: String) : Cabal {
             override val arguments = listOf("run")
         }
 
-        @Serializable
         data class Clean(override val path: String) : Cabal {
             override val arguments = listOf("clean")
         }
 
-        @Serializable
         data class Custom(override val path: String, override val arguments: List<String>) : Cabal
     }
 
-    @Serializable
     sealed interface Ghc : BuildCommand {
         override val command get() = listOf("stack", "exec", "ghc")
 
-        @Serializable
         data class Compile(override val path: String) : Ghc {
             override val arguments = listOf("compile")
         }
 
-        @Serializable
         data class Run(override val path: String) : Ghc {
             override val arguments = listOf("run")
         }
 
-        @Serializable
         data class Custom(override val path: String, override val arguments: List<String>) : Ghc
     }
 
-    @Serializable
     data class RunHaskell(override val path: String, override val arguments: List<String>) : BuildCommand {
         override val command get() = listOf("stack", "exec", "runhaskell")
     }
 
-    @Serializable
     data class Custom(
         override val path: String, override val command: List<String>, override val arguments: List<String>
     ) : BuildCommand
