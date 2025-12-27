@@ -13,9 +13,7 @@ internal sealed interface BuildStatus {
         override val timestamp = Timestamp.now()
     }
 
-    data class Synchronized(
-        val path: String, val targets: List<BuildTarget>, val versions: BuildSystemVersions
-    ) : BuildStatus {
+    data class Synchronized(val path: String, val targets: List<BuildTarget>) : BuildStatus {
         override val timestamp = Timestamp.now()
     }
 
