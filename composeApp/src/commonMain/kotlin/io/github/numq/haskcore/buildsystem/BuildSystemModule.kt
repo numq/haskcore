@@ -1,25 +1,25 @@
 package io.github.numq.haskcore.buildsystem
 
 import io.github.numq.haskcore.buildsystem.cabal.CabalBuildSystemService
+import io.github.numq.haskcore.buildsystem.custom.CustomBuildSystemService
 import io.github.numq.haskcore.buildsystem.ghc.GhcBuildSystemService
 import io.github.numq.haskcore.buildsystem.runhaskell.RunHaskellBuildSystemService
 import io.github.numq.haskcore.buildsystem.stack.StackBuildSystemService
 import io.github.numq.haskcore.buildsystem.usecase.ObserveBuildStatus
-import io.github.numq.haskcore.buildsystem.usecase.SynchronizeBuildSystem
 import org.koin.dsl.bind
 import org.koin.dsl.module
 import org.koin.dsl.onClose
 
 internal val buildSystemModule = module {
-    single { BuildSystemService() }
+    single { CustomBuildSystemService() }
 
-    single { CabalBuildSystemService.Default() } bind CabalBuildSystemService::class
+    single { CabalBuildSystemService() }
 
-    single { GhcBuildSystemService.Default() } bind GhcBuildSystemService::class
+    single { GhcBuildSystemService() }
 
-    single { RunHaskellBuildSystemService.Default() } bind RunHaskellBuildSystemService::class
+    single { RunHaskellBuildSystemService() }
 
-    single { StackBuildSystemService.Default() } bind StackBuildSystemService::class
+    single { StackBuildSystemService() }
 
     single {
         BuildSystemRepository.Default(
@@ -27,15 +27,12 @@ internal val buildSystemModule = module {
             cabalBuildSystemService = get(),
             ghcBuildSystemService = get(),
             runHaskellBuildSystemService = get(),
-            stackBuildSystemService = get()
+            stackBuildSystemService = get(),
+            cabalService = get(),
+            ghcService = get(),
+            stackService = get()
         )
     } bind BuildSystemRepository::class onClose { it?.close() }
 
-    single {
-        ObserveBuildStatus(buildSystemRepository = get())
-    }
-
-    single {
-        SynchronizeBuildSystem(buildSystemRepository = get())
-    }
+    single { ObserveBuildStatus(buildSystemRepository = get()) }
 }
