@@ -1,13 +1,13 @@
 package io.github.numq.haskcore.buildsystem
 
 import io.github.numq.haskcore.buildsystem.cabal.CabalBuildSystemService
-import io.github.numq.haskcore.buildsystem.cabal.CabalBuildSystemVersion
-import io.github.numq.haskcore.buildsystem.exception.BuildSystemException
+import io.github.numq.haskcore.buildsystem.custom.CustomBuildSystemService
 import io.github.numq.haskcore.buildsystem.ghc.GhcBuildSystemService
-import io.github.numq.haskcore.buildsystem.ghc.GhcBuildSystemVersion
 import io.github.numq.haskcore.buildsystem.runhaskell.RunHaskellBuildSystemService
 import io.github.numq.haskcore.buildsystem.stack.StackBuildSystemService
-import io.github.numq.haskcore.buildsystem.stack.StackBuildSystemVersion
+import io.github.numq.haskcore.cabal.CabalService
+import io.github.numq.haskcore.ghc.GhcService
+import io.github.numq.haskcore.stack.StackService
 import io.methvin.watcher.DirectoryChangeEvent
 import io.methvin.watcher.DirectoryWatcher
 import kotlinx.coroutines.*
@@ -23,16 +23,21 @@ import kotlin.io.path.isDirectory
 internal interface BuildSystemRepository : Closeable {
     val status: StateFlow<BuildStatus>
 
-    suspend fun synchronize(path: String): Result<Unit>
+    suspend fun startSynchronization(path: String): Result<Unit>
+
+    suspend fun stopSynchronization(): Result<Unit>
 
     suspend fun execute(command: String): Result<Flow<BuildOutput>>
 
     class Default(
-        private val customBuildSystemService: BuildSystemService,
+        private val customBuildSystemService: CustomBuildSystemService,
         private val cabalBuildSystemService: CabalBuildSystemService,
         private val ghcBuildSystemService: GhcBuildSystemService,
         private val runHaskellBuildSystemService: RunHaskellBuildSystemService,
-        private val stackBuildSystemService: StackBuildSystemService
+        private val stackBuildSystemService: StackBuildSystemService,
+        private val cabalService: CabalService,
+        private val ghcService: GhcService,
+        private val stackService: StackService,
     ) : BuildSystemRepository {
         private val coroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -62,12 +67,12 @@ internal interface BuildSystemRepository : Closeable {
                     val path = dir.absolutePathString()
 
                     when {
-                        cabalBuildSystemService.hasValidProject(path = path)
+                        cabalService.hasValidProject(path = path)
                             .getOrNull() == true -> BuildTarget.BuildProject.Cabal(
                             path = path, name = dir.fileName.toString()
                         )
 
-                        stackBuildSystemService.hasValidProject(path = path)
+                        stackService.hasValidProject(path = path)
                             .getOrNull() == true -> BuildTarget.BuildProject.Stack(
                             path = path, name = dir.fileName.toString()
                         )
@@ -79,7 +84,7 @@ internal interface BuildSystemRepository : Closeable {
         }
 
         private suspend fun findHaskellFiles(paths: List<Path>) = paths.filter { path ->
-            ghcBuildSystemService.isValidFile(path = path.absolutePathString()).getOrNull() == true
+            ghcService.isValidFile(path = path.absolutePathString()).getOrNull() == true
         }.map { file ->
             BuildTarget.HaskellFile(
                 path = file.absolutePathString(), name = file.fileName.toString()
@@ -87,7 +92,7 @@ internal interface BuildSystemRepository : Closeable {
         }
 
         private suspend fun findLiterateScripts(paths: List<Path>) = paths.filter { path ->
-            runHaskellBuildSystemService.isValidScript(path = path.absolutePathString()).getOrNull() == true
+            ghcService.isValidScript(path = path.absolutePathString()).getOrNull() == true
         }.map { file ->
             BuildTarget.LiterateScript(
                 path = file.absolutePathString(), name = file.fileName.toString()
@@ -112,24 +117,6 @@ internal interface BuildSystemRepository : Closeable {
 
                 awaitAll(projects, haskellFiles, literateScripts).flatten()
             }
-        }
-
-        private suspend fun getBuildSystemVersions(): BuildSystemVersions {
-            val stackVersion = StackBuildSystemVersion.fromString(
-                versionString = stackBuildSystemService.getStackVersion().getOrThrow()
-            ) ?: throw BuildSystemException("Could not parse Stack version")
-
-            val cabalVersion = CabalBuildSystemVersion.fromString(
-                versionString = cabalBuildSystemService.getCabalVersion().getOrThrow()
-            ) ?: throw BuildSystemException("Could not parse Cabal version")
-
-            val ghcVersion = GhcBuildSystemVersion.fromString(
-                versionString = ghcBuildSystemService.getGhcVersion().getOrThrow()
-            ) ?: throw BuildSystemException("Could not parse GHC version")
-
-            return BuildSystemVersions(
-                stackVersion = stackVersion, cabalVersion = cabalVersion, ghcVersion = ghcVersion
-            )
         }
 
         private fun isBuildConfigFile(path: Path) = with(path.fileName.absolutePathString()) {
@@ -186,16 +173,6 @@ internal interface BuildSystemRepository : Closeable {
             watchingJob = null
         }
 
-        private suspend fun performSynchronization(path: String) {
-            _status.value = try {
-                BuildStatus.Synchronized(
-                    path = path, targets = getBuildTargets(path = path), versions = getBuildSystemVersions()
-                )
-            } catch (throwable: Throwable) {
-                BuildStatus.Error(throwable = throwable)
-            }
-        }
-
         init {
             coroutineScope.launch {
                 _status.collect { status ->
@@ -208,37 +185,71 @@ internal interface BuildSystemRepository : Closeable {
             }
         }
 
-        override suspend fun synchronize(path: String) = runCatching {
+        override suspend fun startSynchronization(path: String) = runCatching {
             when (_status.value) {
-                is BuildStatus.OutOfSynchronization, is BuildStatus.Synchronized, is BuildStatus.Error -> {
+                is BuildStatus.OutOfSynchronization, is BuildStatus.Error -> {
                     _status.value = BuildStatus.Synchronizing
 
-                    performSynchronization(path = path)
+                    _status.value = try {
+                        BuildStatus.Synchronized(path = path, targets = getBuildTargets(path = path))
+                    } catch (throwable: Throwable) {
+                        BuildStatus.Error(throwable = throwable)
+                    }
                 }
 
                 else -> return@runCatching
             }
         }
 
+        override suspend fun stopSynchronization() = runCatching {
+            _status.value = BuildStatus.OutOfSynchronization
+
+            stopDirectoryWatching()
+        }
+
         override suspend fun execute(command: String) = when (val currentStatus = _status.value) {
             is BuildStatus.Synchronized -> BuildCommand.parse(
                 path = currentStatus.path, command = command
             ).mapCatching { buildCommand ->
+                val path = buildCommand.path
+
                 when (buildCommand) {
-                    is BuildCommand.Cabal -> cabalBuildSystemService.execute(command = buildCommand)
+                    is BuildCommand.Cabal -> {
+                        if (!cabalService.hasValidProject(path).getOrThrow()) {
+                            throw BuildSystemException("Not a Cabal project: $path")
+                        }
 
-                    is BuildCommand.Stack -> stackBuildSystemService.execute(command = buildCommand)
+                        cabalBuildSystemService.execute(command = buildCommand)
+                    }
 
-                    is BuildCommand.Ghc -> ghcBuildSystemService.execute(command = buildCommand)
+                    is BuildCommand.Stack -> {
+                        if (!stackService.hasValidProject(path).getOrThrow()) {
+                            throw BuildSystemException("Not a Stack project: $path")
+                        }
 
-                    is BuildCommand.RunHaskell -> runHaskellBuildSystemService.execute(command = buildCommand)
+                        stackBuildSystemService.execute(command = buildCommand)
+                    }
 
-                    is BuildCommand.Custom -> customBuildSystemService.executeBuildCommand(command = buildCommand)
+                    is BuildCommand.Ghc -> {
+                        if (!ghcService.isValidFile(path).getOrThrow()) {
+                            throw BuildSystemException("Not a valid Haskell file: $path")
+                        }
+
+                        ghcBuildSystemService.execute(command = buildCommand)
+                    }
+
+                    is BuildCommand.RunHaskell -> {
+                        if (!ghcService.isValidScript(path).getOrThrow()) {
+                            throw BuildSystemException("Not a valid Haskell script: $path")
+                        }
+
+                        runHaskellBuildSystemService.execute(command = buildCommand)
+                    }
+
+                    is BuildCommand.Custom -> customBuildSystemService.execute(command = buildCommand)
                 }.getOrThrow()
             }.onSuccess {
-                _status.value = BuildStatus.Synchronized(
-                    path = currentStatus.path, targets = currentStatus.targets, versions = currentStatus.versions
-                )
+                _status.value = BuildStatus.Synchronized(path = currentStatus.path, targets = currentStatus.targets)
             }.onFailure { throwable ->
                 _status.value = BuildStatus.Error(throwable = throwable)
             }
