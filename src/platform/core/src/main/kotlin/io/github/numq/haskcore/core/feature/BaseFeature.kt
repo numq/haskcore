@@ -1,223 +1,110 @@
 package io.github.numq.haskcore.core.feature
 
-import io.github.numq.haskcore.core.feature.processor.CommandProcessor
-import io.github.numq.haskcore.core.feature.processor.CommandProcessorAction
-import kotlinx.atomicfu.atomic
-import kotlinx.atomicfu.getAndUpdate
-import kotlinx.atomicfu.update
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.ClosedSendChannelException
 import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-import kotlin.concurrent.Volatile
-import kotlin.coroutines.CoroutineContext
+import kotlinx.coroutines.launch
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.cancellation.CancellationException
 
-@OptIn(DelicateCoroutinesApi::class)
-class BaseFeature<Command, State>(
-    initialState: State,
-    coroutineContext: CoroutineContext,
-    private val reducer: Reducer<Command, State>,
-    private val commandProcessor: CommandProcessor<Command>,
-) : Feature<Command, State> {
-    private val coroutineScope = CoroutineScope(coroutineContext + SupervisorJob())
+abstract class BaseFeature<State, in Command, out FeatureEffect : Effect>(
+    initialState: State, private val scope: CoroutineScope, private val reducer: Reducer<State, Command, FeatureEffect>
+) : Feature<State, Command, FeatureEffect> {
+    private val isClosed = AtomicBoolean(false)
 
-    private val _state = MutableStateFlow(initialState)
+    private val jobs = ConcurrentHashMap<Any, Job>()
 
-    override val state = _state.asStateFlow()
+    private val _commands = Channel<Command>(Channel.UNLIMITED)
 
-    private val _events = Channel<Event>(Channel.UNLIMITED)
+    private val _effects = MutableSharedFlow<FeatureEffect>(0, Int.MAX_VALUE)
 
-    override val events = _events.receiveAsFlow()
+    override val effects = _effects.asSharedFlow()
 
-    private val jobsMutex = Mutex()
+    override val state = _commands.receiveAsFlow().scan(initialState) { state, command ->
+        val transition = reducer.reduce(state, command)
 
-    private val jobs = mutableMapOf<Any, Job>()
-
-    private val currentTransition = atomic<Deferred<Transition<State>>?>(null)
-
-    @Volatile
-    private var isClosed = false
-
-    private fun requireOpen() {
-        if (isClosed || _events.isClosedForSend) {
-            error("Feature closed")
-        }
-    }
-
-    private suspend fun perform(command: Command) {
-        val transition = coroutineScope.async {
-            reducer.reduce(_state.value, command)
+        transition.effects.forEach { effect ->
+            processEffect(effect)
         }
 
-        currentTransition.update { transition }
+        transition.state
+    }.stateIn(scope, SharingStarted.Eagerly, initialState)
 
-        try {
-            val (state, events) = transition.await()
+    private fun processEffect(effect: FeatureEffect) {
+        when (effect) {
+            is Effect.Notify<*> -> _effects.tryEmit(effect)
 
-            _state.emit(state)
+            is Effect.Collect<*> -> launchManaged(effect.key) {
+                try {
+                    when (effect.strategy) {
+                        Effect.Collect.Strategy.Sequential -> effect.flow.collect { cmd ->
+                            @Suppress("UNCHECKED_CAST") execute(cmd as Command)
+                        }
 
-            events.forEach { event ->
-                if (!_events.isClosedForSend) {
-                    _events.send(event)
-                }
-            }
-        } finally {
-            currentTransition.update { null }
-        }
-    }
-
-    internal suspend fun dispatchFailure(throwable: Throwable) {
-        if (!isClosed && !_events.isClosedForSend) {
-            val event = when (throwable) {
-                is TimeoutCancellationException -> Event.Timeout(exception = throwable)
-
-                is CancellationException -> Event.Cancellation(exception = throwable)
-
-                else -> Event.Failure(throwable = throwable)
-            }
-
-            if (!_events.isClosedForSend) {
-                _events.send(event)
-            }
-        }
-    }
-
-    override var invokeOnClose: (suspend () -> Unit)? = null
-        private set
-
-    override suspend fun <T> collect(
-        event: Event.Collectable<T>, joinCancellation: Boolean, action: suspend (T) -> Unit,
-    ) {
-        jobsMutex.withLock {
-            try {
-                requireOpen()
-
-                val key = event.key.toString()
-
-                jobs[key]?.run {
-                    job.cancel()
-
-                    if (joinCancellation) {
-                        job.join()
+                        Effect.Collect.Strategy.Restart -> effect.flow.collectLatest { cmd ->
+                            @Suppress("UNCHECKED_CAST") execute(cmd as Command)
+                        }
                     }
-                }
+                } catch (exception: CancellationException) {
+                    throw exception
+                } catch (throwable: Throwable) {
+                    val cmd = effect.fallback(throwable)
 
-                jobs[key] = event.flow.onEach(action).launchIn(coroutineScope)
-            } catch (throwable: Throwable) {
-                if (!_events.isClosedForSend) {
-                    _events.send(Event.Failure(throwable = throwable))
+                    @Suppress("UNCHECKED_CAST") execute(cmd as Command)
                 }
             }
+
+            is Effect.Execute<*> -> launchManaged(effect.key) {
+                val cmd = try {
+                    effect.block()
+                } catch (exception: CancellationException) {
+                    throw exception
+                } catch (throwable: Throwable) {
+                    effect.fallback(throwable)
+                }
+
+                @Suppress("UNCHECKED_CAST") execute(cmd as Command)
+            }
+
+            is Effect.Cancel -> cancelJob(effect.key)
         }
     }
 
-    override suspend fun <T> stopCollecting(key: T, joinCancellation: Boolean) {
-        jobsMutex.withLock {
-            try {
-                requireOpen()
+    private fun launchManaged(key: Any, block: suspend () -> Unit) {
+        jobs[key]?.cancel()
 
-                val job = jobs.remove("$key") ?: return
+        val job = scope.launch { block() }
 
-                job.cancel()
+        job.invokeOnCompletion { jobs.remove(key, job) }
 
-                if (joinCancellation) {
-                    job.join()
-                }
-            } catch (throwable: Throwable) {
-                if (!_events.isClosedForSend) {
-                    _events.send(Event.Failure(throwable = throwable))
-                }
-            }
-        }
+        jobs[key] = job
     }
 
-    override suspend fun stopCollectingAll(joinCancellation: Boolean) {
-        jobsMutex.withLock {
-            try {
-                requireOpen()
-
-                val allJobs = jobs.values.toList()
-
-                jobs.clear()
-
-                allJobs.forEach { job ->
-                    job.cancel()
-
-                    if (joinCancellation) {
-                        job.join()
-                    }
-                }
-            } catch (throwable: Throwable) {
-                if (!_events.isClosedForSend) {
-                    _events.send(Event.Failure(throwable = throwable))
-                }
-            }
-        }
+    private fun cancelJob(key: Any) {
+        jobs.remove(key)?.cancel()
     }
 
+    @OptIn(DelicateCoroutinesApi::class)
     override suspend fun execute(command: Command) {
-        try {
-            requireOpen()
+        if (isClosed.get()) return
 
-            commandProcessor.process(CommandProcessorAction(command = command, block = ::perform))
-        } catch (throwable: Throwable) {
-            if (!_events.isClosedForSend) {
-                _events.send(Event.Failure(throwable = throwable))
-            }
+        try {
+            _commands.send(command)
+        } catch (_: ClosedSendChannelException) {
         }
     }
 
-    override suspend fun cancel() {
-        try {
-            requireOpen()
+    override fun close() {
+        if (!isClosed.compareAndSet(false, true)) return
 
-            currentTransition.getAndUpdate { null }?.cancel()
+        _commands.close()
 
-            if (!_events.isClosedForSend) {
-                _events.send(Event.Cancellation(exception = CancellationException("Transition cancelled")))
-            }
-        } catch (throwable: Throwable) {
-            if (!_events.isClosedForSend) {
-                _events.send(Event.Failure(throwable = throwable))
-            }
-        }
-    }
+        jobs.values.forEach(Job::cancel)
 
-    override suspend fun cancelAndJoin() {
-        try {
-            requireOpen()
-
-            currentTransition.getAndUpdate { null }?.cancelAndJoin()
-
-            if (!_events.isClosedForSend) {
-                _events.send(Event.Cancellation(exception = CancellationException("Transition cancelled")))
-            }
-        } catch (throwable: Throwable) {
-            if (!_events.isClosedForSend) {
-                _events.send(Event.Failure(throwable = throwable))
-            }
-        }
-    }
-
-    override suspend fun close() {
-        if (isClosed) return
-
-        try {
-            coroutineScope.cancel()
-
-            jobsMutex.withLock {
-                jobs.clear()
-            }
-
-            _events.close()
-
-            commandProcessor.close()
-
-            invokeOnClose?.invoke()
-        } finally {
-            isClosed = true
-        }
+        jobs.clear()
     }
 }

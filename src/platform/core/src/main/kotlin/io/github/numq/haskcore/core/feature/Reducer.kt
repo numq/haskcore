@@ -1,7 +1,15 @@
 package io.github.numq.haskcore.core.feature
 
-interface Reducer<in Command, State> {
-    suspend fun reduce(state: State, command: Command): Transition<State>
+fun interface Reducer<State, in Command, out Effect> {
+    fun reduce(state: State, command: Command): Transition<State, Effect>
+}
 
-    fun transition(state: State, vararg event: Event) = Transition(state = state, events = event.asList())
+fun <State, Command, Effect> Reducer<State, Command, Effect>.combine(
+    other: Reducer<State, Command, Effect>
+) = Reducer<State, Command, Effect> { state, command ->
+    val src = this.reduce(state = state, command = command)
+
+    val dst = other.reduce(state = src.state, command = command)
+
+    Transition(state = dst.state, effects = src.effects + dst.effects)
 }
