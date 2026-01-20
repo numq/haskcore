@@ -1,12 +1,13 @@
 package io.github.numq.haskcore.core.feature
 
-data class Transition<out State, out Effect>(val state: State, val effects: List<Effect>)
+data class Transition<out State, out Event>(
+    val state: State, val events: List<Event>, val effects: List<Effect>
+)
 
-inline fun <reified State, reified Effect> State.transition() =
-    Transition<State, Effect>(state = this, effects = emptyList())
+fun <State, Event> Transition<State, Event>.event(event: Event) = copy(events = events + event)
 
-inline fun <reified State, reified Effect> Transition<State, Effect>.effect(effect: Effect) =
-    copy(effects = listOf(effect))
+fun <State, Event> Transition<State, Event>.events(vararg events: Event) = copy(events = this.events + events)
 
-inline fun <reified State, reified Effect> Transition<State, Effect>.effects(vararg effects: Effect) =
-    copy(effects = effects.toList())
+fun <State, Event> Transition<State, Event>.effect(effect: Effect) = copy(effects = effects + effect)
+
+fun <State, Event> Transition<State, Event>.effects(vararg effects: Effect) = copy(effects = this.effects + effects)

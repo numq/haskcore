@@ -3,19 +3,17 @@ package io.github.numq.haskcore.core.feature
 import kotlinx.coroutines.flow.Flow
 
 sealed interface Effect {
-    data class Notify<out Payload>(val data: Payload) : Effect
-
-    data class Collect<out Command>(
+    data class Stream<out Command>(
         val key: Any,
-        val strategy: Strategy = Strategy.Sequential,
         val flow: Flow<Command>,
-        val fallback: suspend (Throwable) -> Command
+        val strategy: Strategy = Strategy.Sequential,
+        val fallback: (suspend (Throwable) -> Command)? = null,
     ) : Effect {
         enum class Strategy { Sequential, Restart }
     }
 
-    data class Execute<out Command>(
-        val key: Any, val block: suspend () -> Command, val fallback: suspend (Throwable) -> Command
+    data class Action<out Command>(
+        val key: Any, val fallback: (suspend (Throwable) -> Command)? = null, val block: suspend () -> Command
     ) : Effect
 
     data class Cancel(val key: Any) : Effect

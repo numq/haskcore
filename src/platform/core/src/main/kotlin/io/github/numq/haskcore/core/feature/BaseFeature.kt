@@ -1,28 +1,26 @@
 package io.github.numq.haskcore.core.feature
 
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.Job
+import kotlinx.atomicfu.atomic
+import kotlinx.atomicfu.getAndUpdate
+import kotlinx.atomicfu.update
+import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.ClosedSendChannelException
 import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.launch
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.cancellation.CancellationException
 
-abstract class BaseFeature<State, in Command, out FeatureEffect : Effect>(
-    initialState: State, private val scope: CoroutineScope, private val reducer: Reducer<State, Command, FeatureEffect>
-) : Feature<State, Command, FeatureEffect> {
-    private val isClosed = AtomicBoolean(false)
+abstract class BaseFeature<State, in Command, out Event>(
+    initialState: State, private val scope: CoroutineScope, private val reducer: Reducer<State, Command, Event>
+) : Feature<State, Command, Event> {
+    private val isClosed = atomic(false)
 
-    private val jobs = ConcurrentHashMap<Any, Job>()
+    private val jobs = atomic(mapOf<Any, Job>())
 
     private val _commands = Channel<Command>(Channel.UNLIMITED)
 
-    private val _effects = MutableSharedFlow<FeatureEffect>(0, Int.MAX_VALUE)
+    private val _events = MutableSharedFlow<Event>(0, Int.MAX_VALUE)
 
-    override val effects = _effects.asSharedFlow()
+    override val events = _events.asSharedFlow()
 
     override val state = _commands.receiveAsFlow().scan(initialState) { state, command ->
         val transition = reducer.reduce(state, command)
@@ -31,43 +29,49 @@ abstract class BaseFeature<State, in Command, out FeatureEffect : Effect>(
             processEffect(effect)
         }
 
+        transition.events.forEach { event ->
+            _events.tryEmit(event)
+        }
+
         transition.state
     }.stateIn(scope, SharingStarted.Eagerly, initialState)
 
-    private fun processEffect(effect: FeatureEffect) {
+    private fun processEffect(effect: Effect) {
         when (effect) {
-            is Effect.Notify<*> -> _effects.tryEmit(effect)
-
-            is Effect.Collect<*> -> launchManaged(effect.key) {
+            is Effect.Stream<*> -> launchManaged(effect.key) {
                 try {
                     when (effect.strategy) {
-                        Effect.Collect.Strategy.Sequential -> effect.flow.collect { cmd ->
+                        Effect.Stream.Strategy.Sequential -> effect.flow.collect { cmd ->
                             @Suppress("UNCHECKED_CAST") execute(cmd as Command)
                         }
 
-                        Effect.Collect.Strategy.Restart -> effect.flow.collectLatest { cmd ->
+                        Effect.Stream.Strategy.Restart -> effect.flow.collectLatest { cmd ->
                             @Suppress("UNCHECKED_CAST") execute(cmd as Command)
                         }
                     }
                 } catch (exception: CancellationException) {
                     throw exception
                 } catch (throwable: Throwable) {
-                    val cmd = effect.fallback(throwable)
+                    val cmd = effect.fallback?.invoke(throwable)
 
-                    @Suppress("UNCHECKED_CAST") execute(cmd as Command)
+                    if (cmd != null) {
+                        @Suppress("UNCHECKED_CAST") execute(cmd as Command)
+                    }
                 }
             }
 
-            is Effect.Execute<*> -> launchManaged(effect.key) {
+            is Effect.Action<*> -> launchManaged(effect.key) {
                 val cmd = try {
                     effect.block()
                 } catch (exception: CancellationException) {
                     throw exception
                 } catch (throwable: Throwable) {
-                    effect.fallback(throwable)
+                    effect.fallback?.invoke(throwable)
                 }
 
-                @Suppress("UNCHECKED_CAST") execute(cmd as Command)
+                if (cmd != null) {
+                    @Suppress("UNCHECKED_CAST") execute(cmd as Command)
+                }
             }
 
             is Effect.Cancel -> cancelJob(effect.key)
@@ -75,22 +79,36 @@ abstract class BaseFeature<State, in Command, out FeatureEffect : Effect>(
     }
 
     private fun launchManaged(key: Any, block: suspend () -> Unit) {
-        jobs[key]?.cancel()
+        val newJob = scope.launch { block() }
 
-        val job = scope.launch { block() }
+        val oldJob = jobs.getAndUpdate { current ->
+            current + Pair(key, newJob)
+        }[key]
 
-        job.invokeOnCompletion { jobs.remove(key, job) }
+        oldJob?.cancel()
 
-        jobs[key] = job
+        newJob.invokeOnCompletion {
+            jobs.update { current ->
+                when {
+                    current[key] === newJob -> current - key
+
+                    else -> current
+                }
+            }
+        }
     }
 
     private fun cancelJob(key: Any) {
-        jobs.remove(key)?.cancel()
+        jobs.update { current ->
+            current[key]?.cancel()
+
+            current - key
+        }
     }
 
     @OptIn(DelicateCoroutinesApi::class)
     override suspend fun execute(command: Command) {
-        if (isClosed.get()) return
+        if (isClosed.value) return
 
         try {
             _commands.send(command)
@@ -99,12 +117,16 @@ abstract class BaseFeature<State, in Command, out FeatureEffect : Effect>(
     }
 
     override fun close() {
-        if (!isClosed.compareAndSet(false, true)) return
+        if (!isClosed.compareAndSet(expect = false, update = true)) return
+
+        scope.cancel()
 
         _commands.close()
 
-        jobs.values.forEach(Job::cancel)
+        jobs.update { current ->
+            current.values.forEach(Job::cancel)
 
-        jobs.clear()
+            emptyMap()
+        }
     }
 }
