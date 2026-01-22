@@ -25,16 +25,12 @@ abstract class BaseFeature<State, in Command, out Event>(
     override val state = _commands.receiveAsFlow().scan(initialState) { state, command ->
         val transition = reducer.reduce(state, command)
 
-        transition.effects.forEach { effect ->
-            processEffect(effect)
-        }
+        transition.effects.forEach(::processEffect)
 
-        transition.events.forEach { event ->
-            _events.tryEmit(event)
-        }
+        transition.events.forEach(_events::tryEmit)
 
         transition.state
-    }.stateIn(scope, SharingStarted.Eagerly, initialState)
+    }.stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = initialState)
 
     private fun processEffect(effect: Effect) {
         when (effect) {

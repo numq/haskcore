@@ -1,8 +1,6 @@
 package io.github.numq.haskcore.core.feature
 
-data class Transition<out State, out Event>(
-    val state: State, val events: List<Event>, val effects: List<Effect>
-)
+data class Transition<out State, out Event>(val state: State, val events: List<Event>, val effects: List<Effect>)
 
 fun <State, Event> Transition<State, Event>.event(event: Event) = copy(events = events + event)
 

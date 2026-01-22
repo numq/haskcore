@@ -2,7 +2,7 @@ package io.github.numq.haskcore.core.feature
 
 import kotlinx.coroutines.flow.Flow
 
-fun interface Reducer<State, in Command, out Event> {
+interface Reducer<State, in Command, out Event> {
     fun reduce(state: State, command: Command): Transition<State, Event>
 
     fun transition(state: State) = Transition<State, Event>(state = state, events = emptyList(), effects = emptyList())
@@ -20,13 +20,3 @@ fun <State, Command, Event> Reducer<State, Command, Event>.action(
 ) = Effect.Action(key, fallback, block)
 
 fun <State, Command, Event> Reducer<State, Command, Event>.cancel(key: Any) = Effect.Cancel(key)
-
-fun <State, Command, Event> Reducer<State, Command, Event>.combine(
-    other: Reducer<State, Command, Event>
-) = Reducer<State, Command, Event> { state, command ->
-    val src = this.reduce(state = state, command = command)
-
-    val dst = other.reduce(state = src.state, command = command)
-
-    Transition(state = dst.state, events = src.events + dst.events, effects = src.effects + dst.effects)
-}
