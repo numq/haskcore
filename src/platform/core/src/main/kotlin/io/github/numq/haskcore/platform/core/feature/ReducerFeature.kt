@@ -1,4 +1,4 @@
-package io.github.numq.haskcore.core.feature
+package io.github.numq.haskcore.platform.core.feature
 
 import kotlinx.atomicfu.atomic
 import kotlinx.atomicfu.getAndUpdate
@@ -9,9 +9,18 @@ import kotlinx.coroutines.channels.ClosedSendChannelException
 import kotlinx.coroutines.flow.*
 import kotlin.coroutines.cancellation.CancellationException
 
-abstract class BaseFeature<State, in Command, out Event>(
-    initialState: State, private val scope: CoroutineScope, private val reducer: Reducer<State, Command, Event>
+internal class ReducerFeature<State, in Command, out Event>(
+    initialState: State,
+    initialCommands: List<Command> = emptyList(),
+    private val scope: CoroutineScope,
+    private val reducer: Reducer<State, Command, Event>,
 ) : Feature<State, Command, Event> {
+    init {
+        initialCommands.forEach { command ->
+            scope.launch { execute(command) }
+        }
+    }
+
     private val isClosed = atomic(false)
 
     private val jobs = atomic(mapOf<Any, Job>())

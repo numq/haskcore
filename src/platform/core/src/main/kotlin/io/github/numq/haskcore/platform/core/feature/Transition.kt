@@ -1,4 +1,4 @@
-package io.github.numq.haskcore.core.feature
+package io.github.numq.haskcore.platform.core.feature
 
 data class Transition<out State, out Event>(val state: State, val events: List<Event>, val effects: List<Effect>)
 

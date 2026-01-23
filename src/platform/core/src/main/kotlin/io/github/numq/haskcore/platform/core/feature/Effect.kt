@@ -1,4 +1,4 @@
-package io.github.numq.haskcore.core.feature
+package io.github.numq.haskcore.platform.core.feature
 
 import kotlinx.coroutines.flow.Flow
 
