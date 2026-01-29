@@ -15,12 +15,6 @@ internal class ReducerFeature<State, in Command, out Event>(
     private val scope: CoroutineScope,
     private val reducer: Reducer<State, Command, Event>,
 ) : Feature<State, Command, Event> {
-    init {
-        initialCommands.forEach { command ->
-            scope.launch { execute(command) }
-        }
-    }
-
     private val isClosed = atomic(false)
 
     private val jobs = atomic(mapOf<Any, Job>())
@@ -40,6 +34,12 @@ internal class ReducerFeature<State, in Command, out Event>(
 
         transition.state
     }.stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = initialState)
+
+    init {
+        initialCommands.forEach { command ->
+            scope.launch { execute(command) }
+        }
+    }
 
     private fun processEffect(effect: Effect) {
         when (effect) {

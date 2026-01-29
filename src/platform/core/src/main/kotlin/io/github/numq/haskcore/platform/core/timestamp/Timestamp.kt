@@ -1,4 +1,4 @@
-package io.github.numq.haskcore.core.timestamp
+package io.github.numq.haskcore.platform.core.timestamp
 
 import kotlinx.serialization.Serializable
 import kotlin.time.Duration.Companion.milliseconds
