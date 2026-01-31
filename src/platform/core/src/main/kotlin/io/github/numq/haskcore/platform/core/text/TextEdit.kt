@@ -1,4 +1,4 @@
-package io.github.numq.haskcore.core.text
+package io.github.numq.haskcore.platform.core.text
 
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.nanoseconds

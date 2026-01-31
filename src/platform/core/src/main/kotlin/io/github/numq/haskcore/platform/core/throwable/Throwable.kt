@@ -1,4 +1,4 @@
-package io.github.numq.haskcore.core.throwable
+package io.github.numq.haskcore.platform.core.throwable
 
 val Throwable.exception: Exception
     get() = when (this) {

@@ -1,4 +1,4 @@
-package io.github.numq.haskcore.core.text
+package io.github.numq.haskcore.platform.core.text
 
 import kotlinx.coroutines.flow.SharedFlow
 

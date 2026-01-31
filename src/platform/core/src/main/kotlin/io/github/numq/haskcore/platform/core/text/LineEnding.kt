@@ -1,4 +1,4 @@
-package io.github.numq.haskcore.core.text
+package io.github.numq.haskcore.platform.core.text
 
 enum class LineEnding {
     LF, CRLF, CR;

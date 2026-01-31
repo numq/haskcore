@@ -1,4 +1,4 @@
-package io.github.numq.haskcore.core.text
+package io.github.numq.haskcore.platform.core.text
 
 data class TextRange(val start: TextPosition, val end: TextPosition) {
     companion object {

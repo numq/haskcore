@@ -1,4 +1,4 @@
-package io.github.numq.haskcore.core.text
+package io.github.numq.haskcore.platform.core.text
 
 data class TextPosition(val line: Int, val column: Int) : Comparable<TextPosition> {
     companion object {
