@@ -28,53 +28,51 @@ enum class LineEnding {
 
             var crCount = 0
 
-            var hasLF = false
-
-            var hasCRLF = false
-
-            var hasCR = false
+            var mask = 0
 
             var i = 0
 
-            val n = text.length
+            val n = minOf(text.length, 8192)
 
             while (i < n) {
-                val char = text[i]
+                when (text[i]) {
+                    '\r' -> when {
+                        i + 1 < n && text[i + 1] == '\n' -> {
+                            crlfCount++
 
-                if (char == '\r') {
-                    if (i + 1 < n && text[i + 1] == '\n') {
-                        crlfCount++
+                            mask = mask or 2
 
-                        hasCRLF = true
+                            i++
+                        }
 
-                        i += 2
+                        else -> {
+                            crCount++
 
-                        continue
-                    } else {
-                        crCount++
-
-                        hasCR = true
+                            mask = mask or 4
+                        }
                     }
-                } else if (char == '\n') {
-                    lfCount++
 
-                    hasLF = true
+                    '\n' -> {
+                        lfCount++
+
+                        mask = mask or 1
+                    }
                 }
 
                 i++
             }
 
             val dominant = when {
-                lfCount > 0 && lfCount >= crlfCount && lfCount >= crCount -> LF
+                lfCount >= crlfCount && lfCount >= crCount && lfCount > 0 -> LF
 
-                crlfCount > 0 && crlfCount >= crCount -> CRLF
+                crlfCount >= crCount && crlfCount > 0 -> CRLF
 
                 crCount > 0 -> CR
 
-                else -> LF
+                else -> getSystemLineEnding()
             }
 
-            val isMixed = listOf(hasLF, hasCRLF, hasCR).count() > 1
+            val isMixed = (mask and (mask - 1)) != 0
 
             return DetectionResult(dominant = dominant, isMixed = isMixed)
         }

@@ -4,7 +4,11 @@ data class TextRange(val start: TextPosition, val end: TextPosition) {
     companion object {
         val EMPTY = TextRange(TextPosition.ZERO, TextPosition.ZERO)
 
-        fun fromPositions(p1: TextPosition, p2: TextPosition) = if (p1 <= p2) TextRange(p1, p2) else TextRange(p2, p1)
+        fun fromPositions(p1: TextPosition, p2: TextPosition) = when {
+            p1 <= p2 -> TextRange(start = p1, end = p2)
+
+            else -> TextRange(start = p2, end = p1)
+        }
     }
 
     init {

@@ -73,19 +73,23 @@ sealed interface TextEdit {
         }
     }
 
-    data class Batch(val edits: List<TextEdit>) : TextEdit {
-        override val startByte = edits.minOfOrNull(TextEdit::startByte) ?: 0
+    data class Batch(val edits: List<Single>) : TextEdit {
+        init {
+            require(edits.isNotEmpty()) { "Batch edit cannot be empty" }
+        }
 
-        override val oldEndByte = edits.maxOfOrNull(TextEdit::oldEndByte) ?: 0
+        override val startByte = edits.first().startByte
 
-        override val newEndByte = edits.maxOfOrNull(TextEdit::newEndByte) ?: 0
+        override val startPosition = edits.first().startPosition
 
-        override val startPosition = edits.minByOrNull(TextEdit::startPosition)?.startPosition ?: TextPosition.ZERO
+        override val oldEndByte = edits.last().oldEndByte
 
-        override val oldEndPosition = edits.maxByOrNull(TextEdit::oldEndPosition)?.oldEndPosition ?: TextPosition.ZERO
+        override val oldEndPosition = edits.last().oldEndPosition
 
-        override val newEndPosition = edits.maxByOrNull(TextEdit::newEndPosition)?.newEndPosition ?: TextPosition.ZERO
+        override val newEndByte = edits.last().newEndByte
 
-        override val timestamp = System.nanoTime().nanoseconds
+        override val newEndPosition = edits.last().newEndPosition
+
+        override val timestamp = edits.first().timestamp
     }
 }
