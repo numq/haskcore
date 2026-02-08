@@ -36,7 +36,7 @@ plugins {
 val baseModules = listOf("core")
 val platformModules = listOf("application", "navigation", "ui")
 val serviceModules = listOf(
-    "configuration", "document", "language", "project", "runtime", "session", "toolchain", "vfs"
+    "configuration", "document", "language", "project", "runtime", "session", "text", "toolchain", "vfs"
 )
 val featureModules = listOf("editor", "explorer", "output", "settings", "workspace")
 
