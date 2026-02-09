@@ -33,12 +33,12 @@ plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }
 
-val baseModules = listOf("core")
-val platformModules = listOf("application", "navigation", "ui")
+val baseModules = listOf("application", "core")
+val platformModules = listOf("theme", "window")
 val serviceModules = listOf(
     "configuration", "document", "language", "project", "runtime", "session", "text", "toolchain", "vfs"
 )
-val featureModules = listOf("editor", "explorer", "output", "settings", "workspace")
+val featureModules = listOf("editor", "explorer", "navigation", "output", "settings", "splash", "welcome", "workspace")
 
 baseModules.forEach { name ->
     val path = ":$name"
