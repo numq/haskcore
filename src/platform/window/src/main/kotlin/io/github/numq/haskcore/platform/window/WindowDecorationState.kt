@@ -1,4 +1,4 @@
-package io.github.numq.haskcore.platform.ui.window.decoration
+package io.github.numq.haskcore.platform.window
 
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.DpSize

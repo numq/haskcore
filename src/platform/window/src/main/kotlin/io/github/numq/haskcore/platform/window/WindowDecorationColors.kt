@@ -1,4 +1,4 @@
-package io.github.numq.haskcore.platform.ui.window.decoration
+package io.github.numq.haskcore.platform.window
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable

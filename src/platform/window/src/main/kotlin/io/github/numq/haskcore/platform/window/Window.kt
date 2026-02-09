@@ -1,4 +1,4 @@
-package io.github.numq.haskcore.platform.ui.window
+package io.github.numq.haskcore.platform.window
 
 sealed interface Window {
     val id: String
