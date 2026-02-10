@@ -1,4 +1,4 @@
-package io.github.numq.haskcore.platform.theme
+package io.github.numq.haskcore.platform.theme.application
 
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.ui.graphics.Color
