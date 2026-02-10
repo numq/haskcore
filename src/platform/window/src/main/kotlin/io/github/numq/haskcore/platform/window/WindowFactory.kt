@@ -1,5 +1,6 @@
 package io.github.numq.haskcore.platform.window
 
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.window.WindowDraggableArea
 import androidx.compose.runtime.Composable
@@ -10,10 +11,10 @@ import androidx.compose.ui.window.WindowState
 object WindowFactory {
     @Composable
     fun createWindow(
-        title: String, state: WindowState, onCloseRequest: () -> Unit, content: @Composable () -> Unit
+        title: String, windowState: WindowState, onCloseRequest: () -> Unit, content: @Composable () -> Unit
     ) = Window(
         onCloseRequest = onCloseRequest,
-        state = state,
+        state = windowState,
         title = title,
         undecorated = true,
         transparent = true,
@@ -23,4 +24,18 @@ object WindowFactory {
             content()
         }
     }
+
+    @Composable
+    fun createDecoratedWindow(
+        title: String,
+        windowState: WindowState,
+        onCloseRequest: () -> Unit,
+        titleContent: @Composable RowScope.(WindowDecorationColors) -> Unit,
+        content: @Composable () -> Unit
+    ) = WindowDecoration(
+        title = title,
+        windowState = windowState,
+        onCloseRequest = onCloseRequest,
+        titleContent = titleContent,
+        content = { content() })
 }

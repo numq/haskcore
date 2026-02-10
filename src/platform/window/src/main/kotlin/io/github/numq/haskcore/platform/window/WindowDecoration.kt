@@ -48,7 +48,7 @@ fun WindowDecoration(
     onCloseRequest: () -> Unit,
     titleContent: @Composable RowScope.(WindowDecorationColors) -> Unit = {},
     controlsContent: @Composable RowScope.() -> Unit = {},
-    windowContent: @Composable (WindowScope.(WindowDecorationState) -> Unit),
+    content: @Composable (WindowScope.(WindowDecorationState) -> Unit),
 ) {
     val density = LocalDensity.current
 
@@ -181,7 +181,7 @@ fun WindowDecoration(
                 modifier = Modifier.fillMaxWidth().weight(1f).background(windowDecorationColors.content()),
                 contentAlignment = Alignment.TopStart
             ) {
-                windowContent(state)
+                content(state)
             }
         }
     }
