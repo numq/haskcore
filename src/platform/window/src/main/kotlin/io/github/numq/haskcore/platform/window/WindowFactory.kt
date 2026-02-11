@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.window.WindowDraggableArea
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowState
 
@@ -29,12 +30,14 @@ object WindowFactory {
     fun createDecoratedWindow(
         title: String,
         windowState: WindowState,
+        minimumWindowSize: DpSize,
         onCloseRequest: () -> Unit,
         titleContent: @Composable RowScope.(WindowDecorationColors) -> Unit,
         content: @Composable () -> Unit
     ) = WindowDecoration(
         title = title,
         windowState = windowState,
+        minimumWindowSize = minimumWindowSize,
         onCloseRequest = onCloseRequest,
         titleContent = titleContent,
         content = { content() })
