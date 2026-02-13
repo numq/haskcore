@@ -3,7 +3,7 @@ package io.github.numq.haskcore.core.di
 sealed interface ScopeQualifier {
     object Application : ScopeQualifier
 
-    object Directory : ScopeQualifier
+    object Project : ScopeQualifier
 
-    object File : ScopeQualifier
+    object Document : ScopeQualifier
 }
