@@ -7,8 +7,8 @@ import org.jetbrains.skia.paragraph.ParagraphBuilder
 import org.jetbrains.skia.paragraph.ParagraphStyle
 import org.jetbrains.skia.paragraph.TypefaceFontProvider
 
-data class MonoFont(
-    private val typeface: Typeface, val size: Float, val lineSpacing: Float
+open class CustomFont(
+    private val typeface: Typeface, val size: Float, lineSpacing: Float
 ) : AutoCloseable {
     private val _isClosed = atomic(false)
 
@@ -28,6 +28,12 @@ data class MonoFont(
         edging = FontEdging.SUBPIXEL_ANTI_ALIAS
 
         hinting = FontHinting.SLIGHT
+
+        isLinearMetrics = true
+
+        isSubpixel = true
+
+        setBitmapsEmbedded(true)
     }
 
     private val metrics = font.metrics

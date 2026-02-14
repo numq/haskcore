@@ -4,10 +4,26 @@ import io.github.numq.haskcore.core.di.ScopeQualifier
 import io.github.numq.haskcore.core.di.scopedOwner
 import org.koin.dsl.module
 
-val monoFontModule = module {
+val fontModule = module {
     scope<ScopeQualifier.Application> {
-        scopedOwner { FontManager.loadFont(FontManager.DEFAULT_MONO_FONT) }
+        scopedOwner { FontManager() }
 
-        scopedOwner { MonoFont(typeface = get(), size = FontManager.DEFAULT_SIZE, lineSpacing = FontManager.DEFAULT_LINE_SPACING) }
+        scopedOwner { (size: Float, lineSpacing: Float) ->
+            LogoFont(
+                typeface = get<FontManager>().loadFont(FontResources.LOGO), size = size, lineSpacing = lineSpacing
+            )
+        }
+
+        scopedOwner { (size: Float, lineSpacing: Float) ->
+            MonoFont(
+                typeface = get<FontManager>().loadFont(FontResources.MONO), size = size, lineSpacing = lineSpacing
+            )
+        }
+
+        scopedOwner { (size: Float, lineSpacing: Float) ->
+            EditorFont(
+                typeface = get<FontManager>().loadFont(FontResources.MONO), size = size, lineSpacing = lineSpacing
+            )
+        }
     }
 }
