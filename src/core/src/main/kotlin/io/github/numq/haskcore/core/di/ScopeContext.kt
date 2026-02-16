@@ -1,9 +1,14 @@
 package io.github.numq.haskcore.core.di
 
 sealed interface ScopeContext {
-    data class Application(val path: String, val name: String) : ScopeContext
+    val path: String
 
-    data class Project(val path: String) : ScopeContext
+    @JvmInline
+    value class Application(override val path: String) : ScopeContext
 
-    data class Document(val path: String, val name: String, val content: String) : ScopeContext
+    @JvmInline
+    value class Project(override val path: String) : ScopeContext
+
+    @JvmInline
+    value class Document(override val path: String) : ScopeContext
 }
