@@ -9,6 +9,9 @@ dependencies {
     implementation(compose.foundation)
     implementation(libs.koin.core)
     implementation(projects.core)
+    testImplementation(compose.desktop.currentOs)
+    testImplementation(libs.junit)
+    testImplementation(libs.kotlin.test)
 }
 
 tasks.withType<Test>().configureEach {
