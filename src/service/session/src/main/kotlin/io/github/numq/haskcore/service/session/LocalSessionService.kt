@@ -31,7 +31,9 @@ internal class LocalSessionService(
                 }
             } ?: SessionRecord(path = path, name = name, timestamp = Timestamp.now()).toSessionRecordData()
 
-            val history = (mapOf(path to targetRecord) + (currentHistory - path)).toList().take(HISTORY_LIMIT).toMap()
+            val history = (listOf(targetRecord) + currentHistory.values.filterNot { sessionRecordData ->
+                sessionRecordData.path == path
+            }).take(HISTORY_LIMIT).associateBy(SessionRecordData::path)
 
             val active = sessionData.active.filterNot { sessionRecordData ->
                 sessionRecordData.path == path
@@ -39,37 +41,35 @@ internal class LocalSessionService(
 
             sessionData.copy(history = history, active = active)
         }.bind()
-    }.map { }
+    }.map {}
 
-    override suspend fun updateSessionRecord(
-        path: String, name: String?
-    ) = sessionDataSource.update { sessionData ->
+    override suspend fun updateSessionRecord(path: String, name: String?) = sessionDataSource.update { sessionData ->
         val timestampNanos = Timestamp.now().nanoseconds
 
-        val update = { record: SessionRecordData ->
-            record.copy(name = name, timestampNanos = timestampNanos)
-        }
+        sessionData.copy(history = sessionData.history.mapValues { (key, sessionRecordData) ->
+            when (key) {
+                path -> sessionRecordData.copy(name = name, timestampNanos = timestampNanos)
 
-        sessionData.copy(history = sessionData.history[path]?.let {
-            sessionData.history + (path to update(it))
-        } ?: sessionData.history, active = sessionData.active.map { sessionRecordData ->
+                else -> sessionRecordData
+            }
+        }, active = sessionData.active.map { sessionRecordData ->
             when (sessionRecordData.path) {
-                path -> update(sessionRecordData)
+                path -> sessionRecordData.copy(name = name, timestampNanos = timestampNanos)
 
                 else -> sessionRecordData
             }
         })
-    }.map { }
+    }.map {}
 
     override suspend fun closeSessionRecord(path: String) = sessionDataSource.update { sessionData ->
         sessionData.copy(active = sessionData.active.filterNot { sessionRecordData ->
             sessionRecordData.path == path
         })
-    }.map { }
+    }.map {}
 
     override suspend fun removeSessionRecordFromHistory(path: String) = sessionDataSource.update { sessionData ->
         sessionData.copy(history = sessionData.history - path)
-    }.map { }
+    }.map {}
 
     override fun close() {
         scope.cancel()

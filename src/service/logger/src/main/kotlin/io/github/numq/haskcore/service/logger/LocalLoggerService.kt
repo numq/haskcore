@@ -4,11 +4,12 @@ import arrow.core.Either
 import io.github.numq.haskcore.core.log.Log
 import io.github.numq.haskcore.core.timestamp.Timestamp
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.withContext
 import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Instant
@@ -23,7 +24,7 @@ internal class LocalLoggerService(
     private val loggerDataSource: LoggerDataSource
 ) : LoggerService {
     private companion object {
-        const val MAX_LOGS = 1_000
+        const val MAX_LOGS = 100
     }
 
     override val logs = loggerDataSource.loggerData.map { list ->
@@ -45,26 +46,39 @@ internal class LocalLoggerService(
     }
 
     override suspend fun export(path: String) = Either.catch {
-        val loggerData = loggerDataSource.loggerData.first()
-
         val dateTime = formatTimestamp(dateTimeFormatter = externalDateTimeFormatter, timestamp = Timestamp.now())
 
-        Path.of(path).also(Files::createDirectories).resolve("log-${dateTime}.txt").bufferedWriter().use { writer ->
-            loggerData.forEach { loggerData ->
-                val level = when (loggerData) {
-                    is LoggerData.Info -> "INFO"
+        val currentLogs = logs.value
 
-                    is LoggerData.Warning -> "WARN"
+        withContext(Dispatchers.IO) {
+            val targetPath = Path.of(path).toAbsolutePath().normalize()
 
-                    is LoggerData.Error -> "ERROR"
+            val exportDir = when {
+                Files.isRegularFile(targetPath) -> targetPath.parent ?: targetPath
+
+                else -> targetPath
+            }
+
+            Files.createDirectories(exportDir)
+
+            val logFile = exportDir.resolve("log-$dateTime.txt")
+
+            logFile.bufferedWriter().use { writer ->
+                currentLogs.forEach { log ->
+                    val level = when (log) {
+                        is Log.Info -> "INFO"
+
+                        is Log.Warning -> "WARN"
+
+                        is Log.Error -> "ERROR"
+                    }
+
+                    val timestamp = formatTimestamp(
+                        dateTimeFormatter = internalDateTimeFormatter, timestamp = log.timestamp
+                    )
+
+                    writer.write("[$timestamp] [$level] ${log.message}\n")
                 }
-
-                val timestamp = formatTimestamp(
-                    dateTimeFormatter = internalDateTimeFormatter,
-                    timestamp = Timestamp(nanoseconds = loggerData.timestampNanos)
-                )
-
-                writer.write("[$timestamp] [$level] ${loggerData.message}\n")
             }
         }
     }

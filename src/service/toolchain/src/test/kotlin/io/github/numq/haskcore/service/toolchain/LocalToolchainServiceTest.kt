@@ -7,11 +7,12 @@ import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
-import kotlin.test.assertEquals
 
 @OptIn(ExperimentalCoroutinesApi::class)
 internal class LocalToolchainServiceTest {
@@ -25,7 +26,7 @@ internal class LocalToolchainServiceTest {
         val path = "/fake/bin/ghc"
         val version = "9.4.5"
 
-        coEvery { toolchainDataSource.toolchain } returns toolchainDataFlow
+        coEvery { toolchainDataSource.toolchainData } returns toolchainDataFlow
         coEvery { binaryResolver.findBinary(any(), *anyVararg()) } returns Either.Right(path)
         coEvery { processRunner.runCommand(any(), "--numeric-version") } returns Either.Right(version)
 
@@ -36,6 +37,7 @@ internal class LocalToolchainServiceTest {
                 ghcPath = path, cabalPath = path, stackPath = path, hlsPath = path
             )
         )
+        advanceTimeBy(101)
         runCurrent()
 
         val state = service.toolchain.value
@@ -45,13 +47,14 @@ internal class LocalToolchainServiceTest {
     @Test
     fun `should transition to Scanning then to NotFound when binaries missing`() = runTest(UnconfinedTestDispatcher()) {
         val processRunner = mockk<ProcessRunner>()
-        coEvery { toolchainDataSource.toolchain } returns toolchainDataFlow
+        coEvery { toolchainDataSource.toolchainData } returns toolchainDataFlow
         coEvery { binaryResolver.findBinary(any(), any()) } returns Either.Right(null)
         coEvery { binaryResolver.findBinary(any()) } returns Either.Right(null)
 
         val service = LocalToolchainService(backgroundScope, binaryResolver, processRunner, toolchainDataSource)
 
         toolchainDataFlow.emit(ToolchainData())
+        advanceTimeBy(101)
         runCurrent()
 
         val state = service.toolchain.value
@@ -60,13 +63,13 @@ internal class LocalToolchainServiceTest {
     }
 
     @Test
-    fun `updateGhcPath should trigger dataSource update`() = runTest(UnconfinedTestDispatcher()) {
-        coEvery { toolchainDataSource.toolchain } returns toolchainDataFlow
+    fun `updatePaths should trigger dataSource update`() = runTest(UnconfinedTestDispatcher()) {
+        coEvery { toolchainDataSource.toolchainData } returns toolchainDataFlow
         coEvery { toolchainDataSource.update(any()) } returns Either.Right(ToolchainData(ghcPath = "/new/ghc"))
 
         val service = LocalToolchainService(backgroundScope, binaryResolver, processRunner, toolchainDataSource)
 
-        val result = service.updateGhcPath("/new/ghc")
+        val result = service.updatePaths(ghcPath = "/new/ghc", cabalPath = null, stackPath = null, hlsPath = null)
 
         assertTrue(result.isRight())
         coVerify { toolchainDataSource.update(any()) }

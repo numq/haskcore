@@ -7,10 +7,12 @@ import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
-import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
@@ -36,11 +38,11 @@ internal class LocalSessionServiceTest {
 
         advanceUntilIdle()
 
-        val currentSession = service.session.first()
+        val currentSession = service.session.drop(1).first()
 
-        Assertions.assertEquals(1, currentSession.history.size)
-        Assertions.assertEquals(1, currentSession.active.size)
-        Assertions.assertEquals(testPath, currentSession.history.first().path)
+        assertEquals(1, currentSession.history.size)
+        assertEquals(1, currentSession.active.size)
+        assertEquals(testPath, currentSession.history.first().path)
     }
 
     @Test
@@ -57,7 +59,7 @@ internal class LocalSessionServiceTest {
 
         val result = service.openSessionRecord(path, name)
 
-        Assertions.assertTrue(result.isRight())
+        assertTrue(result.isRight())
         coVerify { sessionDataSource.update(any()) }
     }
 
@@ -76,7 +78,7 @@ internal class LocalSessionServiceTest {
 
         val result = service.updateSessionRecord(path, newName)
 
-        Assertions.assertTrue(result.isRight())
+        assertTrue(result.isRight())
         coVerify { sessionDataSource.update(any()) }
     }
 
@@ -89,13 +91,13 @@ internal class LocalSessionServiceTest {
         coEvery { sessionDataSource.update(any()) } answers {
             val transform = firstArg<(SessionData) -> SessionData>()
             val updated = transform(SessionData(active = listOf(record)))
-            Assertions.assertTrue(updated.active.isEmpty())
+            assertTrue(updated.active.isEmpty())
             Either.Right(updated)
         }
 
         val result = service.closeSessionRecord(path)
 
-        Assertions.assertTrue(result.isRight())
+        assertTrue(result.isRight())
     }
 
     @Test
@@ -107,13 +109,13 @@ internal class LocalSessionServiceTest {
         coEvery { sessionDataSource.update(any()) } answers {
             val transform = firstArg<(SessionData) -> SessionData>()
             val updated = transform(SessionData(history = mapOf(path to record)))
-            Assertions.assertTrue(updated.history.isEmpty())
+            assertTrue(updated.history.isEmpty())
             Either.Right(updated)
         }
 
         val result = service.removeSessionRecordFromHistory(path)
 
-        Assertions.assertTrue(result.isRight())
+        assertTrue(result.isRight())
     }
 
     @Test
@@ -127,7 +129,7 @@ internal class LocalSessionServiceTest {
         coEvery { sessionDataSource.update(any()) } answers {
             val transform = firstArg<(SessionData) -> SessionData>()
             val updated = transform(SessionData(history = initialHistory))
-            Assertions.assertEquals(30, updated.history.size)
+            assertEquals(30, updated.history.size)
             Either.Right(updated)
         }
 

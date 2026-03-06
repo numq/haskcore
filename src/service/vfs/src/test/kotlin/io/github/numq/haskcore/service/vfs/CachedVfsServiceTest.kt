@@ -7,11 +7,12 @@ import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
-import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -42,7 +43,7 @@ internal class CachedVfsServiceTest {
 
         val result = flow.first()
 
-        Assertions.assertEquals(initialFiles, result)
+        assertEquals(initialFiles, result)
         coVerify(exactly = 1) { vfsDataSource.list(testPath) }
     }
 
@@ -63,12 +64,14 @@ internal class CachedVfsServiceTest {
         coEvery { vfsDataSource.watch(testPath) } returns Either.Right(events)
 
         val flow = service.observeDirectory(testPath).getOrNull()!!
-        runCurrent()
+
+        val initial = flow.first()
+        assertEquals(1, initial.size)
 
         events.emit(VfsEvent.Deleted("$testPath/to_delete.hs"))
-        runCurrent()
 
-        val result = flow.first()
-        Assertions.assertEquals(0, result.size)
+        val updated = flow.filter { it.isEmpty() }.first()
+
+        assertEquals(0, updated.size)
     }
 }

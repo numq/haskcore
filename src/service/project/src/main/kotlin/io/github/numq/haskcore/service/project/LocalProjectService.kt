@@ -11,7 +11,7 @@ internal class LocalProjectService(
 
     override suspend fun renameProject(name: String) = projectDataSource.update { projectData ->
         projectData.copy(name = name)
-    }.map { }
+    }.map {}
 
     override suspend fun openDocument(path: String) = projectDataSource.update { projectData ->
         when {
@@ -23,7 +23,7 @@ internal class LocalProjectService(
                 openedDocumentPaths = projectData.openedDocumentPaths + path, activeDocumentPath = path
             )
         }
-    }.map { }
+    }.map {}
 
     override suspend fun closeDocument(path: String) = projectDataSource.update { projectData ->
         val openedDocumentPaths = projectData.openedDocumentPaths.filterNot { openedDocumentPath ->
@@ -37,5 +37,5 @@ internal class LocalProjectService(
         }
 
         projectData.copy(openedDocumentPaths = openedDocumentPaths, activeDocumentPath = activeDocumentPath)
-    }.map { }
+    }.map {}
 }

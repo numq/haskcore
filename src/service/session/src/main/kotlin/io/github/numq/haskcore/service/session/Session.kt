@@ -1,3 +1,3 @@
 package io.github.numq.haskcore.service.session
 
-data class Session(val history: Set<SessionRecord> = emptySet(), val active: Set<SessionRecord> = emptySet())
+data class Session(val history: List<SessionRecord> = emptyList(), val active: List<SessionRecord> = emptyList())

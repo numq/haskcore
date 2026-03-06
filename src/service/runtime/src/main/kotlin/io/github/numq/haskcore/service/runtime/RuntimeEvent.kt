@@ -4,9 +4,15 @@ import io.github.numq.haskcore.core.timestamp.Timestamp
 import kotlin.time.Duration
 
 sealed interface RuntimeEvent {
-    data class Stdout(val text: String, val timestamp: Timestamp) : RuntimeEvent
+    val request: RuntimeRequest
 
-    data class Stderr(val text: String, val timestamp: Timestamp) : RuntimeEvent
+    data class Started(override val request: RuntimeRequest) : RuntimeEvent
 
-    data class Terminated(val exitCode: Int, val duration: Duration) : RuntimeEvent
+    data class Stdout(override val request: RuntimeRequest, val text: String, val timestamp: Timestamp) : RuntimeEvent
+
+    data class Stderr(override val request: RuntimeRequest, val text: String, val timestamp: Timestamp) : RuntimeEvent
+
+    data class Terminated(
+        override val request: RuntimeRequest, val exitCode: Int, val duration: Duration
+    ) : RuntimeEvent
 }

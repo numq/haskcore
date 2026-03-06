@@ -25,7 +25,7 @@ val toolchainModule = module {
 
             val dataStore = DataStoreFactory.create(
                 serializer = ToolchainDataSerializer, scope = scope, produceFile = {
-                    Path.of(applicationPath).also(Files::createDirectories).resolve("toolchain.pb").toFile()
+                    Path.of(applicationPath, ".haskcore").also(Files::createDirectories).resolve("toolchain.pb").toFile()
                 })
 
             LocalToolchainDataSource(scope = scope, dataStore = dataStore)

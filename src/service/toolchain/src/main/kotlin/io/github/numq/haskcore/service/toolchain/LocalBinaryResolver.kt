@@ -2,6 +2,11 @@ package io.github.numq.haskcore.service.toolchain
 
 import arrow.core.Either
 import java.io.File
+import java.nio.file.Path
+import kotlin.io.path.absolutePathString
+import kotlin.io.path.exists
+import kotlin.io.path.isExecutable
+import kotlin.io.path.isRegularFile
 
 internal class LocalBinaryResolver : BinaryResolver {
     private val pathSeparator = File.pathSeparator
@@ -21,10 +26,10 @@ internal class LocalBinaryResolver : BinaryResolver {
             else -> System.getenv("PATH")?.split(pathSeparator)?.asSequence() ?: emptySequence()
         }
 
-        foldersToSearch.filter(String::isNotBlank).map { path ->
-            File(path, fullName)
-        }.firstOrNull { file ->
-            file.exists() && file.canExecute()
-        }?.absolutePath
+        foldersToSearch.filter(String::isNotBlank).map { folder ->
+            Path.of(folder, fullName)
+        }.firstOrNull { path ->
+            path.exists() && path.isRegularFile() && path.isExecutable()
+        }?.absolutePathString()
     }
 }

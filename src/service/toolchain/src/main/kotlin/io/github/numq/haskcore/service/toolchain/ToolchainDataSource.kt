@@ -4,7 +4,7 @@ import arrow.core.Either
 import kotlinx.coroutines.flow.Flow
 
 internal interface ToolchainDataSource : AutoCloseable {
-    val toolchain: Flow<ToolchainData>
+    val toolchainData: Flow<ToolchainData>
 
     suspend fun get(): Either<Throwable, ToolchainData>
 

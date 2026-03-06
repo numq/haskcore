@@ -1,19 +1,23 @@
 package io.github.numq.haskcore.service.vfs
 
 import arrow.core.Either
+import arrow.core.flatMap
 import arrow.core.raise.either
 import io.github.numq.haskcore.core.timestamp.Timestamp
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.launch
 import java.nio.file.Path
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import kotlin.io.path.*
 
 internal class CachedVfsService(
     private val scope: CoroutineScope, private val vfsDataSource: VfsDataSource
 ) : VfsService {
+    private val watchFlows = ConcurrentHashMap<String, Flow<VfsEvent>>()
+
     private val cacheUpdates = MutableSharedFlow<VfsCacheAction>()
 
     private val directoryCache = cacheUpdates.scan(
@@ -77,6 +81,7 @@ internal class CachedVfsService(
         }
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     override suspend fun observeDirectory(path: String) = either {
         if (!directoryCache.value.containsKey(path)) {
             val files = vfsDataSource.list(path = path).bind()
@@ -84,29 +89,27 @@ internal class CachedVfsService(
             cacheUpdates.emit(VfsCacheAction.SetDirectory(path = path, files = files))
         }
 
-        scope.launch {
-            vfsDataSource.watch(path = path).fold(ifLeft = { throwable ->
-                println(throwable) // todo
-            }, ifRight = { eventFlow ->
-                eventFlow.collect { event ->
-                    val newFile = when (event) {
-                        is VfsEvent.Deleted -> null
-
-                        else -> fetchSingleEntry(path = event.path).getOrNull()
-                    }
-
-                    cacheUpdates.emit(
-                        VfsCacheAction.UpdateEntry(
-                            parentPath = path, event = event, newFile = newFile
-                        )
-                    )
-                }
-            })
+        val watchEvents = watchFlows.getOrPut(path) {
+            vfsDataSource.watch(path).bind().shareIn(scope = scope, started = SharingStarted.WhileSubscribed())
         }
 
-        directoryCache.map { cache -> cache[path] }.filterNotNull().onStart {
-            directoryCache.value[path]?.let { files -> emit(files) }
-        }.distinctUntilChanged()
+        channelFlow {
+            watchEvents.onEach { event ->
+                val newFile = when (event) {
+                    is VfsEvent.Deleted -> null
+
+                    else -> fetchSingleEntry(path = event.path).getOrNull()
+                }
+
+                cacheUpdates.emit(VfsCacheAction.UpdateEntry(parentPath = path, event = event, newFile = newFile))
+            }.launchIn(this)
+
+            directoryCache.map { cache -> cache[path] }.filterNotNull().distinctUntilChanged().collect(::send)
+
+            invokeOnClose {
+                watchFlows.remove(path)
+            }
+        }
     }
 
     override suspend fun create(path: String, isDirectory: Boolean) = vfsDataSource.create(path, isDirectory)
@@ -115,7 +118,13 @@ internal class CachedVfsService(
 
     override suspend fun copy(src: String, dst: String, overwrite: Boolean) = vfsDataSource.copy(src, dst, overwrite)
 
-    override suspend fun delete(path: String) = vfsDataSource.delete(path)
+    override suspend fun delete(path: String) = vfsDataSource.delete(path).flatMap {
+        Either.catch {
+            watchFlows.remove(path)
+
+            Unit
+        }
+    }
 
     override fun close() {
         scope.cancel()

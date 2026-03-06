@@ -9,7 +9,8 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
-import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
@@ -33,8 +34,8 @@ internal class LocalProjectServiceTest {
 
         val result = service.project.first()
 
-        Assertions.assertEquals(testProjectPath, result.path)
-        Assertions.assertEquals("HaskellProject", result.name)
+        assertEquals(testProjectPath, result.path)
+        assertEquals("HaskellProject", result.name)
     }
 
     @Test
@@ -43,13 +44,13 @@ internal class LocalProjectServiceTest {
         coEvery { projectDataSource.update(any()) } answers {
             val transform = firstArg<(ProjectData) -> ProjectData>()
             val updated = transform(ProjectData(name = "OldName"))
-            Assertions.assertEquals(newName, updated.name)
+            assertEquals(newName, updated.name)
             Either.Right(updated)
         }
 
         val result = service.renameProject(newName)
 
-        Assertions.assertTrue(result.isRight())
+        assertTrue(result.isRight())
         coVerify { projectDataSource.update(any()) }
     }
 
@@ -59,14 +60,14 @@ internal class LocalProjectServiceTest {
         coEvery { projectDataSource.update(any()) } answers {
             val transform = firstArg<(ProjectData) -> ProjectData>()
             val updated = transform(ProjectData())
-            Assertions.assertTrue(updated.openedDocumentPaths.contains(docPath))
-            Assertions.assertEquals(docPath, updated.activeDocumentPath)
+            assertTrue(updated.openedDocumentPaths.contains(docPath))
+            assertEquals(docPath, updated.activeDocumentPath)
             Either.Right(updated)
         }
 
         val result = service.openDocument(docPath)
 
-        Assertions.assertTrue(result.isRight())
+        assertTrue(result.isRight())
     }
 
     @Test
@@ -77,8 +78,8 @@ internal class LocalProjectServiceTest {
         coEvery { projectDataSource.update(any()) } answers {
             val transform = firstArg<(ProjectData) -> ProjectData>()
             val updated = transform(initialData)
-            Assertions.assertEquals(1, updated.openedDocumentPaths.size)
-            Assertions.assertEquals(docPath, updated.activeDocumentPath)
+            assertEquals(1, updated.openedDocumentPaths.size)
+            assertEquals(docPath, updated.activeDocumentPath)
             Either.Right(updated)
         }
 
@@ -97,14 +98,14 @@ internal class LocalProjectServiceTest {
             val transform = firstArg<(ProjectData) -> ProjectData>()
             val updated = transform(initialData)
 
-            Assertions.assertTrue(updated.openedDocumentPaths.none { it == doc2 })
-            Assertions.assertEquals(doc1, updated.activeDocumentPath)
+            assertTrue(updated.openedDocumentPaths.none { it == doc2 })
+            assertEquals(doc1, updated.activeDocumentPath)
             Either.Right(updated)
         }
 
         val result = service.closeDocument(doc2)
 
-        Assertions.assertTrue(result.isRight())
+        assertTrue(result.isRight())
     }
 
     @Test
@@ -118,8 +119,8 @@ internal class LocalProjectServiceTest {
             val transform = firstArg<(ProjectData) -> ProjectData>()
             val updated = transform(initialData)
 
-            Assertions.assertTrue(updated.openedDocumentPaths.isEmpty())
-            Assertions.assertEquals(null, updated.activeDocumentPath)
+            assertTrue(updated.openedDocumentPaths.isEmpty())
+            assertEquals(null, updated.activeDocumentPath)
             Either.Right(updated)
         }
 

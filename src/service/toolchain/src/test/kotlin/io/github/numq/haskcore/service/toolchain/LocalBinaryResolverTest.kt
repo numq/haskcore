@@ -1,8 +1,8 @@
 package io.github.numq.haskcore.service.toolchain
 
 import kotlinx.coroutines.test.runTest
+import org.junit.jupiter.api.Test
 import java.nio.file.Files
-import kotlin.test.Test
 
 internal class LocalBinaryResolverTest {
     private val resolver = LocalBinaryResolver()

@@ -21,7 +21,7 @@ val sessionModule = module {
 
             val dataStore = DataStoreFactory.create(
                 serializer = SessionDataSerializer, scope = scope, produceFile = {
-                    Path.of(applicationPath).also(Files::createDirectories).resolve("session.pb").toFile()
+                    Path.of(applicationPath, ".haskcore").also(Files::createDirectories).resolve("session.pb").toFile()
                 })
 
             LocalSessionDataSource(scope = scope, dataStore = dataStore)

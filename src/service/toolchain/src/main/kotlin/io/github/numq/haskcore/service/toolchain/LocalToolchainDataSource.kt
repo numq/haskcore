@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.first
 internal class LocalToolchainDataSource(
     private val scope: CoroutineScope, private val dataStore: DataStore<ToolchainData>
 ) : ToolchainDataSource {
-    override val toolchain = dataStore.data
+    override val toolchainData = dataStore.data
 
     override suspend fun get() = Either.catch { dataStore.data.first() }
 
