@@ -34,11 +34,39 @@ plugins {
 }
 
 val baseModules = listOf("application", "core")
-val platformModules = listOf("theme", "window")
+
+val platformModules = listOf("dialog", "font", "splitpane", "theme", "window")
+
 val serviceModules = listOf(
-    "configuration", "document", "language", "project", "runtime", "session", "text", "toolchain", "vfs"
+    "clipboard",
+    "configuration",
+    "document",
+    "journal",
+    "keymap",
+    "language",
+    "logger",
+    "project",
+    "runtime",
+    "session",
+    "text",
+    "toolchain",
+    "vfs"
 )
-val featureModules = listOf("editor", "explorer", "navigation", "output", "settings", "splash", "welcome", "workspace")
+
+val featureModules = listOf(
+    "bootstrap",
+    "editor",
+    "execution",
+    "explorer",
+    "log",
+    "navigation",
+    "output",
+    "settings",
+    "shelf",
+    "status",
+    "welcome",
+    "workspace"
+)
 
 baseModules.forEach { name ->
     val path = ":$name"
