@@ -4,14 +4,16 @@
 
 <h1 align="center" title="A lightweight and standalone Haskell IDE powered by Compose Desktop">haskcore</h1>
 
-<p align="center">A lightweight and standalone Haskell IDE powered by Compose Desktop</p>
-
 <div align="center"><img src="media/logo.webp" alt="haskcore logo"></div>
+
+<p align="center">A lightweight and standalone Haskell IDE powered by Compose Desktop</p>
 
 ## About
 
-My mission is to create the only Haskell IDE that is comfortable and contains all the necessary features to effectively
-work with the language, whether you're a beginner or not.
+<p align="center">My mission is to create the only Haskell IDE that is comfortable and contains all the necessary features to effectively
+work with the language, whether you're a beginner or not.</p>
+
+<br>
 
 <div align="center">
   <table border="0" cellpadding="0" cellspacing="0">
