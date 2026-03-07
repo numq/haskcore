@@ -1,52 +1,91 @@
-<h1 align="center" title="Haskell IDE - Modern Desktop Development Environment">haskcore</h1>
-
 ![Java](https://img.shields.io/badge/Java-24-000000.svg?style=flat&logo=openjdk&logoColor=white)
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.2.20-000000.svg?style=flat&logo=kotlin&logoColor=white)
 ![Compose](https://img.shields.io/badge/Compose_Desktop-000000.svg?style=flat&logo=jetpackcompose&logoColor=white)
-![Haskell](https://img.shields.io/badge/Haskell-LSP%20Support-black)
-![Status](https://img.shields.io/badge/Status-WIP-000000.svg?style=flat)
 
-|                                                                  🖤                                                                   |                  Support this project                   |               
-|:-------------------------------------------------------------------------------------------------------------------------------------:|:-------------------------------------------------------:|
-|  <img src="https://raw.githubusercontent.com/ErikThiart/cryptocurrency-icons/master/32/bitcoin.png" alt="Bitcoin (BTC)" width="32"/>  | <code>bc1qs6qq0fkqqhp4whwq8u8zc5egprakvqxewr5pmx</code> | 
-| <img src="https://raw.githubusercontent.com/ErikThiart/cryptocurrency-icons/master/32/ethereum.png" alt="Ethereum (ETH)" width="32"/> | <code>0x3147bEE3179Df0f6a0852044BFe3C59086072e12</code> |
-|  <img src="https://raw.githubusercontent.com/ErikThiart/cryptocurrency-icons/master/32/tether.png" alt="USDT (TRC-20)" width="32"/>   |     <code>TKznmR65yhPt5qmYCML4tNSWFeeUkgYSEV</code>     |
+<h1 align="center" title="A lightweight and standalone Haskell IDE powered by Compose Desktop">haskcore</h1>
+
+<p align="center">A lightweight and standalone Haskell IDE powered by Compose Desktop</p>
 
 ___
-
-<br>
 
 <div align="center"><img src="media/logo.webp" alt="haskcore logo"></div>
 
-<br>
+## About
 
-<p align="center">A modern, lightweight standalone desktop IDE with LSP support, built with Kotlin & Compose Desktop for Haskell development</p>
+My mission is to create the only Haskell IDE that is comfortable and contains all the necessary features to effectively
+work with the language, whether you're a beginner or not.
 
-___
+<div align="center">
+  <table border="0" cellpadding="0" cellspacing="0">
+    <tr>
+      <td align="center" valign="middle" style="border: none; padding-right: 20px;">
+        <a href="https://numq.github.io/support">
+          <img src="https://api.qrserver.com/v1/create-qr-code/?size=112x112&data=https://numq.github.io/support&bgcolor=1a1b26&color=7aa2f7" width="120" style="border-radius: 4px;">
+        </a>
+      </td>
+      <td align="left" valign="middle" style="border: none;">
+        <b style="font-size: 1.2em;">Support the development</b>
+        <br>
+        <br>
+        <a href="https://numq.github.io/support" style="text-decoration: none;">
+          <code style="color: #7aa2f7;">numq.github.io/support</code>
+        </a>
+      </td>
+    </tr>
+  </table>
+</div>
 
-<p align="center"><b>Because Haskell deserves its own IDE</b></p>
+## Features
+
+- Multi-window support
+
+- Syntax highlighting with Tree-sitter
+
+- HLS (LSP) support
+
+- GHC, Cabal, and Stack support
+
+- A text editor built from scratch using a rope buffer and rendered with Skia
+
+## Contribution
+
+The project is being developed solo and requires no contributions. You can contribute to its development by leaving
+feedback or making a [donation](https://numq.github.io/support).
+
+## Architecture
 
 > [!NOTE]
 > The application was designed using the [Reduce & Conquer](https://github.com/numq/reduce-and-conquer) architectural
 > pattern
 
-# Development
+This project follows a highly modularized, layered architecture designed for strict isolation, testability, and
+scalability.
 
-> [!IMPORTANT]
-> This is an approximate status and may change as development progresses
+### Modular Structure & Registry
 
-| 📦 Package | 🎯 Functionality        | 🏗️ Layer | ✅ Status        |
-|------------|-------------------------|-----------|-----------------|
-| clipboard  | Clipboard management    | Low-level | ✅ Stable        |
-| compiler   | Single-file compilation | Low-level | ✅ Stable        |
-| editor     | Code editing            | UI        | ❌  Planned      |
-| explorer   | File navigation         | UI        | ✅   Stable      |
-| filesystem | Virtual file system     | Low-level | ✅  Stable       |
-| keymap     | Hotkeys                 | Core      | ❌  Planned      |
-| lsp        | LSP protocol            | Core      | 🚧  In progress |
-| output     | Console output          | UI        | 🚧  In progress |
-| process    | Process execution       | Low-level | ✅   Stable      |
-| project    | Project management      | Core      | 🚧  In progress |
-| runner     | Project execution       | Core      | ❌  Planned      |
-| stack      | Stack integration       | Low-level | ✅   Stable      |
-| workspace  | IDE state               | Core      | 🚧  In progress |
+The codebase is organized into four distinct layers, each with strict dependency rules enforced at the build level.
+
+```mermaid
+graph TD
+core[":core"]
+
+feature_presentation[":feature:*:presentation"]
+feature_core[":feature:*:core"]
+
+platform[":platform:*"]
+
+service[":service:*"]
+
+service --> core
+
+feature_core --> core
+feature_core --> service
+
+feature_presentation --> core
+feature_presentation --> feature_core
+
+platform --> core
+platform --> service
+platform --> feature_core
+platform --> feature_presentation
+```
