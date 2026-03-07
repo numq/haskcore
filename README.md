@@ -6,8 +6,6 @@
 
 <p align="center">A lightweight and standalone Haskell IDE powered by Compose Desktop</p>
 
-___
-
 <div align="center"><img src="media/logo.webp" alt="haskcore logo"></div>
 
 ## About
