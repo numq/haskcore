@@ -61,10 +61,6 @@ feedback or making a [donation](https://numq.github.io/support).
 This project follows a highly modularized, layered architecture designed for strict isolation, testability, and
 scalability.
 
-### Modular Structure & Registry
-
-The codebase is organized into four distinct layers, each with strict dependency rules enforced at the build level.
-
 ```mermaid
 graph TD
 core[":core"]
