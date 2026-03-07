@@ -20,7 +20,7 @@ work with the language, whether you're a beginner or not.
     <tr>
       <td align="center" valign="middle" style="border: none; padding-right: 20px;">
         <a href="https://numq.github.io/support">
-          <img src="https://api.qrserver.com/v1/create-qr-code/?size=112x112&data=https://numq.github.io/support&bgcolor=1a1b26&color=7aa2f7" width="120" style="border-radius: 4px;">
+          <img src="https://api.qrserver.com/v1/create-qr-code/?size=112x112&data=https://numq.github.io/support&bgcolor=1a1b26&color=7aa2f7" width="120" style="border-radius: 4px;" alt="QR code">
         </a>
       </td>
       <td align="left" valign="middle" style="border: none;">
