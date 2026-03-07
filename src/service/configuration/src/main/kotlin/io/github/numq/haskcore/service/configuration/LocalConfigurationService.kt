@@ -10,11 +10,12 @@ import kotlinx.coroutines.flow.stateIn
 internal class LocalConfigurationService(
     private val scope: CoroutineScope, configurationDataSource: ConfigurationDataSource
 ) : ConfigurationService {
-    override val configuration = configurationDataSource.configurationData.map(ConfigurationData::toConfiguration).stateIn(
-        scope = scope,
-        started = SharingStarted.Eagerly,
-        initialValue = Configuration(timestamp = Timestamp(nanoseconds = 0L))
-    )
+    override val configuration =
+        configurationDataSource.configurationData.map(ConfigurationData::toConfiguration).stateIn(
+            scope = scope,
+            started = SharingStarted.Eagerly,
+            initialValue = Configuration(timestamp = Timestamp(nanoseconds = 0L))
+        )
 
     override fun close() {
         scope.cancel()

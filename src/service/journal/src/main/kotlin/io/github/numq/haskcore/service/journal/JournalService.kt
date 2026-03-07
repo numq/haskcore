@@ -12,4 +12,6 @@ interface JournalService : AutoCloseable {
     suspend fun undo(revision: Long): Either<Throwable, TextEdit?>
 
     suspend fun redo(revision: Long): Either<Throwable, TextEdit?>
+
+    suspend fun clear(): Either<Throwable, Unit>
 }

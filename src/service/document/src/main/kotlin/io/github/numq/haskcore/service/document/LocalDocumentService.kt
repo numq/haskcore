@@ -2,10 +2,18 @@ package io.github.numq.haskcore.service.document
 
 import arrow.core.Either
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import java.nio.file.Path
+import kotlin.io.path.name
 
 internal class LocalDocumentService : DocumentService {
+    override suspend fun getName(path: String) = Either.catch {
+        withContext(Dispatchers.IO) {
+            Path.of(path).name
+        }
+    }
+
     override suspend fun readDocument(path: String) = Either.catch {
         withContext(Dispatchers.IO) {
             val file = Path.of(path).toFile()
@@ -17,7 +25,7 @@ internal class LocalDocumentService : DocumentService {
     }
 
     override suspend fun saveDocument(path: String, content: String) = Either.catch {
-        withContext(Dispatchers.IO) {
+        withContext(NonCancellable + Dispatchers.IO) {
             val file = Path.of(path).toFile()
 
             check(file.isFile) { "$path is not a file" }

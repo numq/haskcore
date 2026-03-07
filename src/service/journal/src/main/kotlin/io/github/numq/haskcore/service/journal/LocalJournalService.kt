@@ -40,23 +40,17 @@ internal class LocalJournalService(
     override suspend fun undo(revision: Long) = either {
         var edit: TextEdit? = null
 
-        journalDataSource.update { data ->
+        journalDataSource.update { journalData ->
             when {
-                data.currentIndex >= 0 -> {
-                    val record = data.records[data.currentIndex]
+                journalData.currentIndex >= 0 -> {
+                    val record = journalData.records[journalData.currentIndex]
 
-                    when (record.revision) {
-                        revision -> {
-                            edit = record.toData().invert()
+                    edit = record.toData().invert()
 
-                            data.copy(currentIndex = data.currentIndex - 1)
-                        }
-
-                        else -> return@update data.copy(records = emptyList(), currentIndex = -1)
-                    }
+                    journalData.copy(currentIndex = journalData.currentIndex - 1)
                 }
 
-                else -> data
+                else -> journalData
             }
         }.bind()
 
@@ -66,32 +60,28 @@ internal class LocalJournalService(
     override suspend fun redo(revision: Long) = either {
         var edit: TextEdit? = null
 
-        journalDataSource.update { data ->
+        journalDataSource.update { journalData ->
             when {
-                data.currentIndex < data.records.size - 1 -> {
-                    val nextIndex = data.currentIndex + 1
+                journalData.currentIndex < journalData.records.size - 1 -> {
+                    val nextIndex = journalData.currentIndex + 1
 
-                    val recordToRedo = data.records[nextIndex]
+                    val recordToRedo = journalData.records[nextIndex]
 
-                    val recordRevision = data.records.lastOrNull()?.revision ?: 0L
+                    edit = recordToRedo.toData()
 
-                    when {
-                        revision > recordRevision -> return@update data.copy(records = emptyList(), currentIndex = -1)
-
-                        else -> {
-                            edit = recordToRedo.toData()
-
-                            data.copy(currentIndex = nextIndex)
-                        }
-                    }
+                    journalData.copy(currentIndex = nextIndex)
                 }
 
-                else -> data
+                else -> journalData
             }
         }.bind()
 
         edit
     }
+
+    override suspend fun clear() = journalDataSource.update { journalData ->
+        journalData.copy(records = emptyList(), currentIndex = -1)
+    }.map {}
 
     override fun close() {
         scope.cancel()

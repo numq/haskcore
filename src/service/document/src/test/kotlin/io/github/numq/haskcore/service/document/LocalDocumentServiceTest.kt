@@ -3,7 +3,8 @@ package io.github.numq.haskcore.service.document
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
-import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
@@ -17,6 +18,19 @@ internal class LocalDocumentServiceTest {
     lateinit var tempDir: Path
 
     @Test
+    fun `getName should return document name`() = runTest(UnconfinedTestDispatcher()) {
+        val fileName = "test.hs"
+        val file = File(tempDir.toFile(), fileName)
+
+        val result = service.getName(file.path)
+
+        assertTrue(result.isRight())
+        result.onRight { name ->
+            assertEquals(fileName, name)
+        }
+    }
+
+    @Test
     fun `readDocument should return document content`() = runTest(UnconfinedTestDispatcher()) {
         val fileName = "test.hs"
         val content = "main = putStrLn \"Hello\""
@@ -26,12 +40,12 @@ internal class LocalDocumentServiceTest {
 
         val result = service.readDocument(file.path)
 
-        Assertions.assertTrue(result.isRight())
+        assertTrue(result.isRight())
         result.onRight { document ->
-            Assertions.assertEquals(file.path, document.path)
-            Assertions.assertEquals(fileName, document.name)
-            Assertions.assertEquals(content, document.content)
-            Assertions.assertTrue(!document.isModified)
+            assertEquals(file.path, document.path)
+            assertEquals(fileName, document.name)
+            assertEquals(content, document.content)
+            assertTrue(!document.isModified)
         }
     }
 
@@ -45,8 +59,8 @@ internal class LocalDocumentServiceTest {
 
         val result = service.saveDocument(file.path, newContent)
 
-        Assertions.assertTrue(result.isRight())
-        Assertions.assertEquals(newContent, file.readText())
+        assertTrue(result.isRight())
+        assertEquals(newContent, file.readText())
     }
 
     @Test
@@ -55,10 +69,10 @@ internal class LocalDocumentServiceTest {
 
         val result = service.readDocument(dirPath)
 
-        Assertions.assertTrue(result.isLeft())
+        assertTrue(result.isLeft())
         result.onLeft { throwable ->
-            Assertions.assertTrue(throwable is IllegalStateException)
-            Assertions.assertTrue(throwable.message?.contains("is not a file") == true)
+            assertTrue(throwable is IllegalStateException)
+            assertTrue(throwable.message?.contains("is not a file") == true)
         }
     }
 
@@ -72,10 +86,10 @@ internal class LocalDocumentServiceTest {
         val result = service.saveDocument(file.path, "some content")
 
         if (!file.canWrite()) {
-            Assertions.assertTrue(result.isLeft())
+            assertTrue(result.isLeft())
             result.onLeft { throwable ->
-                Assertions.assertTrue(throwable is IllegalStateException)
-                Assertions.assertTrue(throwable.message?.contains("Cannot write") == true)
+                assertTrue(throwable is IllegalStateException)
+                assertTrue(throwable.message?.contains("Cannot write") == true)
             }
         }
     }
