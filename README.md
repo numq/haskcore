@@ -37,15 +37,17 @@ work with the language, whether you're a beginner or not.
 
 ## Features
 
-- Multi-window support
+- A text editor built from scratch using a rope buffer and rendered with Skia
 
 - Syntax highlighting with Tree-sitter
+
+- Built-in Dracula and Alucard color schemes
 
 - HLS (LSP) support
 
 - GHC, Cabal, and Stack support
 
-- A text editor built from scratch using a rope buffer and rendered with Skia
+- Multi-window support
 
 ## Contribution
 
