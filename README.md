@@ -91,3 +91,8 @@ platform --> service
 platform --> feature_core
 platform --> feature_presentation
 ```
+
+## License
+
+This project is licensed under the [GNU General Public License v3.0](LICENSE).
+For commercial licensing inquiries, please contact me directly via email.
