@@ -228,7 +228,7 @@ internal fun main() {
                                 execution = {
                                     ExecutionView(projectScope = projectScope, handleError = Throwable::printStackTrace)
                                 },
-                                editor = { path ->
+                                editor = { path, tabs ->
                                     ShelfView(
                                         projectScope = projectScope,
                                         handleError = Throwable::printStackTrace,
@@ -243,13 +243,15 @@ internal fun main() {
                                             )
                                         },
                                         editor = {
-                                            EditorView(
-                                                projectScope = projectScope,
-                                                path = path,
-                                                font = editorFont,
-                                                theme = theme,
-                                                handleError = Throwable::printStackTrace
-                                            )
+                                            tabs {
+                                                EditorView(
+                                                    projectScope = projectScope,
+                                                    path = path,
+                                                    font = editorFont,
+                                                    theme = theme,
+                                                    handleError = Throwable::printStackTrace
+                                                )
+                                            }
                                         })
                                 },
                                 output = {
