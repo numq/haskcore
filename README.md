@@ -17,6 +17,8 @@
 *My mission is to create the only Haskell IDE that is comfortable and contains all the necessary features to effectively
 work with the language, whether you're a beginner or not.*
 
+<br>
+
 <div align="center">
   <table border="0" cellpadding="0" cellspacing="0">
     <tr>
