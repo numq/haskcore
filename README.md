@@ -10,6 +10,8 @@
 
 <p align="center">A lightweight and standalone Haskell IDE powered by Compose Desktop</p>
 
+<p align="center"><img src="media/preview.png" alt="Preview"></p>
+
 ## About
 
 My mission is to create the only Haskell IDE that is comfortable and contains all the necessary features to effectively

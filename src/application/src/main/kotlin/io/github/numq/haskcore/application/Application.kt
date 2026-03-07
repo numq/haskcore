@@ -75,6 +75,8 @@ private const val APPLICATION_NAME = "haskcore"
 private const val USER_HOME = "user.home"
 
 internal fun main() {
+    System.setProperty("skiko.renderApi", "OPENGL")
+
     startKoin {
         modules(
             bootstrapCoreModule,
