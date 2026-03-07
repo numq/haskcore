@@ -8,9 +8,9 @@
 
 <br>
 
-<p align="center">A lightweight and standalone Haskell IDE powered by Compose Desktop</p>
-
 <p align="center"><img src="media/preview.png" alt="Preview"></p>
+
+<p align="center">A lightweight and standalone Haskell IDE powered by Compose Desktop</p>
 
 ## About
 
