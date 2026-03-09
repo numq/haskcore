@@ -23,9 +23,9 @@ internal object AlucardCodeAreaColorPalette : CodeAreaColorPalette {
 
     override val searchMatchBorderColor = 0xFFdedccf.toInt()
 
-    override val usageHighlightBackground = 0xFFdedccf.toInt()
+    override val usageHighlightBackground = 0xFFc6c4b8.toInt().withAlpha(.3f)
 
-    override val currentUsageHighlightBackground = 0xFFa3144d.toInt().withAlpha(.2f)
+    override val currentUsageHighlightBackground = 0xFFa3144d.toInt().withAlpha(.3f)
 
     override val linkColor = 0xFF036a96.toInt()
 
