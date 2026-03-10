@@ -3,7 +3,7 @@ package io.github.numq.haskcore.platform.theme.editor.palette.codearea
 internal object AlucardCodeAreaColorPalette : CodeAreaColorPalette {
     override val textColor = 0xFF1f1f1f.toInt()
 
-    override val selectionColor = 0xFFd8d6c9.toInt()
+    override val selectionColor = 0xFFc6c4b8.toInt().withAlpha(.5f)
 
     override val selectionInactiveColor = 0xFFdedccf.toInt()
 
@@ -23,7 +23,7 @@ internal object AlucardCodeAreaColorPalette : CodeAreaColorPalette {
 
     override val searchMatchBorderColor = 0xFFdedccf.toInt()
 
-    override val usageHighlightBackground = 0xFFc6c4b8.toInt().withAlpha(.3f)
+    override val usageHighlightBackground = 0xFF9c9a90.toInt().withAlpha(.2f)
 
     override val currentUsageHighlightBackground = 0xFFa3144d.toInt().withAlpha(.3f)
 

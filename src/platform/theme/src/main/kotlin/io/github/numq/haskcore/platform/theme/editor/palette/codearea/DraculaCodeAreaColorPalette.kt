@@ -3,7 +3,7 @@ package io.github.numq.haskcore.platform.theme.editor.palette.codearea
 internal object DraculaCodeAreaColorPalette : CodeAreaColorPalette {
     override val textColor = 0xFFf8f8f2.toInt()
 
-    override val selectionColor = 0xFF44475a.toInt()
+    override val selectionColor = 0xFF44475a.toInt().withAlpha(.8f)
 
     override val selectionInactiveColor = 0xFF3f4152.toInt()
 
@@ -23,7 +23,7 @@ internal object DraculaCodeAreaColorPalette : CodeAreaColorPalette {
 
     override val searchMatchBorderColor = 0xFF3b244e.toInt()
 
-    override val usageHighlightBackground = 0xFF44475a.toInt()
+    override val usageHighlightBackground = 0xFF353a4d.toInt().withAlpha(.7f)
 
     override val currentUsageHighlightBackground = 0xFF50fa7b.toInt().withAlpha(alpha = .2f)
 

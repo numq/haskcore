@@ -1,4 +1,4 @@
-package io.github.numq.haskcore.platform.dialog
+package io.github.numq.haskcore.platform.dialog.file
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
