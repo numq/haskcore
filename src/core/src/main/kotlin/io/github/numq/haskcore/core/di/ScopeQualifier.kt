@@ -1,9 +1,11 @@
 package io.github.numq.haskcore.core.di
 
-sealed interface ScopeQualifier {
-    object Application : ScopeQualifier
+import org.koin.core.qualifier.named
 
-    object Project : ScopeQualifier
+object ScopeQualifier {
+    val Application = named("APPLICATION_PATH")
 
-    object Document : ScopeQualifier
+    val Project = named("PROJECT_PATH")
+
+    val Document = named("DOCUMENT_PATH")
 }
