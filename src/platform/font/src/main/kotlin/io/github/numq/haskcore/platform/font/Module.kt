@@ -1,11 +1,11 @@
 package io.github.numq.haskcore.platform.font
 
-import io.github.numq.haskcore.core.di.ScopeQualifier
+import io.github.numq.haskcore.core.di.ScopeQualifierType
 import io.github.numq.haskcore.core.di.scopedOwner
 import org.koin.dsl.module
 
 val fontModule = module {
-    scope<ScopeQualifier.Application> {
+    scope<ScopeQualifierType.Application> {
         scopedOwner { FontManager() }
 
         scopedOwner { (size: Float, lineSpacing: Float) ->
