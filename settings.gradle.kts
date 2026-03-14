@@ -35,7 +35,7 @@ plugins {
 
 val baseModules = listOf("application", "core")
 
-val platformModules = listOf("dialog", "font", "splitpane", "theme", "window")
+val platformModules = listOf("font", "overlay", "splitpane", "theme", "window")
 
 val serviceModules = listOf(
     "clipboard",
