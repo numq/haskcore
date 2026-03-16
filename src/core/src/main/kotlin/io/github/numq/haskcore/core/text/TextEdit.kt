@@ -3,18 +3,18 @@ package io.github.numq.haskcore.core.text
 import io.github.numq.haskcore.core.timestamp.Timestamp
 
 sealed interface TextEdit {
+    val revision: TextRevision
+
     val data: Data
 
-    val revision: Long
+    data class User(override val revision: TextRevision, override val data: Data) : TextEdit
 
-    data class User(override val data: Data, override val revision: Long) : TextEdit
-
-    data class System(override val data: Data, override val revision: Long) : TextEdit
+    data class System(override val revision: TextRevision, override val data: Data) : TextEdit
 
     fun invert() = when (this) {
-        is User -> User(data = data.invert(), revision = revision)
+        is User -> User(revision = revision, data = data.invert())
 
-        is System -> System(data = data.invert(), revision = revision)
+        is System -> System(revision = revision, data = data.invert())
     }
 
     sealed interface Data {

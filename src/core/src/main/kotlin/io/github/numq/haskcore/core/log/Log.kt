@@ -9,11 +9,20 @@ sealed interface Log {
 
     val timestamp: Timestamp
 
-    data class Info(override val projectId: String?, override val message: String, override val timestamp: Timestamp) :
-        Log
+    val timestampLabel: String
+
+    data class Info(
+        override val projectId: String?,
+        override val message: String,
+        override val timestamp: Timestamp,
+        override val timestampLabel: String
+    ) : Log
 
     data class Warning(
-        override val projectId: String?, override val message: String, override val timestamp: Timestamp
+        override val projectId: String?,
+        override val message: String,
+        override val timestamp: Timestamp,
+        override val timestampLabel: String
     ) : Log
 
     sealed interface Error : Log {
@@ -25,6 +34,7 @@ sealed interface Log {
             override val projectId: String?,
             override val message: String,
             override val timestamp: Timestamp,
+            override val timestampLabel: String,
             override val className: String,
             override val stackTrace: String,
         ) : Error
@@ -33,6 +43,7 @@ sealed interface Log {
             override val projectId: String?,
             override val message: String,
             override val timestamp: Timestamp,
+            override val timestampLabel: String,
             override val className: String,
             override val stackTrace: String,
         ) : Error
@@ -41,6 +52,7 @@ sealed interface Log {
             override val projectId: String?,
             override val message: String,
             override val timestamp: Timestamp,
+            override val timestampLabel: String,
             override val className: String,
             override val stackTrace: String,
         ) : Error

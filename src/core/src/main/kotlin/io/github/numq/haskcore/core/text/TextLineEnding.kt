@@ -1,6 +1,6 @@
 package io.github.numq.haskcore.core.text
 
-enum class LineEnding {
+enum class TextLineEnding {
     LF, CRLF, CR;
 
     val text: String
@@ -12,7 +12,7 @@ enum class LineEnding {
             CR -> "\r"
         }
 
-    data class DetectionResult(val dominant: LineEnding, val isMixed: Boolean)
+    data class DetectionResult(val dominant: TextLineEnding, val isMixed: Boolean)
 
     companion object {
         fun getSystemLineEnding() = when {

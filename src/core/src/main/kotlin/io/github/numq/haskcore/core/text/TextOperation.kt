@@ -1,11 +1,13 @@
 package io.github.numq.haskcore.core.text
 
 sealed interface TextOperation {
+    val revision: TextRevision
+
     val data: Data
 
-    data class User(override val data: Data) : TextOperation
+    data class User(override val revision: TextRevision, override val data: Data) : TextOperation
 
-    data class System(override val data: Data) : TextOperation
+    data class System(override val revision: TextRevision, override val data: Data) : TextOperation
 
     sealed interface Data {
         sealed interface Single : Data {
