@@ -17,9 +17,8 @@ gson = "2.10.1"
 lsp4j = "0.24.0"
 directory-watcher = "0.19.1"
 okio = "3.16.4"
-tree-sitter = "0.25.3"
+tree-sitter = "0.26.6"
 tree-sitter-haskell = "0.23.1"
-tree-sitter-yaml = "0.5.0"
 java-diff-utils = "4.16"
 
 [libraries]
@@ -49,7 +48,6 @@ lsp4j-jsonrpc = { module = "org.eclipse.lsp4j:org.eclipse.lsp4j.jsonrpc", versio
 directory-watcher = { module = "io.methvin:directory-watcher", version.ref = "directory-watcher" }
 tree-sitter = { module = "io.github.bonede:tree-sitter", version.ref = "tree-sitter" }
 tree-sitter-haskell = { module = "io.github.bonede:tree-sitter-haskell", version.ref = "tree-sitter-haskell" }
-tree-sitter-yaml = { module = "io.github.bonede:tree-sitter-yaml", version.ref = "tree-sitter-yaml" }
 java-diff-utils = { module = "io.github.java-diff-utils:java-diff-utils", version.ref = "java-diff-utils" }
 
 [plugins]
