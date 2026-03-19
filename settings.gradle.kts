@@ -43,11 +43,12 @@ val serviceModules = listOf(
     "document",
     "journal",
     "keymap",
-    "language",
     "logger",
+    "lsp",
     "project",
     "runtime",
     "session",
+    "syntax",
     "text",
     "toolchain",
     "vfs"
