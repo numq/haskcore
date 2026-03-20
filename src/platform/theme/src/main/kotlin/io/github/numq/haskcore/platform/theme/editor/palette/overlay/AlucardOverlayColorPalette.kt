@@ -17,7 +17,7 @@ internal object AlucardOverlayColorPalette : OverlayColorPalette {
 
     override val autocompleteBackgroundColor = 0xFFdedccf.toInt()
 
-    override val autocompleteSelectedBackgroundColor = 0xFFdedccf.toInt()
+    override val autocompleteSelectedBackgroundColor = 0xFFcfcdbe.toInt()
 
     override val autocompleteTextColor = 0xFF1f1f1f.toInt()
 
@@ -27,13 +27,13 @@ internal object AlucardOverlayColorPalette : OverlayColorPalette {
 
     override val contextMenuBackgroundColor = 0xFFdedccf.toInt()
 
-    override val contextMenuSelectedBackgroundColor = 0xFFdedccf.toInt()
+    override val contextMenuSelectedBackgroundColor = 0xFFcfcdbe.toInt()
 
     override val contextMenuTextColor = 0xFF1f1f1f.toInt()
 
     override val contextMenuSeparatorColor = 0xFFbcbab3.toInt()
 
-    override val dragPreviewColor = 0xFFdedccf.toInt().withAlpha(alpha = .7f)
+    override val dragPreviewColor = 0xFFdedccf.toInt()
 
     override val dragPreviewBorderColor = 0xFFbcbab3.toInt()
 }

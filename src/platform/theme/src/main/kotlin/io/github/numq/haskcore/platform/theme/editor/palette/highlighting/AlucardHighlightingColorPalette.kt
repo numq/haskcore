@@ -31,7 +31,7 @@ internal object AlucardHighlightingColorPalette : HighlightingColorPalette {
 
     override val variableMemberColor = 0xFF644ac9.toInt()
 
-    override val operatorColor = 0xFF1f1f1f.toInt()
+    override val operatorColor = 0xFFa3144d.toInt()
 
     override val numberColor = 0xFFa34d14.toInt()
 
@@ -47,19 +47,19 @@ internal object AlucardHighlightingColorPalette : HighlightingColorPalette {
 
     override val commentDocumentationColor = 0xFFa34d14.toInt()
 
-    override val punctuationBracketColor = 0xFF1f1f1f.toInt()
+    override val punctuationBracketColor = 0xFF8a8260.toInt()
 
-    override val punctuationDelimiterColor = 0xFF1f1f1f.toInt()
+    override val punctuationDelimiterColor = 0xFF8a8260.toInt()
 
     override val moduleColor = 0xFF036a96.toInt()
 
     override val spellColor = 0xFFa34d14.toInt()
 
-    override val wildcardColor = 0xFF1f1f1f.toInt()
+    override val wildcardColor = 0xFFa34d14.toInt()
 
-    override val unknownColor = 0xFF1f1f1f.toInt()
+    override val unknownColor = 0xFFcb3a2a.toInt()
 
     override val localDefinitionColor = 0xFF644ac9.toInt()
 
-    override val localReferenceColor = 0xFF4A4AC9.toInt()
+    override val localReferenceColor = 0xFF644ac9.toInt()
 }

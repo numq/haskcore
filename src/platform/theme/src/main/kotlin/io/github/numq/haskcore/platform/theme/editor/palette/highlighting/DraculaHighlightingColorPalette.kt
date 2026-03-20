@@ -31,7 +31,7 @@ internal object DraculaHighlightingColorPalette : HighlightingColorPalette {
 
     override val variableMemberColor = 0xFFf8f8f2.toInt()
 
-    override val operatorColor = 0xFFf998cc.toInt()
+    override val operatorColor = 0xFFff79c6.toInt()
 
     override val numberColor = 0xFFbd93f9.toInt()
 
