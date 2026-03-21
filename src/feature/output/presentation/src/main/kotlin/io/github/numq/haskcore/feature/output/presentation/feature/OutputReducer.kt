@@ -57,8 +57,6 @@ internal class OutputReducer(
         is OutputCommand.CloseSessionSuccess -> transition(state)
 
         is OutputCommand.OpenMenu -> with(command) {
-            println("Menu requested at: ${command.x}, ${command.y}")
-
             when (state.output.activeSession) {
                 null -> transition(state)
 
