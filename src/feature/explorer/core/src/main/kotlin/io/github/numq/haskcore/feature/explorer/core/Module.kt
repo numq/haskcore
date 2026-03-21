@@ -1,8 +1,8 @@
 package io.github.numq.haskcore.feature.explorer.core
 
 import androidx.datastore.core.DataStoreFactory
-import io.github.numq.haskcore.core.di.ScopePath
 import io.github.numq.haskcore.core.di.ScopeQualifier
+import io.github.numq.haskcore.core.di.ScopeQualifierType
 import io.github.numq.haskcore.core.di.scopedOwner
 import io.github.numq.haskcore.feature.explorer.core.usecase.*
 import kotlinx.coroutines.CoroutineScope
@@ -14,15 +14,15 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 val explorerCoreModule = module {
-    scope<ScopeQualifier.Project> {
+    scope<ScopeQualifierType.Project> {
         scopedOwner {
-            val projectPath = get<String>(qualifier = ScopePath.Project)
+            val projectPath = get<String>(qualifier = ScopeQualifier.Project)
 
             ExplorerRoot(path = projectPath)
         }
 
         scopedOwner {
-            val projectPath = get<String>(qualifier = ScopePath.Project)
+            val projectPath = get<String>(qualifier = ScopeQualifier.Project)
 
             val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -39,14 +39,18 @@ val explorerCoreModule = module {
             LocalExplorerService(scope = scope, explorerDataSource = get())
         } bind ExplorerService::class
 
-        scopedOwner { ObserveExplorerTree(root = get<ExplorerRoot>(), explorerService = get(), vfsService = get()) }
+        scopedOwner {
+            ObserveExplorerTree(
+                root = get<ExplorerRoot>(), explorerService = get(), documentService = get(), vfsService = get()
+            )
+        }
 
         scopedOwner { OpenFile(projectService = get()) }
 
         scopedOwner { SaveExplorerPosition(explorerService = get()) }
 
-        scopedOwner { SelectExplorerNode(explorerService = get()) }
+        scopedOwner { CollapseDirectory(explorerService = get()) }
 
-        scopedOwner { ToggleExplorerNode(explorerService = get()) }
+        scopedOwner { ExpandDirectory(explorerService = get()) }
     }
 }

@@ -1,19 +1,19 @@
 package io.github.numq.haskcore.feature.editor.presentation
 
-import io.github.numq.haskcore.core.di.ScopeQualifier
+import io.github.numq.haskcore.core.di.ScopeQualifierType
 import io.github.numq.haskcore.core.di.scopedOwner
 import io.github.numq.haskcore.feature.editor.presentation.cache.PaintCache
 import io.github.numq.haskcore.feature.editor.presentation.cache.ParagraphCache
 import io.github.numq.haskcore.feature.editor.presentation.cache.TextLineCache
+import io.github.numq.haskcore.feature.editor.presentation.feature.EditorFeature
+import io.github.numq.haskcore.feature.editor.presentation.feature.EditorReducer
 import io.github.numq.haskcore.feature.editor.presentation.layer.LayerFactory
 import io.github.numq.haskcore.feature.editor.presentation.layer.SkiaLayerFactory
-import io.github.numq.haskcore.feature.editor.presentation.layout.LayoutFactory
-import io.github.numq.haskcore.feature.editor.presentation.layout.SkiaLayoutFactory
 import org.koin.dsl.bind
 import org.koin.dsl.module
 
 val editorPresentationModule = module {
-    scope<ScopeQualifier.Application> {
+    scope<ScopeQualifierType.Application> {
         scopedOwner { TextLineCache(capacity = 1000) }
 
         scopedOwner { PaintCache(capacity = 1000) }
@@ -23,19 +23,13 @@ val editorPresentationModule = module {
         scopedOwner {
             SkiaLayerFactory(textLineCache = get(), paintCache = get(), paragraphCache = get())
         } bind LayerFactory::class
-
-        scopedOwner { SkiaLayoutFactory(layerFactory = get()) } bind LayoutFactory::class
     }
 
-    scope<ScopeQualifier.Document> {
+    scope<ScopeQualifierType.Document> {
         scopedOwner {
             EditorReducer(
-                observeCaret = get(),
-                observeHighlighting = get(),
-                observeOccurrences = get(),
-                observeSelection = get(),
-                observeTextSnapshot = get(),
-                requestHighlightingUpdate = get(),
+                observeEditor = get(),
+                updateActiveLines = get(),
                 processKey = get(),
                 moveCaret = get(),
                 startSelection = get(),

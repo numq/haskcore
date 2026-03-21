@@ -8,10 +8,10 @@ sealed interface Toolchain {
     data object NotFound : Toolchain
 
     data class Detected(
-        val ghc: Either<Throwable, Tool>,
-        val cabal: Either<Throwable, Tool>,
-        val stack: Either<Throwable, Tool>,
-        val hls: Either<Throwable, Tool>
+        val ghc: Either<Throwable, Tool.Ghc>,
+        val cabal: Either<Throwable, Tool.Cabal>,
+        val stack: Either<Throwable, Tool.Stack>,
+        val hls: Either<Throwable, Tool.Hls>
     ) : Toolchain
 
     data class Error(val throwable: Throwable) : Toolchain

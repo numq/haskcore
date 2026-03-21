@@ -3,19 +3,20 @@ package io.github.numq.haskcore.service.logger
 import io.github.numq.haskcore.core.log.Log
 import io.github.numq.haskcore.core.timestamp.Timestamp
 
-internal fun LoggerData.toLog() = when (this) {
+internal fun LoggerData.toLog(timestamp: Timestamp, timestampLabel: String) = when (this) {
     is LoggerData.Info -> Log.Info(
-        projectId = projectId, message = message, timestamp = Timestamp(nanoseconds = timestampNanos)
+        projectId = projectId, message = message, timestamp = timestamp, timestampLabel = timestampLabel
     )
 
     is LoggerData.Warning -> Log.Warning(
-        projectId = projectId, message = message, timestamp = Timestamp(nanoseconds = timestampNanos)
+        projectId = projectId, message = message, timestamp = timestamp, timestampLabel = timestampLabel
     )
 
     is LoggerData.Error.Handled -> Log.Error.Handled(
         projectId = projectId,
         message = message,
-        timestamp = Timestamp(nanoseconds = timestampNanos),
+        timestamp = timestamp,
+        timestampLabel = timestampLabel,
         className = className,
         stackTrace = stackTrace,
     )
@@ -23,7 +24,8 @@ internal fun LoggerData.toLog() = when (this) {
     is LoggerData.Error.Internal -> Log.Error.Internal(
         projectId = projectId,
         message = message,
-        timestamp = Timestamp(nanoseconds = timestampNanos),
+        timestamp = timestamp,
+        timestampLabel = timestampLabel,
         className = className,
         stackTrace = stackTrace,
     )
@@ -31,7 +33,8 @@ internal fun LoggerData.toLog() = when (this) {
     is LoggerData.Error.Critical -> Log.Error.Critical(
         projectId = projectId,
         message = message,
-        timestamp = Timestamp(nanoseconds = timestampNanos),
+        timestamp = timestamp,
+        timestampLabel = timestampLabel,
         className = className,
         stackTrace = stackTrace,
     )

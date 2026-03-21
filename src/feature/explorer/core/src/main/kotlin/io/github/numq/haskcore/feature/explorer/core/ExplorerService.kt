@@ -6,9 +6,9 @@ import kotlinx.coroutines.flow.StateFlow
 interface ExplorerService {
     val explorer: StateFlow<Explorer>
 
-    suspend fun toggleNode(path: String): Either<Throwable, Unit>
+    suspend fun collapseDirectory(node: ExplorerNode.Directory): Either<Throwable, Unit>
 
-    suspend fun selectNode(path: String): Either<Throwable, Unit>
+    suspend fun expandDirectory(node: ExplorerNode.Directory): Either<Throwable, Unit>
 
     suspend fun saveExplorerPosition(position: ExplorerPosition): Either<Throwable, Unit>
 }

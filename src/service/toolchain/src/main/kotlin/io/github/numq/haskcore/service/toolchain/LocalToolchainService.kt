@@ -56,6 +56,7 @@ internal class LocalToolchainService(
         factory(path, version)
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     private suspend fun validateAll(toolchainData: ToolchainData) = either<Throwable, Toolchain> {
         supervisorScope {
             val ghcDeferred = async {
@@ -78,7 +79,15 @@ internal class LocalToolchainService(
                 )
             }
 
-            val (ghc, cabal, stack, hls) = awaitAll(ghcDeferred, cabalDeferred, stackDeferred, hlsDeferred)
+            awaitAll(ghcDeferred, cabalDeferred, stackDeferred, hlsDeferred)
+
+            val ghc = ghcDeferred.getCompleted()
+
+            val cabal = cabalDeferred.getCompleted()
+
+            val stack = stackDeferred.getCompleted()
+
+            val hls = hlsDeferred.getCompleted()
 
             val allNotFound = listOf(ghc, cabal, stack, hls).all { tool ->
                 tool.isLeft() && tool.leftOrNull() is NoSuchElementException

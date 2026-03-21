@@ -1,6 +1,6 @@
 package io.github.numq.haskcore.service.vfs
 
-import io.github.numq.haskcore.core.di.ScopeQualifier
+import io.github.numq.haskcore.core.di.ScopeQualifierType
 import io.github.numq.haskcore.core.di.scopedOwner
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -9,7 +9,7 @@ import org.koin.dsl.bind
 import org.koin.dsl.module
 
 val vfsModule = module {
-    scope<ScopeQualifier.Application> {
+    scope<ScopeQualifierType.Application> {
         scopedOwner { LocalVfsDataSource() } bind VfsDataSource::class
 
         scopedOwner {

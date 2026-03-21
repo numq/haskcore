@@ -7,6 +7,7 @@ data class VirtualFile(
     val name: String,
     val extension: String?,
     val isDirectory: Boolean,
+    val isMetadata: Boolean,
     val size: Long,
     val lastModified: Timestamp
 )

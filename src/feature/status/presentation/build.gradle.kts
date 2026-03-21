@@ -11,7 +11,7 @@ dependencies {
     implementation(compose.material3)
     implementation(compose.materialIconsExtended)
     implementation(projects.core)
-    implementation(projects.platform.dialog)
+    implementation(projects.platform.overlay)
     implementation(projects.feature.status.core)
 }
 

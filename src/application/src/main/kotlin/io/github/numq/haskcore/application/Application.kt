@@ -5,56 +5,62 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.window.application
-import io.github.numq.haskcore.core.di.ScopePath
 import io.github.numq.haskcore.core.di.ScopeQualifier
+import io.github.numq.haskcore.core.di.ScopeQualifierType
+import io.github.numq.haskcore.core.feature.Feature
 import io.github.numq.haskcore.feature.bootstrap.core.bootstrapCoreModule
-import io.github.numq.haskcore.feature.bootstrap.presentation.BootstrapView
 import io.github.numq.haskcore.feature.bootstrap.presentation.bootstrapPresentationModule
+import io.github.numq.haskcore.feature.bootstrap.presentation.feature.BootstrapView
 import io.github.numq.haskcore.feature.editor.core.editorCoreModule
-import io.github.numq.haskcore.feature.editor.presentation.EditorView
 import io.github.numq.haskcore.feature.editor.presentation.editorPresentationModule
+import io.github.numq.haskcore.feature.editor.presentation.feature.view.EditorView
+import io.github.numq.haskcore.feature.editor.presentation.layer.LayerFactory
 import io.github.numq.haskcore.feature.execution.core.executionCoreModule
-import io.github.numq.haskcore.feature.execution.presentation.ExecutionView
 import io.github.numq.haskcore.feature.execution.presentation.executionPresentationModule
+import io.github.numq.haskcore.feature.execution.presentation.feature.ExecutionView
 import io.github.numq.haskcore.feature.explorer.core.explorerCoreModule
-import io.github.numq.haskcore.feature.explorer.presentation.ExplorerView
 import io.github.numq.haskcore.feature.explorer.presentation.explorerPresentationModule
+import io.github.numq.haskcore.feature.explorer.presentation.feature.ExplorerCommand
+import io.github.numq.haskcore.feature.explorer.presentation.feature.ExplorerEvent
+import io.github.numq.haskcore.feature.explorer.presentation.feature.ExplorerState
+import io.github.numq.haskcore.feature.explorer.presentation.feature.ExplorerView
 import io.github.numq.haskcore.feature.log.core.logCoreModule
-import io.github.numq.haskcore.feature.log.presentation.LogView
+import io.github.numq.haskcore.feature.log.presentation.feature.LogView
 import io.github.numq.haskcore.feature.log.presentation.logPresentationModule
 import io.github.numq.haskcore.feature.navigation.core.Destination
 import io.github.numq.haskcore.feature.navigation.core.navigationCoreModule
-import io.github.numq.haskcore.feature.navigation.presentation.NavigationView
+import io.github.numq.haskcore.feature.navigation.presentation.feature.NavigationView
 import io.github.numq.haskcore.feature.navigation.presentation.navigationPresentationModule
 import io.github.numq.haskcore.feature.output.core.outputCoreModule
-import io.github.numq.haskcore.feature.output.presentation.OutputView
+import io.github.numq.haskcore.feature.output.presentation.feature.OutputView
 import io.github.numq.haskcore.feature.output.presentation.outputPresentationModule
 import io.github.numq.haskcore.feature.settings.core.settingsCoreModule
 import io.github.numq.haskcore.feature.settings.presentation.settingsPresentationModule
 import io.github.numq.haskcore.feature.shelf.core.shelfCoreModule
-import io.github.numq.haskcore.feature.shelf.presentation.ShelfView
+import io.github.numq.haskcore.feature.shelf.presentation.feature.ShelfView
 import io.github.numq.haskcore.feature.shelf.presentation.shelfPresentationModule
 import io.github.numq.haskcore.feature.status.core.statusCoreModule
-import io.github.numq.haskcore.feature.status.presentation.StatusView
+import io.github.numq.haskcore.feature.status.presentation.feature.StatusView
 import io.github.numq.haskcore.feature.status.presentation.statusPresentationModule
 import io.github.numq.haskcore.feature.welcome.core.welcomeCoreModule
-import io.github.numq.haskcore.feature.welcome.presentation.WelcomeView
+import io.github.numq.haskcore.feature.welcome.presentation.feature.WelcomeView
 import io.github.numq.haskcore.feature.welcome.presentation.welcomePresentationModule
 import io.github.numq.haskcore.feature.workspace.core.Workspace
 import io.github.numq.haskcore.feature.workspace.core.workspaceCoreModule
-import io.github.numq.haskcore.feature.workspace.presentation.WorkspaceView
+import io.github.numq.haskcore.feature.workspace.presentation.feature.WorkspaceView
 import io.github.numq.haskcore.feature.workspace.presentation.workspacePresentationModule
-import io.github.numq.haskcore.platform.dialog.dialogModule
 import io.github.numq.haskcore.platform.font.*
+import io.github.numq.haskcore.platform.overlay.overlayModule
 import io.github.numq.haskcore.platform.theme.application.ApplicationTheme
 import io.github.numq.haskcore.platform.theme.editor.EditorTheme
 import io.github.numq.haskcore.platform.theme.themeModule
 import io.github.numq.haskcore.service.clipboard.clipboardModule
 import io.github.numq.haskcore.service.configuration.configurationModule
 import io.github.numq.haskcore.service.document.documentModule
+import io.github.numq.haskcore.service.syntax.syntaxModule
 import io.github.numq.haskcore.service.journal.journalModule
 import io.github.numq.haskcore.service.keymap.keymapModule
-import io.github.numq.haskcore.service.language.languageModule
+import io.github.numq.haskcore.service.lsp.lspModule
 import io.github.numq.haskcore.service.logger.loggerModule
 import io.github.numq.haskcore.service.project.projectModule
 import io.github.numq.haskcore.service.runtime.runtimeModule
@@ -105,15 +111,16 @@ internal fun main() {
             workspacePresentationModule
         )
 
-        modules(dialogModule, fontModule, themeModule)
+        modules(fontModule, overlayModule, themeModule)
 
         modules(
             clipboardModule,
             configurationModule,
             documentModule,
+            syntaxModule,
             journalModule,
             keymapModule,
-            languageModule,
+            lspModule,
             loggerModule,
             projectModule,
             runtimeModule,
@@ -131,9 +138,9 @@ internal fun main() {
 
         val applicationScope = remember(applicationPath) {
             koin.getOrCreateScope(
-                scopeId = applicationPath, qualifier = named<ScopeQualifier.Application>(), source = applicationPath
+                scopeId = applicationPath, qualifier = named<ScopeQualifierType.Application>(), source = applicationPath
             ).apply {
-                declare(instance = applicationPath, qualifier = ScopePath.Application)
+                declare(instance = applicationPath, qualifier = ScopeQualifier.Application)
             }
         }
 
@@ -165,7 +172,9 @@ internal fun main() {
 
         val isDark = isSystemInDarkTheme()
 
-        val theme = koinInject<EditorTheme>(scope = applicationScope) { parametersOf(isDark) }
+        val editorTheme = koinInject<EditorTheme>(scope = applicationScope) { parametersOf(isDark) }
+
+        val layerFactory = koinInject<LayerFactory>(scope = applicationScope)
 
         ApplicationTheme(isDark = isDark) {
             BootstrapView(
@@ -199,12 +208,12 @@ internal fun main() {
 
                                 koin.getOrCreateScope(
                                     scopeId = projectPath,
-                                    qualifier = named<ScopeQualifier.Project>(),
+                                    qualifier = named<ScopeQualifierType.Project>(),
                                     source = projectPath
                                 ).apply {
                                     linkTo(applicationScope)
 
-                                    declare(instance = destination.path, qualifier = ScopePath.Project)
+                                    declare(instance = projectPath, qualifier = ScopeQualifier.Project)
                                 }
                             }
 
@@ -213,6 +222,10 @@ internal fun main() {
                                     projectScope.close()
                                 }
                             }
+
+                            val explorerFeature = koinInject<Feature<ExplorerState, ExplorerCommand, ExplorerEvent>>(
+                                scope = projectScope
+                            )
 
                             WorkspaceView(
                                 projectScope = projectScope,
@@ -236,7 +249,9 @@ internal fun main() {
                                         handleError = Throwable::printStackTrace,
                                         explorer = {
                                             ExplorerView(
-                                                projectScope = projectScope, handleError = Throwable::printStackTrace
+                                                feature = explorerFeature,
+                                                handleError = Throwable::printStackTrace,
+                                                selectedPath = path
                                             )
                                         },
                                         log = {
@@ -248,19 +263,27 @@ internal fun main() {
                                             tabs {
                                                 EditorView(
                                                     projectScope = projectScope,
+                                                    handleError = Throwable::printStackTrace,
                                                     path = path,
                                                     font = editorFont,
-                                                    theme = theme,
-                                                    handleError = Throwable::printStackTrace
+                                                    theme = editorTheme,
+                                                    layerFactory = layerFactory,
                                                 )
                                             }
                                         })
                                 },
                                 output = {
-                                    OutputView(projectScope = projectScope, handleError = Throwable::printStackTrace)
+                                    OutputView(
+                                        projectScope = projectScope, handleError = Throwable::printStackTrace
+                                    )
                                 },
                                 status = {
-                                    StatusView(projectScope = projectScope, handleError = Throwable::printStackTrace)
+                                    StatusView(
+                                        projectScope = projectScope,
+                                        handleError = Throwable::printStackTrace,
+                                        navigateToPath = { path ->
+                                            explorerFeature.execute(ExplorerCommand.OpenPath(path = path))
+                                        })
                                 })
                         })
                 })

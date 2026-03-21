@@ -7,8 +7,7 @@ import io.github.numq.haskcore.core.text.TextPosition
 import io.github.numq.haskcore.core.text.TextRange
 import io.github.numq.haskcore.core.text.TextSnapshot
 import io.github.numq.haskcore.feature.editor.core.EditorService
-import io.github.numq.haskcore.feature.editor.core.highlighting.HighlightingToken
-import io.github.numq.haskcore.feature.editor.core.highlighting.HighlightingType
+import io.github.numq.haskcore.service.syntax.token.HighlightingToken
 import io.github.numq.haskcore.service.text.TextService
 import io.github.numq.haskcore.service.text.syntax.SyntaxScope
 import io.github.numq.haskcore.service.text.syntax.SyntaxToken
@@ -62,7 +61,7 @@ internal class ObserveHighlightingTest {
 
         val highlighting = useCase(Unit).getOrElse { throw it }.first()
 
-        val lineTokens = highlighting.tokensPerLine[0] ?: emptyList()
+        val lineTokens = highlighting.tokensPerLine[0].orEmpty()
 
         assertEquals(3, lineTokens.size)
 

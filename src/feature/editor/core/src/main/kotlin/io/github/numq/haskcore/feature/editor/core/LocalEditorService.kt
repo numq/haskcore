@@ -24,12 +24,12 @@ internal class LocalEditorService(
 
     override val selection = selectionManager.selection
 
-    private val _highlightingRange = MutableStateFlow(IntRange.EMPTY)
+    private val _activeLines = MutableStateFlow(IntRange.EMPTY)
 
-    override val highlightingRange = _highlightingRange.asStateFlow()
+    override val activeLines = _activeLines.asStateFlow()
 
-    override suspend fun requestHighlightingUpdate(startLine: Int, endLine: Int): Either<Throwable, Unit> {
-        _highlightingRange.value = startLine..endLine
+    override suspend fun updateActiveLines(start: Int, end: Int): Either<Throwable, Unit> {
+        _activeLines.value = start..end
 
         return Unit.right()
     }

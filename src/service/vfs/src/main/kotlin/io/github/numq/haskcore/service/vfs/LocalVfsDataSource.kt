@@ -20,6 +20,42 @@ import java.util.concurrent.TimeUnit
 import kotlin.io.path.*
 
 internal class LocalVfsDataSource : VfsDataSource {
+    private fun createVirtualFile(path: String): VirtualFile? {
+        val nioPath = Path.of(path)
+
+        val name = nioPath.fileName.toString()
+
+        val extension = when {
+            name.startsWith(".") && name.count('.'::equals) == 1 -> null
+
+            else -> nioPath.extension.ifEmpty { null }
+        }
+
+        return when {
+            nioPath.exists() -> VirtualFile(
+                path = path,
+                name = name,
+                extension = extension,
+                isDirectory = nioPath.isDirectory(),
+                isMetadata = path.contains(".haskcore") || name.endsWith(".tmp"),
+                size = when {
+                    nioPath.isRegularFile() -> nioPath.fileSize()
+
+                    else -> 0L
+                },
+                lastModified = Timestamp(nioPath.getLastModifiedTime().to(TimeUnit.NANOSECONDS))
+            )
+
+            else -> null
+        }
+    }
+
+    override suspend fun fetchSingleEntry(path: String) = Either.catch {
+        withContext(Dispatchers.IO) {
+            createVirtualFile(path = path)
+        }
+    }
+
     override suspend fun watch(path: String) = Either.catch {
         callbackFlow {
             val watcher = DirectoryWatcher.builder().path(Path.of(path)).listener { event ->
@@ -50,20 +86,9 @@ internal class LocalVfsDataSource : VfsDataSource {
 
     override suspend fun list(path: String) = Either.catch {
         withContext(Dispatchers.IO) {
-            Path.of(path).listDirectoryEntries().map { entry ->
-                VirtualFile(
-                    path = entry.absolutePathString(),
-                    name = entry.fileName.toString(),
-                    extension = entry.extension,
-                    isDirectory = entry.isDirectory(),
-                    size = when {
-                        entry.isRegularFile() -> entry.fileSize()
-
-                        else -> 0L
-                    },
-                    lastModified = Timestamp(nanoseconds = entry.getLastModifiedTime().to(TimeUnit.NANOSECONDS))
-                )
-            }
+            Path.of(path).listDirectoryEntries()
+        }.mapNotNull { entry ->
+            createVirtualFile(path = entry.absolutePathString())
         }
     }
 

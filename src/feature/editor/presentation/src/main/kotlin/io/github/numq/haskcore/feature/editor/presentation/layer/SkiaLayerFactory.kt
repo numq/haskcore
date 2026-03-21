@@ -1,24 +1,27 @@
 package io.github.numq.haskcore.feature.editor.presentation.layer
 
 import arrow.core.getOrElse
+import io.github.numq.haskcore.core.text.TextPosition
+import io.github.numq.haskcore.core.text.TextRange
 import io.github.numq.haskcore.feature.editor.core.caret.Caret
-import io.github.numq.haskcore.feature.editor.core.highlighting.Highlighting
+import io.github.numq.haskcore.feature.editor.core.guideline.Guideline
 import io.github.numq.haskcore.feature.editor.core.selection.Selection
+import io.github.numq.haskcore.feature.editor.core.syntax.Occurrence
+import io.github.numq.haskcore.feature.editor.core.syntax.Token
 import io.github.numq.haskcore.feature.editor.presentation.background.BackgroundLayer
-import io.github.numq.haskcore.feature.editor.presentation.background.CurrentLineLayer
+import io.github.numq.haskcore.feature.editor.presentation.background.HighlightedLineLayer
 import io.github.numq.haskcore.feature.editor.presentation.cache.PaintCache
 import io.github.numq.haskcore.feature.editor.presentation.cache.ParagraphCache
 import io.github.numq.haskcore.feature.editor.presentation.cache.TextLineCache
 import io.github.numq.haskcore.feature.editor.presentation.caret.CaretLayer
-import io.github.numq.haskcore.feature.editor.presentation.codearea.CodeAreaContentLayer
+import io.github.numq.haskcore.feature.editor.presentation.guideline.GuidelineLayer
 import io.github.numq.haskcore.feature.editor.presentation.gutter.GutterLineLayer
 import io.github.numq.haskcore.feature.editor.presentation.gutter.GutterSeparatorLayer
-import io.github.numq.haskcore.feature.editor.presentation.highlighting.HighlightingLayer
-import io.github.numq.haskcore.feature.editor.presentation.highlighting.HighlightingUsageLayer
 import io.github.numq.haskcore.feature.editor.presentation.measurements.Measurements
+import io.github.numq.haskcore.feature.editor.presentation.occurrence.OccurrenceLayer
 import io.github.numq.haskcore.feature.editor.presentation.selection.SelectionLayer
 import io.github.numq.haskcore.feature.editor.presentation.selection.SelectionRegionLayer
-import io.github.numq.haskcore.feature.editor.presentation.viewport.Viewport
+import io.github.numq.haskcore.feature.editor.presentation.text.TextContentLayer
 import io.github.numq.haskcore.feature.editor.presentation.viewport.ViewportLine
 import io.github.numq.haskcore.platform.font.EditorFont
 import io.github.numq.haskcore.platform.theme.editor.EditorTheme
@@ -29,24 +32,26 @@ internal class SkiaLayerFactory(
     private val paintCache: PaintCache,
     private val paragraphCache: ParagraphCache,
 ) : LayerFactory {
-    override fun createBackgroundLayer(bounds: Rect, theme: EditorTheme) = BackgroundLayer(
-        bounds = bounds, paint = paintCache.getOrCreate(
+    override fun createBackgroundLayer(width: Float, height: Float, theme: EditorTheme) = BackgroundLayer(
+        width = width, height = height, paint = paintCache.getOrCreate(
             key = PaintCache.Key(color = theme.backgroundColorPalette.backgroundColor)
         ).getOrElse { throwable ->
             throw throwable
         })
 
-    override fun createCurrentLineLayer(viewport: Viewport, caret: Caret, theme: EditorTheme): CurrentLineLayer? {
-        val viewportLine = viewport.viewportLines.firstOrNull { viewportLine ->
+    override fun createHighlightedLineLayer(
+        viewportLines: List<ViewportLine>, caret: Caret, theme: EditorTheme
+    ): HighlightedLineLayer? {
+        val viewportLine = viewportLines.firstOrNull { viewportLine ->
             viewportLine.line == caret.position.line
         } ?: return null
 
-        val bounds = with(viewportLine) {
-            Rect.makeXYWH(l = x, t = y, w = width, h = height)
-        }
-
-        return CurrentLineLayer(
-            bounds = bounds, paint = paintCache.getOrCreate(
+        return HighlightedLineLayer(
+            x = viewportLine.x,
+            y = viewportLine.y,
+            width = viewportLine.width,
+            height = viewportLine.height,
+            paint = paintCache.getOrCreate(
                 key = PaintCache.Key(color = theme.backgroundColorPalette.currentLineColor)
             ).getOrElse { throwable ->
                 throw throwable
@@ -78,16 +83,27 @@ internal class SkiaLayerFactory(
         )
     }
 
-    override fun createGutterSeparatorLayer(x: Float, y: Float, theme: EditorTheme) = GutterSeparatorLayer(
-        x = x, y = y, paint = paintCache.getOrCreate(
+    override fun createGutterSeparatorLayer(x: Float, height: Float, theme: EditorTheme) = GutterSeparatorLayer(
+        x = x, height = height, paint = paintCache.getOrCreate(
             key = PaintCache.Key(color = theme.gutterColorPalette.textColor)
+        ).getOrElse { throwable ->
+            throw throwable
+        })
+
+    override fun createGuidelineLayer(
+        guideline: Guideline, height: Float, scrollX: Float, font: EditorFont, theme: EditorTheme
+    ) = GuidelineLayer(
+        x = (guideline.column * font.charWidth) - scrollX + Measurements.EDITOR_PADDING_START,
+        height = height,
+        paint = paintCache.getOrCreate(
+            key = PaintCache.Key(color = theme.codeAreaColorPalette.guidelineColor)
         ).getOrElse { throwable ->
             throw throwable
         })
 
     override fun createCodeAreaContentLayers(
         viewportLines: List<ViewportLine>,
-        highlighting: Highlighting,
+        tokensPerLine: Map<Int, List<Token>>?,
         scrollX: Float,
         font: EditorFont,
         theme: EditorTheme,
@@ -96,7 +112,13 @@ internal class SkiaLayerFactory(
 
         val text = viewportLine.text
 
-        val tokens = highlighting.tokensPerLine[line] ?: emptyList()
+        val tokens = tokensPerLine?.get(line) ?: listOf(
+            Token.Atom(
+                range = TextRange(
+                    start = TextPosition(line = line, column = 0), end = TextPosition(line = line, column = text.length)
+                ), type = Token.Type.UNKNOWN, text = text
+            )
+        )
 
         val paragraph = paragraphCache.getOrCreate(
             key = ParagraphCache.Key(
@@ -106,7 +128,7 @@ internal class SkiaLayerFactory(
             throw throwable
         }
 
-        CodeAreaContentLayer(
+        TextContentLayer(
             viewportLine = viewportLine,
             paragraph = paragraph,
             x = -scrollX + Measurements.EDITOR_PADDING_START,
@@ -114,82 +136,52 @@ internal class SkiaLayerFactory(
         )
     }
 
-    override fun createHighlightingLayer(
+    override fun createOccurrenceLayers(
+        contentLayers: List<TextContentLayer>,
+        occurrences: List<Occurrence>,
         caret: Caret,
-        highlighting: Highlighting,
-        contentLayers: List<CodeAreaContentLayer>,
         scrollX: Float,
         theme: EditorTheme
-    ): HighlightingLayer {
-        val usagePaint = paintCache.getOrCreate(
+    ): List<OccurrenceLayer> {
+        val usageHighlightPaint = paintCache.getOrCreate(
             key = PaintCache.Key(color = theme.codeAreaColorPalette.usageHighlightBackground)
         ).getOrElse { throwable ->
             throw throwable
         }
 
-        val currentPaint = paintCache.getOrCreate(
+        val currentUsageHighlightPaint = paintCache.getOrCreate(
             key = PaintCache.Key(color = theme.codeAreaColorPalette.currentUsageHighlightBackground)
         ).getOrElse { throwable ->
             throw throwable
         }
 
-        val highlightingUsageLayers = contentLayers.flatMap { contentLayer ->
-            val line = contentLayer.viewportLine.line
+        return contentLayers.flatMap { contentLayer ->
+            occurrences.filter { occurrence ->
+                occurrence.range.start.line == contentLayer.viewportLine.line
+            }.map { occurrenceToken ->
+                val startX = contentLayer.getCoordinateAtOffset(occurrenceToken.range.start.column)
 
-            val highlightingTokens = highlighting.tokensPerLine[line] ?: emptyList()
-
-            highlightingTokens.map { highlightingToken ->
-                val startX = contentLayer.getCoordinateAtOffset(highlightingToken.range.start.column)
-
-                val endX = contentLayer.getCoordinateAtOffset(highlightingToken.range.end.column)
+                val endX = contentLayer.getCoordinateAtOffset(occurrenceToken.range.end.column)
 
                 val x = -scrollX + startX + Measurements.EDITOR_PADDING_START
 
                 val paint = when {
-                    highlightingToken.range.contains(caret.position) -> currentPaint
+                    occurrenceToken.range.contains(caret.position) -> currentUsageHighlightPaint
 
-                    else -> usagePaint
+                    else -> usageHighlightPaint
                 }
 
-                HighlightingUsageLayer(
+                OccurrenceLayer(
                     rect = Rect.makeXYWH(
                         l = x, t = contentLayer.viewportLine.y, w = endX - startX, h = contentLayer.viewportLine.height
                     ), paint = paint
                 )
             }
         }
-
-        return HighlightingLayer(highlightingUsageLayers = highlightingUsageLayers)
-    }
-
-    override fun createCaretLayer(
-        caret: Caret, contentLayers: List<CodeAreaContentLayer>, scrollX: Float, font: EditorFont, theme: EditorTheme
-    ): CaretLayer? {
-        val contentLayer = contentLayers.firstOrNull { codeAreaContentLayer ->
-            codeAreaContentLayer.viewportLine.line == caret.position.line
-        } ?: return null
-
-        val xOffset = contentLayer.getCoordinateAtOffset(offset = caret.position.column).takeIf { xOffset ->
-            xOffset > 0f || caret.position.column == 0
-        } ?: (caret.position.column * font.charWidth)
-
-        val bounds = Rect.makeXYWH(
-            l = -scrollX + xOffset + Measurements.EDITOR_PADDING_START,
-            t = contentLayer.viewportLine.textBaselineY + font.ascent,
-            w = Measurements.CARET_WIDTH,
-            h = font.textHeight
-        )
-
-        return CaretLayer(
-            bounds = bounds, paint = paintCache.getOrCreate(
-                key = PaintCache.Key(color = theme.codeAreaColorPalette.caretColor)
-            ).getOrElse { throwable ->
-                throw throwable
-            })
     }
 
     override fun createSelectionLayer(
-        selection: Selection, contentLayers: List<CodeAreaContentLayer>, scrollX: Float, theme: EditorTheme
+        contentLayers: List<TextContentLayer>, selection: Selection, scrollX: Float, theme: EditorTheme
     ) = when {
         selection.range.isEmpty -> SelectionLayer()
 
@@ -244,5 +236,27 @@ internal class SkiaLayerFactory(
 
             SelectionLayer(selectionRegionLayers = selectionRegionLayers)
         }
+    }
+
+    override fun createCaretLayer(
+        contentLayers: List<TextContentLayer>, caret: Caret, scrollX: Float, font: EditorFont, theme: EditorTheme
+    ): CaretLayer? {
+        val contentLayer = contentLayers.firstOrNull { codeAreaContentLayer ->
+            codeAreaContentLayer.viewportLine.line == caret.position.line
+        } ?: return null
+
+        val xOffset = contentLayer.getCoordinateAtOffset(offset = caret.position.column).takeIf { xOffset ->
+            xOffset > 0f || caret.position.column == 0
+        } ?: (caret.position.column * font.charWidth)
+
+        return CaretLayer(
+            x = -scrollX + xOffset + Measurements.EDITOR_PADDING_START,
+            y = contentLayer.viewportLine.textBaselineY + font.ascent,
+            height = font.textHeight,
+            paint = paintCache.getOrCreate(
+                key = PaintCache.Key(color = theme.codeAreaColorPalette.caretColor)
+            ).getOrElse { throwable ->
+                throw throwable
+            })
     }
 }

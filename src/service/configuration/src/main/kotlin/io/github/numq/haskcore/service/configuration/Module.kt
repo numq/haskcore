@@ -1,8 +1,8 @@
 package io.github.numq.haskcore.service.configuration
 
 import androidx.datastore.core.DataStoreFactory
-import io.github.numq.haskcore.core.di.ScopePath
 import io.github.numq.haskcore.core.di.ScopeQualifier
+import io.github.numq.haskcore.core.di.ScopeQualifierType
 import io.github.numq.haskcore.core.di.scopedOwner
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -13,9 +13,9 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 val configurationModule = module {
-    scope<ScopeQualifier.Application> {
+    scope<ScopeQualifierType.Application> {
         scopedOwner {
-            val applicationPath = get<String>(qualifier = ScopePath.Application)
+            val applicationPath = get<String>(qualifier = ScopeQualifier.Application)
 
             val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 

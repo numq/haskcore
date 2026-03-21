@@ -17,9 +17,7 @@ class GetDestinations(
             val path = sessionRecord.path
 
             val initialWorkspaceData = navigationService.getInitialWorkspace(path = path).getOrElse { throwable ->
-                println(throwable) // todo
-
-                null
+                throw throwable // todo
             }
 
             Destination(path = path, initialWorkspace = initialWorkspaceData)

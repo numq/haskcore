@@ -4,7 +4,9 @@ import arrow.core.Either
 import kotlinx.coroutines.flow.Flow
 
 interface VfsService : AutoCloseable {
-    suspend fun observeDirectory(path: String): Either<Throwable, Flow<List<VirtualFile>>>
+    suspend fun observeFiles(path: String): Either<Throwable, Flow<List<VirtualFile>>>
+
+    suspend fun observeVisibleFiles(path: String): Either<Throwable, Flow<List<VirtualFile>>>
 
     suspend fun create(path: String, isDirectory: Boolean): Either<Throwable, Unit>
 

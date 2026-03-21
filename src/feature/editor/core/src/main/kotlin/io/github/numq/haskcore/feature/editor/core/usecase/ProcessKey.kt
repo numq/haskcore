@@ -5,6 +5,7 @@ import arrow.core.raise.Raise
 import io.github.numq.haskcore.core.text.*
 import io.github.numq.haskcore.core.usecase.UseCase
 import io.github.numq.haskcore.feature.editor.core.EditorService
+import io.github.numq.haskcore.service.clipboard.ClipboardService
 import io.github.numq.haskcore.service.document.DocumentService
 import io.github.numq.haskcore.service.journal.JournalService
 import io.github.numq.haskcore.service.keymap.KeyStroke
@@ -15,6 +16,7 @@ import io.github.numq.haskcore.service.text.TextService
 class ProcessKey(
     private val path: String,
     private val editorService: EditorService,
+    private val clipboardService: ClipboardService,
     private val documentService: DocumentService,
     private val journalService: JournalService,
     private val keymapService: KeymapService,
@@ -43,6 +45,10 @@ class ProcessKey(
             TextRange(start = startPosition, end = position)
         }
     }
+
+    private suspend fun executeUserOperation(snapshot: TextSnapshot, data: TextOperation.Data) = textService.execute(
+        operation = TextOperation.User(revision = snapshot.revision, data = data)
+    )
 
     private fun TextPosition.coerceIn(snapshot: TextSnapshot): TextPosition {
         val line = line.coerceIn(0, snapshot.lines - 1)
@@ -75,7 +81,7 @@ class ProcessKey(
     }
 
     private fun TextEdit.toSystemOperation(snapshot: TextSnapshot) =
-        TextOperation.System(data = data.toOperationData(snapshot = snapshot))
+        TextOperation.System(revision = revision, data = data.toOperationData(snapshot = snapshot))
 
     override suspend fun Raise<Throwable>.execute(input: Input) = with(input) {
         val snapshot = textService.snapshot.value ?: return
@@ -121,6 +127,7 @@ class ProcessKey(
                 "editor.action.backspace" -> when {
                     selection.range.isNotEmpty -> textService.execute(
                         operation = TextOperation.User(
+                            revision = snapshot.revision,
                             data = TextOperation.Data.Single.Delete(range = selection.range)
                         )
                     ).bind()
@@ -128,18 +135,16 @@ class ProcessKey(
                     caret.position != TextPosition.ZERO -> {
                         val rangeToDelete = calculateBackspaceRange(snapshot = snapshot, position = caret.position)
 
-                        textService.execute(
-                            operation = TextOperation.User(
-                                data = TextOperation.Data.Single.Delete(range = rangeToDelete)
-                            )
-                        ).bind()
+                        val data = TextOperation.Data.Single.Delete(range = rangeToDelete)
+
+                        executeUserOperation(snapshot = snapshot, data = data).bind()
                     }
                 }
 
                 "editor.action.enter" -> {
                     val data = TextOperation.Data.Single.Insert(position = caret.position, text = "\n")
 
-                    textService.execute(operation = TextOperation.User(data = data)).bind()
+                    executeUserOperation(snapshot = snapshot, data = data).bind()
                 }
 
                 "editor.action.tab" -> {
@@ -147,7 +152,7 @@ class ProcessKey(
 
                     val data = TextOperation.Data.Single.Insert(position = caret.position, text = tabText)
 
-                    textService.execute(operation = TextOperation.User(data = data)).bind()
+                    executeUserOperation(snapshot = snapshot, data = data).bind()
                 }
 
                 "editor.action.undo" -> journalService.undo(revision = snapshot.revision).bind()?.let { edit ->
@@ -157,24 +162,54 @@ class ProcessKey(
                 "editor.action.redo" -> journalService.redo(revision = snapshot.revision).bind()?.let { edit ->
                     textService.execute(operation = edit.toSystemOperation(snapshot = snapshot)).bind()
                 }
+
+                "editor.action.cut" -> {
+                    val range = selection.range.takeIf(TextRange::isNotEmpty) ?: return
+
+                    val text = snapshot.getTextInRange(range = range)
+
+                    val data = TextOperation.Data.Single.Delete(range = range)
+
+                    clipboardService.copyToClipboard(text = text).flatMap {
+                        executeUserOperation(snapshot = snapshot, data = data)
+                    }
+                }
+
+                "editor.action.copy" -> {
+                    val range = selection.range.takeIf(TextRange::isNotEmpty) ?: return
+
+                    val text = snapshot.getTextInRange(range = range)
+
+                    clipboardService.copyToClipboard(text = text).bind()
+                }
+
+                "editor.action.paste" -> {
+                    val text = clipboardService.clipboard.value.text?.takeIf(String::isNotEmpty) ?: return
+
+                    val data = when {
+                        selection.range.isNotEmpty -> TextOperation.Data.Single.Replace(
+                            range = selection.range, text = text
+                        )
+
+                        else -> TextOperation.Data.Single.Insert(position = caret.position, text = text)
+                    }
+
+                    executeUserOperation(snapshot = snapshot, data = data).bind()
+                }
             }
 
             isPrintable -> {
-                val char = String(Character.toChars(utf16CodePoint))
+                val text = String(Character.toChars(utf16CodePoint))
 
-                when {
-                    selection.range.isNotEmpty -> {
-                        val data = TextOperation.Data.Single.Replace(range = selection.range, text = char)
+                val data = when {
+                    selection.range.isNotEmpty -> TextOperation.Data.Single.Replace(
+                        range = selection.range, text = text
+                    )
 
-                        textService.execute(operation = TextOperation.User(data = data)).bind()
-                    }
-
-                    else -> {
-                        val data = TextOperation.Data.Single.Insert(position = caret.position, text = char)
-
-                        textService.execute(operation = TextOperation.User(data = data)).bind()
-                    }
+                    else -> TextOperation.Data.Single.Insert(position = caret.position, text = text)
                 }
+
+                executeUserOperation(snapshot = snapshot, data = data).bind()
             }
 
             else -> Unit

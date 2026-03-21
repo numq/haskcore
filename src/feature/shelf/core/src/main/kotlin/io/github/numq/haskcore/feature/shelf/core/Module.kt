@@ -1,8 +1,8 @@
 package io.github.numq.haskcore.feature.shelf.core
 
 import androidx.datastore.core.DataStoreFactory
-import io.github.numq.haskcore.core.di.ScopePath
 import io.github.numq.haskcore.core.di.ScopeQualifier
+import io.github.numq.haskcore.core.di.ScopeQualifierType
 import io.github.numq.haskcore.core.di.scopedOwner
 import io.github.numq.haskcore.feature.shelf.core.usecase.ObserveShelf
 import io.github.numq.haskcore.feature.shelf.core.usecase.SaveLeftRatio
@@ -17,9 +17,9 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 val shelfCoreModule = module {
-    scope<ScopeQualifier.Project> {
+    scope<ScopeQualifierType.Project> {
         scopedOwner {
-            val projectPath = get<String>(qualifier = ScopePath.Project)
+            val projectPath = get<String>(qualifier = ScopeQualifier.Project)
 
             val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 

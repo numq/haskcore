@@ -7,6 +7,7 @@ dependencies {
     implementation(libs.arrow.core)
     implementation(libs.koin.core)
     implementation(projects.core)
+    implementation(projects.service.project)
     implementation(projects.service.toolchain)
 }
 

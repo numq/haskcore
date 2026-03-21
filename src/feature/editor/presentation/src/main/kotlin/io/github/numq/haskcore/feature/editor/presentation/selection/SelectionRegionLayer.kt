@@ -7,7 +7,7 @@ import org.jetbrains.skia.Rect
 import kotlin.math.ceil
 import kotlin.math.floor
 
-internal data class SelectionRegionLayer(
+data class SelectionRegionLayer(
     val left: Float, val top: Float, val right: Float, val bottom: Float, val paint: Paint
 ) : Layer {
     override fun render(canvas: Canvas) {

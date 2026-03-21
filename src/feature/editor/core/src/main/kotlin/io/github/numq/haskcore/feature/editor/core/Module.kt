@@ -1,7 +1,7 @@
 package io.github.numq.haskcore.feature.editor.core
 
-import io.github.numq.haskcore.core.di.ScopePath
 import io.github.numq.haskcore.core.di.ScopeQualifier
+import io.github.numq.haskcore.core.di.ScopeQualifierType
 import io.github.numq.haskcore.core.di.scopedOwner
 import io.github.numq.haskcore.feature.editor.core.caret.CaretManager
 import io.github.numq.haskcore.feature.editor.core.caret.DefaultCaretManager
@@ -15,7 +15,7 @@ import org.koin.dsl.bind
 import org.koin.dsl.module
 
 val editorCoreModule = module {
-    scope<ScopeQualifier.Document> {
+    scope<ScopeQualifierType.Document> {
         scopedOwner {
             val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
@@ -38,33 +38,30 @@ val editorCoreModule = module {
 
         scopedOwner { MoveCaret(editorService = get(), textService = get()) }
 
-        scopedOwner { ObserveCaret(editorService = get()) }
-
-        scopedOwner { ObserveHighlighting(editorService = get(), textService = get()) }
-
-        scopedOwner { ObserveOccurrences(editorService = get(), textService = get()) }
-
-        scopedOwner { ObserveSelection(editorService = get()) }
-
         scopedOwner {
-            val documentPath = get<String>(qualifier = ScopePath.Document)
+            val documentPath = get<String>(qualifier = ScopeQualifier.Document)
 
-            ObserveTextSnapshot(
-                path = documentPath,
+            ObserveEditor(
+                documentPath = documentPath,
                 editorService = get(),
                 documentService = get(),
+                syntaxService = get(),
                 journalService = get(),
+                loggerService = get(),
+                lspService = get(),
                 textService = get(),
+                toolchainService = get(),
                 vfsService = get()
             )
         }
 
         scopedOwner {
-            val documentPath = get<String>(qualifier = ScopePath.Document)
+            val documentPath = get<String>(qualifier = ScopeQualifier.Document)
 
             ProcessKey(
                 path = documentPath,
                 editorService = get(),
+                clipboardService = get(),
                 documentService = get(),
                 journalService = get(),
                 keymapService = get(),
@@ -72,7 +69,7 @@ val editorCoreModule = module {
             )
         }
 
-        scopedOwner { RequestHighlightingUpdate(editorService = get()) }
+        scopedOwner { UpdateActiveLines(editorService = get()) }
 
         scopedOwner { StartSelection(editorService = get(), textService = get()) }
     }

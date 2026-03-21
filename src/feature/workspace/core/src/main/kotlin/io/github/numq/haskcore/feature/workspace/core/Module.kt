@@ -1,8 +1,8 @@
 package io.github.numq.haskcore.feature.workspace.core
 
 import androidx.datastore.core.DataStoreFactory
-import io.github.numq.haskcore.core.di.ScopePath
 import io.github.numq.haskcore.core.di.ScopeQualifier
+import io.github.numq.haskcore.core.di.ScopeQualifierType
 import io.github.numq.haskcore.core.di.scopedOwner
 import io.github.numq.haskcore.feature.workspace.core.usecase.*
 import kotlinx.coroutines.CoroutineScope
@@ -14,9 +14,9 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 val workspaceCoreModule = module {
-    scope<ScopeQualifier.Project> {
+    scope<ScopeQualifierType.Project> {
         scopedOwner {
-            val projectPath = get<String>(qualifier = ScopePath.Project)
+            val projectPath = get<String>(qualifier = ScopeQualifier.Project)
 
             val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -37,7 +37,7 @@ val workspaceCoreModule = module {
         scopedOwner { CloseWorkspaceDocument(projectService = get()) }
 
         scopedOwner {
-            val projectPath = get<String>(qualifier = ScopePath.Project)
+            val projectPath = get<String>(qualifier = ScopeQualifier.Project)
 
             CloseWorkspace(path = projectPath, sessionService = get())
         }

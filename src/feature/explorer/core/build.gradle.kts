@@ -9,6 +9,7 @@ dependencies {
     implementation(libs.koin.core)
     implementation(libs.datastore)
     implementation(projects.core)
+    implementation(projects.service.document)
     implementation(projects.service.project)
     implementation(projects.service.vfs)
 }

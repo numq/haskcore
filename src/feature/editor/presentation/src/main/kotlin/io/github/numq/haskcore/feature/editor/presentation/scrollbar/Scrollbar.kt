@@ -1,135 +1,54 @@
 package io.github.numq.haskcore.feature.editor.presentation.scrollbar
 
-import androidx.compose.foundation.HorizontalScrollbar
-import androidx.compose.foundation.LocalScrollbarStyle
-import androidx.compose.foundation.ScrollState
-import androidx.compose.foundation.VerticalScrollbar
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.v2.ScrollbarAdapter
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.input.pointer.PointerEventType
-import androidx.compose.ui.input.pointer.isShiftPressed
-import androidx.compose.ui.input.pointer.onPointerEvent
-import androidx.compose.ui.platform.LocalDensity
-import io.github.numq.haskcore.platform.theme.editor.EditorTheme
-import kotlinx.coroutines.launch
+import io.github.numq.haskcore.core.text.TextPosition
+import io.github.numq.haskcore.feature.editor.presentation.measurements.Measurements
+import io.github.numq.haskcore.platform.font.EditorFont
+import kotlin.math.max
 
-@OptIn(ExperimentalComposeUiApi::class)
-@Composable
-internal fun Scrollbar(
-    modifier: Modifier,
-    horizontalScrollState: ScrollState,
-    verticalScrollState: ScrollState,
-    contentWidth: Float,
-    contentHeight: Float,
-    paddingStart: Float,
-    minimalHeight: Float,
-    thickness: Float,
-    theme: EditorTheme,
-    content: @Composable BoxWithConstraintsScope.() -> Unit
-) {
-    val scope = rememberCoroutineScope()
+internal data class Scrollbar(val x: Float, val y: Float) {
+    companion object {
+        val ZERO = Scrollbar(x = 0f, y = 0f)
+    }
 
-    val density = LocalDensity.current
+    fun calculateScrollOffset(
+        position: TextPosition, font: EditorFont, viewportWidth: Float, viewportHeight: Float, gutterWidth: Float
+    ): Scrollbar {
+        val (line, column) = position
 
-    val thicknessDp = with(density) { thickness.toDp() }
+        val caretTextOffset = column * font.charWidth
 
-    val edgePadding = with(density) { 2f.toDp() }
+        val absoluteLineTop = line * font.lineHeight
 
-    val gap = with(density) { 4f.toDp() }
+        val absoluteLineBottom = absoluteLineTop + font.lineHeight
 
-    BoxWithConstraints(modifier = modifier.padding(edgePadding).onPointerEvent(PointerEventType.Scroll) { event ->
-        val delta = event.changes.first().scrollDelta
+        val absoluteCaretX = Measurements.EDITOR_PADDING_START + caretTextOffset
 
-        val isShiftPressed = event.keyboardModifiers.isShiftPressed
+        val verticalMargin = font.lineHeight
 
-        scope.launch {
-            when {
-                isShiftPressed -> {
-                    val scrollDelta = (delta.y + delta.x) * 64f
+        val horizontalMargin = font.charWidth * 2
 
-                    val targetValue = (horizontalScrollState.value + scrollDelta).coerceIn(
-                        0f, horizontalScrollState.maxValue.toFloat()
-                    )
+        val editorVisibleWidth = viewportWidth - gutterWidth
 
-                    horizontalScrollState.scrollTo(targetValue.toInt())
-                }
-
-                else -> {
-                    val scrollDelta = delta.y * 64f
-
-                    val targetValue =
-                        (verticalScrollState.value + scrollDelta).coerceIn(0f, verticalScrollState.maxValue.toFloat())
-
-                    verticalScrollState.scrollTo(targetValue.toInt())
-                }
-            }
-        }
-    }) {
-        val fullWidth = constraints.maxWidth.toFloat()
-
-        val fullHeight = constraints.maxHeight.toFloat()
-
-        content(this)
-
-        val hAdapter = remember(horizontalScrollState, contentWidth, fullWidth) {
-            object : ScrollbarAdapter {
-                override val scrollOffset get() = horizontalScrollState.value.toDouble()
-
-                override val contentSize get() = contentWidth.toDouble()
-
-                override val viewportSize get() = fullWidth.toDouble()
-
-                override suspend fun scrollTo(scrollOffset: Double) {
-                    horizontalScrollState.scrollTo(scrollOffset.toInt())
-                }
-            }
-        }
-
-        val vAdapter = remember(verticalScrollState, contentHeight, fullHeight) {
-            object : ScrollbarAdapter {
-                override val scrollOffset get() = verticalScrollState.value.toDouble()
-
-                override val contentSize get() = contentHeight.toDouble()
-
-                override val viewportSize get() = fullHeight.toDouble()
-
-                override suspend fun scrollTo(scrollOffset: Double) {
-                    verticalScrollState.scrollTo(scrollOffset.toInt())
-                }
-            }
-        }
-
-        HorizontalScrollbar(
-            adapter = hAdapter,
-            modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth()
-                .padding(start = with(density) { paddingStart.toDp() }, end = thicknessDp),
-            style = LocalScrollbarStyle.current.copy(
-                thickness = thicknessDp,
-                minimalHeight = with(density) { minimalHeight.toDp() },
-                shape = RectangleShape,
-                unhoverColor = Color(theme.scrollbarColorPalette.backgroundColor).copy(alpha = .5f),
-                hoverColor = Color(theme.scrollbarColorPalette.hoverColor)
+        val newX = when {
+            absoluteCaretX < x + horizontalMargin -> max(
+                0f, absoluteCaretX - horizontalMargin
             )
-        )
 
-        VerticalScrollbar(
-            adapter = vAdapter,
-            modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
-            style = LocalScrollbarStyle.current.copy(
-                thickness = thicknessDp,
-                minimalHeight = with(density) { minimalHeight.toDp() },
-                shape = RectangleShape,
-                unhoverColor = Color(theme.scrollbarColorPalette.backgroundColor).copy(alpha = .5f),
-                hoverColor = Color(theme.scrollbarColorPalette.hoverColor)
+            absoluteCaretX > x + editorVisibleWidth - horizontalMargin -> absoluteCaretX - editorVisibleWidth + horizontalMargin
+
+            else -> x
+        }
+
+        val newY = when {
+            absoluteLineTop < y + verticalMargin -> max(
+                0f, absoluteLineTop - verticalMargin
             )
-        )
+
+            absoluteLineBottom > y + viewportHeight - verticalMargin -> absoluteLineBottom - viewportHeight + verticalMargin
+
+            else -> y
+        }
+
+        return Scrollbar(x = newX, y = newY)
     }
 }

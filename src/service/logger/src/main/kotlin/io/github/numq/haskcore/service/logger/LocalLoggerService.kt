@@ -21,6 +21,7 @@ internal class LocalLoggerService(
     private val scope: CoroutineScope,
     private val internalDateTimeFormatter: DateTimeFormatter,
     private val externalDateTimeFormatter: DateTimeFormatter,
+    private val labelDateTimeFormatter: DateTimeFormatter,
     private val loggerDataSource: LoggerDataSource
 ) : LoggerService {
     private companion object {
@@ -30,7 +31,13 @@ internal class LocalLoggerService(
     override val logs = loggerDataSource.loggerData.map { list ->
         list.filter { loggerData ->
             loggerData.projectId == null || loggerData.projectId == projectId
-        }.map(LoggerData::toLog)
+        }.map { loggerData ->
+            val timestamp = Timestamp(nanoseconds = loggerData.timestampNanos)
+
+            val timestampLabel = formatTimestamp(dateTimeFormatter = labelDateTimeFormatter, timestamp = timestamp)
+
+            loggerData.toLog(timestamp = timestamp, timestampLabel = timestampLabel)
+        }
     }.stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = emptyList())
 
     private fun formatTimestamp(dateTimeFormatter: DateTimeFormatter, timestamp: Timestamp): String {

@@ -15,26 +15,24 @@ internal class LocalExplorerService(
         scope = scope, started = SharingStarted.Eagerly, initialValue = Explorer()
     )
 
-    override suspend fun toggleNode(path: String) = explorerDataSource.update { explorerData ->
-        val normalized = path.removeSuffix(separator)
+    override suspend fun collapseDirectory(node: ExplorerNode.Directory) = explorerDataSource.update { explorerData ->
+        val path = node.path.removeSuffix(separator)
 
-        val childPrefix = "$normalized$separator"
-
-        val isExpanded = explorerData.expandedPaths.contains(normalized)
-
-        val expandedPaths = when {
-            isExpanded -> explorerData.expandedPaths.filterNot { expandedPath ->
-                expandedPath == normalized || expandedPath.startsWith(childPrefix)
-            }
-
-            else -> explorerData.expandedPaths + normalized
+        val expandedPaths = explorerData.expandedPaths.filterNot { expandedPath ->
+            expandedPath == path || expandedPath.startsWith(path + separator)
         }
 
-        explorerData.copy(expandedPaths = expandedPaths, selectedPath = normalized)
+        explorerData.copy(expandedPaths = expandedPaths)
     }.map {}
 
-    override suspend fun selectNode(path: String) = explorerDataSource.update { explorerData ->
-        explorerData.copy(selectedPath = path)
+    override suspend fun expandDirectory(node: ExplorerNode.Directory) = explorerDataSource.update { explorerData ->
+        val path = node.path.removeSuffix(separator)
+
+        when {
+            path in explorerData.expandedPaths -> explorerData
+
+            else -> explorerData.copy(expandedPaths = explorerData.expandedPaths + path)
+        }
     }.map {}
 
     override suspend fun saveExplorerPosition(position: ExplorerPosition) = explorerDataSource.update { explorerData ->

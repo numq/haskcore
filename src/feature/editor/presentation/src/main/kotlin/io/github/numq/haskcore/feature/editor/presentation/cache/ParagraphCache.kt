@@ -1,7 +1,6 @@
 package io.github.numq.haskcore.feature.editor.presentation.cache
 
-import io.github.numq.haskcore.feature.editor.core.highlighting.HighlightingToken
-import io.github.numq.haskcore.feature.editor.core.highlighting.HighlightingType
+import io.github.numq.haskcore.feature.editor.core.syntax.Token
 import io.github.numq.haskcore.platform.font.EditorFont
 import io.github.numq.haskcore.platform.theme.editor.EditorTheme
 import io.github.numq.haskcore.platform.theme.editor.palette.highlighting.HighlightingColorPalette
@@ -11,59 +10,55 @@ import org.jetbrains.skia.paragraph.TextStyle
 
 internal class ParagraphCache(override val capacity: Int) : LruCache<ParagraphCache.Key, Paragraph>() {
     data class Key(
-        val text: String,
-        val tokens: List<HighlightingToken>,
-        val width: Float,
-        val font: EditorFont,
-        val theme: EditorTheme
+        val text: String, val tokens: List<Token>, val width: Float, val font: EditorFont, val theme: EditorTheme
     )
 
-    private fun HighlightingColorPalette.getColorForHighlightingToken(type: HighlightingType) = when (type) {
-        HighlightingType.KEYWORD, HighlightingType.KEYWORD_CONDITIONAL, HighlightingType.KEYWORD_REPEAT, HighlightingType.KEYWORD_EXCEPTION, HighlightingType.KEYWORD_DEBUG -> keywordColor
+    private fun HighlightingColorPalette.getColorForHighlightingToken(type: Token.Type) = when (type) {
+        Token.Type.KEYWORD, Token.Type.KEYWORD_CONDITIONAL, Token.Type.KEYWORD_REPEAT, Token.Type.KEYWORD_EXCEPTION, Token.Type.KEYWORD_DEBUG -> keywordColor
 
-        HighlightingType.KEYWORD_IMPORT, HighlightingType.KEYWORD_DIRECTIVE -> keywordImportColor
+        Token.Type.KEYWORD_IMPORT, Token.Type.KEYWORD_DIRECTIVE -> keywordImportColor
 
-        HighlightingType.TYPE, HighlightingType.CONSTRUCTOR -> typeColor
+        Token.Type.TYPE, Token.Type.CONSTRUCTOR -> typeColor
 
-        HighlightingType.BOOLEAN -> booleanColor
+        Token.Type.BOOLEAN -> booleanColor
 
-        HighlightingType.FUNCTION -> functionColor
+        Token.Type.FUNCTION -> functionColor
 
-        HighlightingType.FUNCTION_CALL -> functionCallColor
+        Token.Type.FUNCTION_CALL -> functionCallColor
 
-        HighlightingType.VARIABLE -> variableColor
+        Token.Type.VARIABLE -> variableColor
 
-        HighlightingType.VARIABLE_PARAMETER -> variableParameterColor
+        Token.Type.VARIABLE_PARAMETER -> variableParameterColor
 
-        HighlightingType.VARIABLE_MEMBER -> variableMemberColor
+        Token.Type.VARIABLE_MEMBER -> variableMemberColor
 
-        HighlightingType.OPERATOR -> operatorColor
+        Token.Type.OPERATOR -> operatorColor
 
-        HighlightingType.NUMBER, HighlightingType.NUMBER_FLOAT -> numberColor
+        Token.Type.NUMBER, Token.Type.NUMBER_FLOAT -> numberColor
 
-        HighlightingType.STRING, HighlightingType.CHARACTER -> stringColor
+        Token.Type.STRING, Token.Type.CHARACTER -> stringColor
 
-        HighlightingType.STRING_SPECIAL_SYMBOL -> stringSpecialSymbolColor
+        Token.Type.STRING_SPECIAL_SYMBOL -> stringSpecialSymbolColor
 
-        HighlightingType.COMMENT -> commentColor
+        Token.Type.COMMENT -> commentColor
 
-        HighlightingType.COMMENT_DOCUMENTATION -> commentDocumentationColor
+        Token.Type.COMMENT_DOCUMENTATION -> commentDocumentationColor
 
-        HighlightingType.PUNCTUATION_BRACKET -> punctuationBracketColor
+        Token.Type.PUNCTUATION_BRACKET -> punctuationBracketColor
 
-        HighlightingType.PUNCTUATION_DELIMITER -> punctuationDelimiterColor
+        Token.Type.PUNCTUATION_DELIMITER -> punctuationDelimiterColor
 
-        HighlightingType.MODULE -> moduleColor
+        Token.Type.MODULE -> moduleColor
 
-        HighlightingType.SPELL -> spellColor
+        Token.Type.SPELL -> spellColor
 
-        HighlightingType.WILDCARD -> wildcardColor
+        Token.Type.WILDCARD -> wildcardColor
 
-        HighlightingType.UNKNOWN -> unknownColor
+        Token.Type.UNKNOWN -> unknownColor
 
-        HighlightingType.LOCAL_DEFINITION -> localDefinitionColor
+        Token.Type.LOCAL_DEFINITION -> localDefinitionColor
 
-        HighlightingType.LOCAL_REFERENCE -> localReferenceColor
+        Token.Type.LOCAL_REFERENCE -> localReferenceColor
     }
 
     override val factory: Key.() -> Paragraph = {
@@ -103,9 +98,9 @@ internal class ParagraphCache(override val capacity: Int) : LruCache<ParagraphCa
                     pushStyle(createTokenStyle(color))
 
                     val text = when (token) {
-                        is HighlightingToken.Atom -> token.text
+                        is Token.Atom -> token.text
 
-                        is HighlightingToken.Region -> {
+                        is Token.Region -> {
                             val start = token.range.start.column
 
                             val end = token.range.end.column

@@ -20,8 +20,8 @@ internal class LocalOutputService(
         scope = scope, started = SharingStarted.Eagerly, initialValue = Output()
     )
 
-    override suspend fun selectSession(id: String) = outputDataSource.update { outputData ->
-        outputData.copy(selectedSession = outputData.sessions.find { sessionData ->
+    override suspend fun openSession(id: String) = outputDataSource.update { outputData ->
+        outputData.copy(activeSession = outputData.sessions.find { sessionData ->
             sessionData.id == id
         })
     }.map {}
@@ -34,12 +34,12 @@ internal class LocalOutputService(
         val updatedSessions = sessions.filterNot { sessionData -> sessionData.id == id }
 
         val newSelectedSession = when {
-            id != outputData.selectedSession?.id -> outputData.selectedSession
+            id != outputData.activeSession?.id -> outputData.activeSession
 
             else -> updatedSessions.getOrNull(currentIndex) ?: updatedSessions.getOrNull(currentIndex - 1)
         }
 
-        outputData.copy(sessions = updatedSessions, selectedSession = newSelectedSession)
+        outputData.copy(sessions = updatedSessions, activeSession = newSelectedSession)
     }.map {}
 
     override suspend fun startSession(
@@ -67,7 +67,7 @@ internal class LocalOutputService(
 
                 val sessions = (filteredSessions + newSession).take(SESSION_LIMIT)
 
-                outputData.copy(sessions = sessions, selectedSession = newSession)
+                outputData.copy(sessions = sessions, activeSession = newSession)
             }
         }
     }.map {}
@@ -102,7 +102,7 @@ internal class LocalOutputService(
             sessionData.id == id
         }
 
-        outputData.copy(sessions = sessions, selectedSession = selectedSession)
+        outputData.copy(sessions = sessions, activeSession = selectedSession)
     }.map {}
 
     override suspend fun push(id: String, line: OutputLine) = outputDataSource.update { outputData ->
@@ -120,7 +120,7 @@ internal class LocalOutputService(
             sessionData.id == id
         }
 
-        outputData.copy(sessions = sessions, selectedSession = selectedSession)
+        outputData.copy(sessions = sessions, activeSession = selectedSession)
     }.map {}
 
     override fun close() {

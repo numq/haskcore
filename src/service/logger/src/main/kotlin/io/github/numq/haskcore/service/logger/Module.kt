@@ -1,8 +1,8 @@
 package io.github.numq.haskcore.service.logger
 
 import androidx.datastore.core.DataStoreFactory
-import io.github.numq.haskcore.core.di.ScopePath
 import io.github.numq.haskcore.core.di.ScopeQualifier
+import io.github.numq.haskcore.core.di.ScopeQualifierType
 import io.github.numq.haskcore.core.di.scopedOwner
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -15,9 +15,9 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 val loggerModule = module {
-    scope<ScopeQualifier.Application> {
+    scope<ScopeQualifierType.Application> {
         scopedOwner {
-            val applicationPath = get<String>(qualifier = ScopePath.Application)
+            val applicationPath = get<String>(qualifier = ScopeQualifier.Application)
 
             val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -30,9 +30,9 @@ val loggerModule = module {
         } bind LoggerDataSource::class
     }
 
-    scope<ScopeQualifier.Project> {
+    scope<ScopeQualifierType.Project> {
         scopedOwner {
-            val projectPath = get<String>(qualifier = ScopePath.Project)
+            val projectPath = get<String>(qualifier = ScopeQualifier.Project)
 
             val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
@@ -40,17 +40,23 @@ val loggerModule = module {
 
             val externalPattern = "yyyy-MM-dd_HH-mm-ss-SSS"
 
+            val labelPattern = "HH:mm:ss.SSS"
+
             val internalDateTimeFormatter =
                 DateTimeFormatter.ofPattern(internalPattern).withZone(ZoneId.systemDefault())
 
             val externalDateTimeFormatter =
                 DateTimeFormatter.ofPattern(externalPattern).withZone(ZoneId.systemDefault())
 
+            val labelDateTimeFormatter =
+                DateTimeFormatter.ofPattern(labelPattern).withZone(ZoneId.systemDefault())
+
             LocalLoggerService(
                 projectId = projectPath,
                 scope = scope,
                 internalDateTimeFormatter = internalDateTimeFormatter,
                 externalDateTimeFormatter = externalDateTimeFormatter,
+                labelDateTimeFormatter = labelDateTimeFormatter,
                 loggerDataSource = get()
             )
         } bind LoggerService::class

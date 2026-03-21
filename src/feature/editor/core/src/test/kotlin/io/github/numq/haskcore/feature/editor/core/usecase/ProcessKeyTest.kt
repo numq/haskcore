@@ -2,13 +2,11 @@ package io.github.numq.haskcore.feature.editor.core.usecase
 
 import arrow.core.getOrElse
 import arrow.core.right
-import io.github.numq.haskcore.core.text.TextEdit
-import io.github.numq.haskcore.core.text.TextOperation
-import io.github.numq.haskcore.core.text.TextPosition
-import io.github.numq.haskcore.core.text.TextSnapshot
+import io.github.numq.haskcore.core.text.*
 import io.github.numq.haskcore.feature.editor.core.EditorService
 import io.github.numq.haskcore.feature.editor.core.caret.Caret
 import io.github.numq.haskcore.feature.editor.core.selection.Selection
+import io.github.numq.haskcore.service.clipboard.ClipboardService
 import io.github.numq.haskcore.service.document.DocumentService
 import io.github.numq.haskcore.service.journal.JournalService
 import io.github.numq.haskcore.service.keymap.KeymapService
@@ -23,6 +21,7 @@ import java.awt.event.KeyEvent
 internal class ProcessKeyTest {
     private val path = "test.hs"
     private val editorService = mockk<EditorService>(relaxed = true)
+    private val clipboardService = mockk<ClipboardService>(relaxed = true)
     private val documentService = mockk<DocumentService>(relaxed = true)
     private val journalService = mockk<JournalService>(relaxed = true)
     private val keymapService = mockk<KeymapService>()
@@ -40,14 +39,16 @@ internal class ProcessKeyTest {
 
     @Test
     fun `should handle printable character input`() = runTest {
-        val useCase = ProcessKey(path, editorService, documentService, journalService, keymapService, textService)
+        val useCase = ProcessKey(
+            path, editorService, clipboardService, documentService, journalService, keymapService, textService
+        )
 
         val snapshot = mockk<TextSnapshot> {
             every { isValidPosition(any()) } returns true
         }
         snapshotFlow.value = snapshot
 
-        val input = ProcessKey.Input(KeyEvent.VK_A, 0, 'A'.toInt())
+        val input = ProcessKey.Input(KeyEvent.VK_A, 0, 'A'.code)
 
         every { keymapService.getActionId(any(), any()) } returns null.right()
         coEvery { textService.execute(any()) } returns Unit.right()
@@ -66,7 +67,9 @@ internal class ProcessKeyTest {
 
     @Test
     fun `should handle backspace across lines`() = runTest {
-        val useCase = ProcessKey(path, editorService, documentService, journalService, keymapService, textService)
+        val useCase = ProcessKey(
+            path, editorService, clipboardService, documentService, journalService, keymapService, textService
+        )
 
         caretStateFlow.value = Caret(TextPosition(1, 0))
 
@@ -95,9 +98,11 @@ internal class ProcessKeyTest {
 
     @Test
     fun `should handle undo action`() = runTest {
-        val useCase = ProcessKey(path, editorService, documentService, journalService, keymapService, textService)
+        val useCase = ProcessKey(
+            path, editorService, clipboardService, documentService, journalService, keymapService, textService
+        )
 
-        val currentRevision = 10L
+        val currentRevision = TextRevision(value = 10L)
         val snapshot = mockk<TextSnapshot>(relaxed = true) {
             every { revision } returns currentRevision
             every { isValidPosition(any()) } returns true
@@ -115,7 +120,7 @@ internal class ProcessKeyTest {
             newEndByte = 4
         )
 
-        val editToUndo = TextEdit.User(data = editData, revision = currentRevision)
+        val editToUndo = TextEdit.User(revision = currentRevision, data = editData)
 
         coEvery { journalService.undo(currentRevision) } returns (editToUndo as TextEdit).right()
 

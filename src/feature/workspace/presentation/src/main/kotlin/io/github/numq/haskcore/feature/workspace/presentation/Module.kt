@@ -1,12 +1,14 @@
 package io.github.numq.haskcore.feature.workspace.presentation
 
-import io.github.numq.haskcore.core.di.ScopeQualifier
+import io.github.numq.haskcore.core.di.ScopeQualifierType
 import io.github.numq.haskcore.core.di.scopedOwner
 import io.github.numq.haskcore.feature.workspace.core.Workspace
+import io.github.numq.haskcore.feature.workspace.presentation.feature.WorkspaceFeature
+import io.github.numq.haskcore.feature.workspace.presentation.feature.WorkspaceReducer
 import org.koin.dsl.module
 
 val workspacePresentationModule = module {
-    scope<ScopeQualifier.Project> {
+    scope<ScopeQualifierType.Project> {
         scopedOwner {
             WorkspaceReducer(
                 closeWorkspaceDocument = get(),

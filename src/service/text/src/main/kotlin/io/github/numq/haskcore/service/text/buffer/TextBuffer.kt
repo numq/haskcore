@@ -8,11 +8,11 @@ import kotlinx.coroutines.flow.StateFlow
 import java.nio.charset.Charset
 
 internal interface TextBuffer {
-    val data: SharedFlow<TextEdit.Data>
-
     val snapshot: StateFlow<TextSnapshot>
 
-    suspend fun changeLineEnding(lineEnding: LineEnding): Either<Throwable, Unit>
+    val data: SharedFlow<TextEdit.Data>
+
+    suspend fun changeLineEnding(textLineEnding: TextLineEnding): Either<Throwable, Unit>
 
     suspend fun changeCharset(charset: Charset): Either<Throwable, Unit>
 

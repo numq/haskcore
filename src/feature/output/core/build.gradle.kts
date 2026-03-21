@@ -10,6 +10,7 @@ dependencies {
     implementation(libs.koin.core)
     implementation(libs.datastore)
     implementation(projects.core)
+    implementation(projects.service.clipboard)
     implementation(projects.service.runtime)
 }
 

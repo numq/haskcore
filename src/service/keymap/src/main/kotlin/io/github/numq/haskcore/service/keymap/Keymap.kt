@@ -21,6 +21,10 @@ internal object Keymap {
             keyCode = KeyEvent.VK_Z, modifiers = KeyEvent.CTRL_DOWN_MASK or KeyEvent.SHIFT_DOWN_MASK
         ) to "editor.action.redo",
         KeyStroke(keyCode = KeyEvent.VK_Y, modifiers = KeyEvent.CTRL_DOWN_MASK) to "editor.action.redo",
+
+        KeyStroke(keyCode = KeyEvent.VK_X, modifiers = KeyEvent.CTRL_DOWN_MASK) to "editor.action.cut",
+        KeyStroke(keyCode = KeyEvent.VK_C, modifiers = KeyEvent.CTRL_DOWN_MASK) to "editor.action.copy",
+        KeyStroke(keyCode = KeyEvent.VK_V, modifiers = KeyEvent.CTRL_DOWN_MASK) to "editor.action.paste",
     )
 
     val data = mapOf(KeymapContext.EDITOR to editor)

@@ -2,15 +2,18 @@ package io.github.numq.haskcore.feature.explorer.core
 
 sealed interface ExplorerNode {
     val name: String
+
     val path: String
+
     val level: Int
-    val isSelected: Boolean
+
+    val segments: List<String>
 
     data class File(
         override val name: String,
         override val path: String,
         override val level: Int,
-        override val isSelected: Boolean = false,
+        override val segments: List<String>,
         val extension: String? = null
     ) : ExplorerNode
 
@@ -18,7 +21,7 @@ sealed interface ExplorerNode {
         override val name: String,
         override val path: String,
         override val level: Int,
-        override val isSelected: Boolean = false,
+        override val segments: List<String>,
         val isExpanded: Boolean = false
     ) : ExplorerNode
 }

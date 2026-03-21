@@ -29,6 +29,7 @@ internal class CachedVfsServiceTest {
                 name = "file.hs",
                 extension = "hs",
                 isDirectory = false,
+                isMetadata = false,
                 size = 100,
                 lastModified = Timestamp(0)
             )
@@ -37,7 +38,7 @@ internal class CachedVfsServiceTest {
         coEvery { vfsDataSource.list(testPath) } returns Either.Right(initialFiles)
         coEvery { vfsDataSource.watch(testPath) } returns Either.Right(MutableSharedFlow())
 
-        val flow = service.observeDirectory(testPath).getOrNull()!!
+        val flow = service.observeFiles(testPath).getOrNull()!!
 
         runCurrent()
 
@@ -55,6 +56,7 @@ internal class CachedVfsServiceTest {
             name = "to_delete.hs",
             extension = "hs",
             isDirectory = false,
+            isMetadata = false,
             size = 10,
             lastModified = Timestamp(0)
         )
@@ -63,7 +65,7 @@ internal class CachedVfsServiceTest {
         coEvery { vfsDataSource.list(testPath) } returns Either.Right(listOf(file))
         coEvery { vfsDataSource.watch(testPath) } returns Either.Right(events)
 
-        val flow = service.observeDirectory(testPath).getOrNull()!!
+        val flow = service.observeFiles(testPath).getOrNull()!!
 
         val initial = flow.first()
         assertEquals(1, initial.size)

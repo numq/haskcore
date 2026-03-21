@@ -17,13 +17,16 @@ internal object ViewportCalculator {
         width <= 0 || height <= 0 || lineHeight <= 0 -> Viewport.EMPTY
 
         else -> {
+            val snappedLineHeight = ceil(lineHeight)
+
             val totalLines = snapshot.lines.coerceAtLeast(1)
 
             val effectiveScrollY = maxOf(0f, scrollY)
 
-            val startLine = floor(effectiveScrollY / lineHeight).toInt().coerceIn(0, (totalLines - 1).coerceAtLeast(0))
+            val startLine =
+                floor(effectiveScrollY / snappedLineHeight).toInt().coerceIn(0, (totalLines - 1).coerceAtLeast(0))
 
-            val linesInViewport = ceil(height / lineHeight).toInt()
+            val linesInViewport = ceil(height / snappedLineHeight).toInt()
 
             val endLine = (startLine + linesInViewport + 1).coerceAtMost(totalLines - 1)
 
@@ -32,18 +35,18 @@ internal object ViewportCalculator {
             val viewportLines = visibleLinesRange.map { lineIndex ->
                 val text = snapshot.getLineText(line = lineIndex)
 
-                val lineTop = (lineIndex * lineHeight) - scrollY
+                val lineTop = floor((lineIndex * snappedLineHeight) - effectiveScrollY)
 
-                val leading = lineHeight - textHeight
+                val leading = snappedLineHeight - textHeight
 
-                val textBaselineY = lineTop + (leading / 2) - ascent
+                val textBaselineY = lineTop + (leading / 2f) - ascent
 
                 ViewportLine(
                     line = lineIndex,
                     x = 0f,
                     y = lineTop,
                     width = width,
-                    height = lineHeight,
+                    height = snappedLineHeight,
                     text = text,
                     textBaselineY = textBaselineY
                 )

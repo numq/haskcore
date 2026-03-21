@@ -5,7 +5,7 @@ import org.jetbrains.skia.Canvas
 import org.jetbrains.skia.Paint
 import org.jetbrains.skia.TextLine
 
-internal data class GutterLineLayer(
+data class GutterLineLayer(
     val line: Int,
     val text: String,
     val textLine: TextLine,

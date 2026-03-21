@@ -1,7 +1,7 @@
 package io.github.numq.haskcore.service.text.buffer
 
 import arrow.core.getOrElse
-import io.github.numq.haskcore.core.text.LineEnding
+import io.github.numq.haskcore.core.text.TextLineEnding
 import io.github.numq.haskcore.core.text.TextEdit
 import io.github.numq.haskcore.core.text.TextPosition
 import io.github.numq.haskcore.core.text.TextRange
@@ -16,8 +16,8 @@ import java.nio.charset.StandardCharsets
 
 internal class TextBufferTest {
     private fun createBuffer(
-        initialText: String = "", lineEnding: LineEnding = LineEnding.LF, charset: Charset = StandardCharsets.UTF_8
-    ) = RopeTextBuffer(initialText = initialText, initialLineEnding = lineEnding, initialCharset = charset)
+        initialText: String = "", textLineEnding: TextLineEnding = TextLineEnding.LF, charset: Charset = StandardCharsets.UTF_8
+    ) = RopeTextBuffer(initialText = initialText, initialTextLineEnding = textLineEnding, initialCharset = charset)
 
     @Test
     fun testInitialEmptyBuffer() {
@@ -27,7 +27,7 @@ internal class TextBufferTest {
         assertEquals(1, buffer.snapshot.value.lines)
         assertEquals(0, buffer.snapshot.value.maxLineLength)
         assertEquals(TextPosition(0, 0), buffer.snapshot.value.lastPosition)
-        assertEquals(LineEnding.LF, buffer.snapshot.value.lineEnding)
+        assertEquals(TextLineEnding.LF, buffer.snapshot.value.textLineEnding)
         assertEquals(StandardCharsets.UTF_8, buffer.snapshot.value.charset)
     }
 
@@ -44,13 +44,13 @@ internal class TextBufferTest {
 
     @Test
     fun testLongestLineLength() {
-        val buffer1 = RopeTextBuffer("Hello", LineEnding.CR)
+        val buffer1 = RopeTextBuffer("Hello", TextLineEnding.CR)
         assertEquals(5, buffer1.snapshot.value.maxLineLength)
 
-        val buffer2 = RopeTextBuffer("Hello\nWorld\nTest", LineEnding.CR)
+        val buffer2 = RopeTextBuffer("Hello\nWorld\nTest", TextLineEnding.CR)
         assertEquals(5, buffer2.snapshot.value.maxLineLength)
 
-        val buffer3 = RopeTextBuffer("Hello\nWorld", LineEnding.CRLF)
+        val buffer3 = RopeTextBuffer("Hello\nWorld", TextLineEnding.CRLF)
         assertEquals(5, buffer3.snapshot.value.maxLineLength)
     }
 
@@ -241,7 +241,7 @@ internal class TextBufferTest {
 
     @Test
     fun testLineEndingNormalizationLF() = runTest {
-        val buffer = createBuffer("Line1\r\nLine2\rLine3", LineEnding.LF)
+        val buffer = createBuffer("Line1\r\nLine2\rLine3", TextLineEnding.LF)
 
         assertEquals("Line1\nLine2\nLine3", buffer.snapshot.value.text)
         assertEquals(3, buffer.snapshot.value.lines)
@@ -249,7 +249,7 @@ internal class TextBufferTest {
 
     @Test
     fun testLineEndingNormalizationCRLF() = runTest {
-        val buffer = createBuffer("Line1\nLine2\rLine3", LineEnding.CRLF)
+        val buffer = createBuffer("Line1\nLine2\rLine3", TextLineEnding.CRLF)
 
         assertEquals("Line1\r\nLine2\r\nLine3", buffer.snapshot.value.text)
         assertEquals(3, buffer.snapshot.value.lines)
@@ -257,7 +257,7 @@ internal class TextBufferTest {
 
     @Test
     fun testLineEndingNormalizationCR() = runTest {
-        val buffer = createBuffer("Line1\nLine2\r\nLine3", LineEnding.CR)
+        val buffer = createBuffer("Line1\nLine2\r\nLine3", TextLineEnding.CR)
 
         assertEquals("Line1\rLine2\rLine3", buffer.snapshot.value.text)
         assertEquals(3, buffer.snapshot.value.lines)
@@ -265,7 +265,7 @@ internal class TextBufferTest {
 
     @Test
     fun testInsertWithDifferentLineEndings() = runTest {
-        val buffer = createBuffer("", LineEnding.CRLF)
+        val buffer = createBuffer("", TextLineEnding.CRLF)
         buffer.insert(TextPosition(0, 0), "Line1\nLine2\rLine3\r\nLine4")
 
         assertEquals("Line1\r\nLine2\r\nLine3\r\nLine4", buffer.snapshot.value.text)
@@ -414,10 +414,10 @@ internal class TextBufferTest {
         val crText = "Line1\rLine2\rLine3"
         val mixedText = "Line1\nLine2\r\nLine3\rLine4"
 
-        assertEquals(LineEnding.LF, LineEnding.analyze(lfText).dominant)
-        assertEquals(LineEnding.CRLF, LineEnding.analyze(crlfText).dominant)
-        assertEquals(LineEnding.CR, LineEnding.analyze(crText).dominant)
-        assertEquals(LineEnding.LF, LineEnding.analyze(mixedText).dominant)
+        assertEquals(TextLineEnding.LF, TextLineEnding.analyze(lfText).dominant)
+        assertEquals(TextLineEnding.CRLF, TextLineEnding.analyze(crlfText).dominant)
+        assertEquals(TextLineEnding.CR, TextLineEnding.analyze(crText).dominant)
+        assertEquals(TextLineEnding.LF, TextLineEnding.analyze(mixedText).dominant)
     }
 
     @Test
@@ -540,7 +540,7 @@ internal class TextBufferTest {
 
     @Test
     fun testLineEndingNormalization() = runTest {
-        val buffer = RopeTextBuffer("Hello", initialLineEnding = LineEnding.LF)
+        val buffer = RopeTextBuffer("Hello", initialTextLineEnding = TextLineEnding.LF)
         buffer.insert(TextPosition(0, 5), "\r\nWorld")
 
         assertEquals("Hello\nWorld", buffer.snapshot.value.text)

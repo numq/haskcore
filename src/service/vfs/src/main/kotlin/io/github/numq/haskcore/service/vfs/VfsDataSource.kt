@@ -4,6 +4,8 @@ import arrow.core.Either
 import kotlinx.coroutines.flow.Flow
 
 internal interface VfsDataSource {
+    suspend fun fetchSingleEntry(path: String): Either<Throwable, VirtualFile?>
+
     suspend fun watch(path: String): Either<Throwable, Flow<VfsEvent>>
 
     suspend fun list(path: String): Either<Throwable, List<VirtualFile>>

@@ -13,9 +13,9 @@ interface EditorService : AutoCloseable {
 
     val selection: StateFlow<Selection>
 
-    val highlightingRange: StateFlow<IntRange>
+    val activeLines: StateFlow<IntRange>
 
-    suspend fun requestHighlightingUpdate(startLine: Int, endLine: Int): Either<Throwable, Unit>
+    suspend fun updateActiveLines(start: Int, end: Int): Either<Throwable, Unit>
 
     suspend fun handleEdit(snapshot: TextSnapshot, edit: TextEdit?): Either<Throwable, Unit>
 

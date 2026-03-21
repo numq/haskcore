@@ -3,15 +3,12 @@ package io.github.numq.haskcore.service.vfs
 import arrow.core.Either
 import arrow.core.flatMap
 import arrow.core.raise.either
-import io.github.numq.haskcore.core.timestamp.Timestamp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.*
-import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.TimeUnit
-import kotlin.io.path.*
 
 internal class CachedVfsService(
     private val scope: CoroutineScope, private val vfsDataSource: VfsDataSource
@@ -38,51 +35,38 @@ internal class CachedVfsService(
 
     private fun applyEventToList(
         files: List<VirtualFile>, event: VfsEvent, newFile: VirtualFile?
-    ) = when (event) {
-        is VfsEvent.Created -> when (newFile) {
-            null -> files
+    ): List<VirtualFile> {
+        val next = when (event) {
+            is VfsEvent.Created -> when (newFile) {
+                null -> files
 
-            else -> files.filterNot { file -> file.path == newFile.path } + newFile
-        }
+                else -> files.filterNot { file -> file.path == newFile.path } + newFile
+            }
 
-        is VfsEvent.Deleted -> files.filter { file -> file.path != event.path }
+            is VfsEvent.Deleted -> files.filter { file -> file.path != event.path }
 
-        is VfsEvent.Modified -> when (newFile) {
-            null -> files
+            is VfsEvent.Modified -> when (newFile) {
+                null -> files
 
-            else -> files.map { file ->
-                when (file.path) {
-                    event.path -> newFile
+                else -> files.map { file ->
+                    when (file.path) {
+                        event.path -> newFile
 
-                    else -> file
+                        else -> file
+                    }
                 }
             }
         }
-    }
 
-    private fun fetchSingleEntry(path: String) = Either.catch {
-        val nioPath = Path.of(path)
+        return when (next) {
+            files -> files
 
-        when {
-            nioPath.exists() -> VirtualFile(
-                path = path,
-                name = nioPath.fileName.toString(),
-                extension = nioPath.extension,
-                isDirectory = nioPath.isDirectory(),
-                size = when {
-                    nioPath.isRegularFile() -> nioPath.fileSize()
-
-                    else -> 0L
-                },
-                lastModified = Timestamp(nioPath.getLastModifiedTime().to(TimeUnit.NANOSECONDS))
-            )
-
-            else -> null
+            else -> next
         }
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    override suspend fun observeDirectory(path: String) = either {
+    override suspend fun observeFiles(path: String) = either {
         if (!directoryCache.value.containsKey(path)) {
             val files = vfsDataSource.list(path = path).bind()
 
@@ -98,17 +82,23 @@ internal class CachedVfsService(
                 val newFile = when (event) {
                     is VfsEvent.Deleted -> null
 
-                    else -> fetchSingleEntry(path = event.path).getOrNull()
+                    else -> vfsDataSource.fetchSingleEntry(path = event.path).getOrNull()
                 }
 
                 cacheUpdates.emit(VfsCacheAction.UpdateEntry(parentPath = path, event = event, newFile = newFile))
-            }.launchIn(this)
+            }.launchIn(scope = this)
 
-            directoryCache.map { cache -> cache[path] }.filterNotNull().distinctUntilChanged().collect(::send)
+            directoryCache.mapNotNull { cache -> cache[path] }.distinctUntilChanged().collect(::send)
 
-            invokeOnClose {
+            awaitClose {
                 watchFlows.remove(path)
             }
+        }
+    }
+
+    override suspend fun observeVisibleFiles(path: String) = observeFiles(path = path).map { flow ->
+        flow.map { files ->
+            files.filterNot(VirtualFile::isMetadata)
         }
     }
 

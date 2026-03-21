@@ -5,15 +5,15 @@ sealed interface LaunchTarget {
 
     val workingDir: String
 
-    data class SingleFile(
-        override val name: String, override val workingDir: String, val filePath: String
+    data class Stack(
+        override val name: String, override val workingDir: String, val componentName: String
     ) : LaunchTarget
 
     data class Cabal(
         override val name: String, override val workingDir: String, val componentName: String
     ) : LaunchTarget
 
-    data class Stack(
-        override val name: String, override val workingDir: String, val componentName: String
+    data class File(
+        override val name: String, override val workingDir: String, val filePath: String
     ) : LaunchTarget
 }

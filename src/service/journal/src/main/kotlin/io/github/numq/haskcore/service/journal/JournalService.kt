@@ -2,6 +2,7 @@ package io.github.numq.haskcore.service.journal
 
 import arrow.core.Either
 import io.github.numq.haskcore.core.text.TextEdit
+import io.github.numq.haskcore.core.text.TextRevision
 import kotlinx.coroutines.flow.StateFlow
 
 interface JournalService : AutoCloseable {
@@ -9,9 +10,9 @@ interface JournalService : AutoCloseable {
 
     suspend fun push(edit: TextEdit.User): Either<Throwable, Unit>
 
-    suspend fun undo(revision: Long): Either<Throwable, TextEdit?>
+    suspend fun undo(revision: TextRevision): Either<Throwable, TextEdit?>
 
-    suspend fun redo(revision: Long): Either<Throwable, TextEdit?>
+    suspend fun redo(revision: TextRevision): Either<Throwable, TextEdit?>
 
     suspend fun clear(): Either<Throwable, Unit>
 }

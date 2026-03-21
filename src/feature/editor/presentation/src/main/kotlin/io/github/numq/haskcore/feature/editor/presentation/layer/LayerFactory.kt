@@ -1,54 +1,61 @@
 package io.github.numq.haskcore.feature.editor.presentation.layer
 
 import io.github.numq.haskcore.feature.editor.core.caret.Caret
-import io.github.numq.haskcore.feature.editor.core.highlighting.Highlighting
+import io.github.numq.haskcore.feature.editor.core.guideline.Guideline
 import io.github.numq.haskcore.feature.editor.core.selection.Selection
+import io.github.numq.haskcore.feature.editor.core.syntax.Occurrence
+import io.github.numq.haskcore.feature.editor.core.syntax.Token
 import io.github.numq.haskcore.feature.editor.presentation.background.BackgroundLayer
-import io.github.numq.haskcore.feature.editor.presentation.background.CurrentLineLayer
+import io.github.numq.haskcore.feature.editor.presentation.background.HighlightedLineLayer
 import io.github.numq.haskcore.feature.editor.presentation.caret.CaretLayer
-import io.github.numq.haskcore.feature.editor.presentation.codearea.CodeAreaContentLayer
+import io.github.numq.haskcore.feature.editor.presentation.guideline.GuidelineLayer
 import io.github.numq.haskcore.feature.editor.presentation.gutter.GutterLineLayer
 import io.github.numq.haskcore.feature.editor.presentation.gutter.GutterSeparatorLayer
-import io.github.numq.haskcore.feature.editor.presentation.highlighting.HighlightingLayer
+import io.github.numq.haskcore.feature.editor.presentation.occurrence.OccurrenceLayer
 import io.github.numq.haskcore.feature.editor.presentation.selection.SelectionLayer
-import io.github.numq.haskcore.feature.editor.presentation.viewport.Viewport
+import io.github.numq.haskcore.feature.editor.presentation.text.TextContentLayer
 import io.github.numq.haskcore.feature.editor.presentation.viewport.ViewportLine
 import io.github.numq.haskcore.platform.font.EditorFont
 import io.github.numq.haskcore.platform.theme.editor.EditorTheme
-import org.jetbrains.skia.Rect
 
-internal interface LayerFactory {
-    fun createBackgroundLayer(bounds: Rect, theme: EditorTheme): BackgroundLayer
+interface LayerFactory {
+    fun createBackgroundLayer(width: Float, height: Float, theme: EditorTheme): BackgroundLayer
 
-    fun createCurrentLineLayer(viewport: Viewport, caret: Caret, theme: EditorTheme): CurrentLineLayer?
+    fun createHighlightedLineLayer(
+        viewportLines: List<ViewportLine>, caret: Caret, theme: EditorTheme
+    ): HighlightedLineLayer?
 
     fun createGutterLineLayer(
         line: Int, width: Float, textY: Float, font: EditorFont, theme: EditorTheme
     ): GutterLineLayer
 
-    fun createGutterSeparatorLayer(x: Float, y: Float, theme: EditorTheme): GutterSeparatorLayer
+    fun createGutterSeparatorLayer(x: Float, height: Float, theme: EditorTheme): GutterSeparatorLayer
+
+    fun createGuidelineLayer(
+        guideline: Guideline, height: Float, scrollX: Float, font: EditorFont, theme: EditorTheme
+    ): GuidelineLayer
 
     fun createCodeAreaContentLayers(
         viewportLines: List<ViewportLine>,
-        highlighting: Highlighting,
+        tokensPerLine: Map<Int, List<Token>>?,
         scrollX: Float,
         font: EditorFont,
         theme: EditorTheme,
-    ): List<CodeAreaContentLayer>
+    ): List<TextContentLayer>
 
-    fun createHighlightingLayer(
+    fun createOccurrenceLayers(
+        contentLayers: List<TextContentLayer>,
+        occurrences: List<Occurrence>,
         caret: Caret,
-        highlighting: Highlighting,
-        contentLayers: List<CodeAreaContentLayer>,
         scrollX: Float,
         theme: EditorTheme
-    ): HighlightingLayer
-
-    fun createCaretLayer(
-        caret: Caret, contentLayers: List<CodeAreaContentLayer>, scrollX: Float, font: EditorFont, theme: EditorTheme
-    ): CaretLayer?
+    ): List<OccurrenceLayer>
 
     fun createSelectionLayer(
-        selection: Selection, contentLayers: List<CodeAreaContentLayer>, scrollX: Float, theme: EditorTheme
+        contentLayers: List<TextContentLayer>, selection: Selection, scrollX: Float, theme: EditorTheme
     ): SelectionLayer
+
+    fun createCaretLayer(
+        contentLayers: List<TextContentLayer>, caret: Caret, scrollX: Float, font: EditorFont, theme: EditorTheme
+    ): CaretLayer?
 }

@@ -40,5 +40,5 @@ internal fun OutputSessionData.toOutputSession() = when (this) {
 }
 
 internal fun OutputData.toOutput() = Output(
-    sessions = sessions.map(OutputSessionData::toOutputSession), selectedSession = selectedSession?.toOutputSession()
+    sessions = sessions.map(OutputSessionData::toOutputSession), activeSession = activeSession?.toOutputSession()
 )

@@ -1,6 +1,6 @@
 package io.github.numq.haskcore.feature.editor.presentation.viewport
 
-internal data class ViewportLine(
+data class ViewportLine(
     val line: Int,
     val x: Float,
     val y: Float,

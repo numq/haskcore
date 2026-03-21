@@ -11,8 +11,8 @@ dependencies {
     implementation(compose.material3)
     implementation(compose.materialIconsExtended)
     implementation(projects.core)
-    implementation(projects.platform.dialog)
     implementation(projects.platform.font)
+    implementation(projects.platform.overlay)
     implementation(projects.platform.window)
     implementation(projects.feature.welcome.core)
 }

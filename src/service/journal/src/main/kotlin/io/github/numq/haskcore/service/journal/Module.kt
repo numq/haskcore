@@ -1,8 +1,8 @@
 package io.github.numq.haskcore.service.journal
 
 import androidx.datastore.core.DataStoreFactory
-import io.github.numq.haskcore.core.di.ScopePath
 import io.github.numq.haskcore.core.di.ScopeQualifier
+import io.github.numq.haskcore.core.di.ScopeQualifierType
 import io.github.numq.haskcore.core.di.scopedOwner
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -13,11 +13,11 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 val journalModule = module {
-    scope<ScopeQualifier.Document> {
+    scope<ScopeQualifierType.Document> {
         scopedOwner {
-            val projectPath = get<String>(qualifier = ScopePath.Project)
+            val projectPath = get<String>(qualifier = ScopeQualifier.Project)
 
-            val documentPath = get<String>(qualifier = ScopePath.Document)
+            val documentPath = get<String>(qualifier = ScopeQualifier.Document)
 
             val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -25,7 +25,7 @@ val journalModule = module {
                 serializer = JournalDataSerializer, scope = scope, produceFile = {
                     val fileName = "${documentPath.hashCode()}.pb"
 
-                    Path.of(projectPath, ".haskcore", "journal").also(Files::createDirectories).resolve(fileName)
+                    Path.of(projectPath, ".haskcore", ".journal").also(Files::createDirectories).resolve(fileName)
                         .toFile()
                 })
 

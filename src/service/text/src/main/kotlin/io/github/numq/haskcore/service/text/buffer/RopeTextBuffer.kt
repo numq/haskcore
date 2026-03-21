@@ -3,13 +3,10 @@ package io.github.numq.haskcore.service.text.buffer
 import arrow.core.Either
 import arrow.core.raise.Raise
 import arrow.core.raise.either
-import io.github.numq.haskcore.core.text.LineEnding
-import io.github.numq.haskcore.core.text.TextEdit
-import io.github.numq.haskcore.core.text.TextPosition
-import io.github.numq.haskcore.core.text.TextRange
-import io.github.numq.haskcore.service.text.buffer.rope.Rope
-import io.github.numq.haskcore.service.text.buffer.rope.RopeNavigator
-import io.github.numq.haskcore.service.text.buffer.rope.RopeNodeLeafFactory
+import io.github.numq.haskcore.core.text.*
+import io.github.numq.haskcore.service.text.rope.Rope
+import io.github.numq.haskcore.service.text.rope.RopeNavigator
+import io.github.numq.haskcore.service.text.rope.RopeNodeLeafFactory
 import io.github.numq.haskcore.service.text.snapshot.ImmutableTextSnapshot
 import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.flow.*
@@ -20,7 +17,7 @@ import java.nio.charset.StandardCharsets
 
 internal class RopeTextBuffer(
     private val initialText: String,
-    initialLineEnding: LineEnding = LineEnding.analyze(initialText).dominant,
+    initialTextLineEnding: TextLineEnding = TextLineEnding.analyze(initialText).dominant,
     initialCharset: Charset = StandardCharsets.UTF_8
 ) : TextBuffer {
     private companion object {
@@ -29,28 +26,28 @@ internal class RopeTextBuffer(
 
     private val mutex = Mutex()
 
-    private val currentRevision = atomic(0L)
+    private val _revision = atomic(0L)
 
     private val _rope = MutableStateFlow(initializeRope(text = initialText, charset = initialCharset))
 
-    private val _lineEnding = MutableStateFlow(initialLineEnding)
+    private val _lineEnding = MutableStateFlow(initialTextLineEnding)
 
     private val _charset = MutableStateFlow(initialCharset)
-
-    private val _data = MutableSharedFlow<TextEdit.Data>(replay = 0, extraBufferCapacity = DATA_CAPACITY)
-
-    override val data = _data.asSharedFlow()
 
     private val _snapshot = MutableStateFlow(
         ImmutableTextSnapshot(
             rope = _rope.value,
-            revision = currentRevision.value,
+            revision = TextRevision(value = _revision.value),
             charset = _charset.value,
-            lineEnding = _lineEnding.value
+            textLineEnding = _lineEnding.value
         )
     )
 
     override val snapshot = _snapshot.asStateFlow()
+
+    private val _data = MutableSharedFlow<TextEdit.Data>(replay = 0, extraBufferCapacity = DATA_CAPACITY)
+
+    override val data = _data.asSharedFlow()
 
     private fun normalizeLineEndings(text: String) = when {
         !text.contains('\r') -> text
@@ -204,10 +201,13 @@ internal class RopeTextBuffer(
     }
 
     private suspend fun updateRope(result: Pair<Rope, TextEdit.Data>?) = result?.let { (newRope, data) ->
-        val nextRevision = currentRevision.incrementAndGet()
+        val revision = TextRevision(value = _revision.incrementAndGet())
 
         val snapshot = ImmutableTextSnapshot(
-            rope = newRope, revision = nextRevision, charset = _charset.value, lineEnding = _lineEnding.value
+            rope = newRope,
+            revision = revision,
+            charset = _charset.value,
+            textLineEnding = _lineEnding.value
         )
 
         _rope.value = newRope
@@ -219,8 +219,8 @@ internal class RopeTextBuffer(
         data
     }
 
-    override suspend fun changeLineEnding(lineEnding: LineEnding) = Either.catch {
-        _lineEnding.value = lineEnding
+    override suspend fun changeLineEnding(textLineEnding: TextLineEnding) = Either.catch {
+        _lineEnding.value = textLineEnding
     }
 
     override suspend fun changeCharset(charset: Charset) = Either.catch {
@@ -272,11 +272,11 @@ internal class RopeTextBuffer(
             val accumulatedSingles = mutableListOf<TextEdit.Data.Single>()
 
             val batchBuffer: TextBuffer = object : TextBuffer by this@RopeTextBuffer {
-                override val data = this@RopeTextBuffer.data
-
                 override val snapshot = this@RopeTextBuffer.snapshot
 
-                override suspend fun changeLineEnding(lineEnding: LineEnding) = either {
+                override val data = this@RopeTextBuffer.data
+
+                override suspend fun changeLineEnding(textLineEnding: TextLineEnding) = either {
                     raise(IllegalStateException("Cannot change line endings during a batch operation"))
                 }
 

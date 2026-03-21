@@ -7,7 +7,7 @@ import kotlin.time.Duration
 interface OutputService : AutoCloseable {
     val output: StateFlow<Output>
 
-    suspend fun selectSession(id: String): Either<Throwable, Unit>
+    suspend fun openSession(id: String): Either<Throwable, Unit>
 
     suspend fun closeSession(id: String): Either<Throwable, Unit>
 

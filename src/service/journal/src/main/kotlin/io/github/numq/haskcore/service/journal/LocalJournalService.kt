@@ -2,6 +2,7 @@ package io.github.numq.haskcore.service.journal
 
 import arrow.core.raise.either
 import io.github.numq.haskcore.core.text.TextEdit
+import io.github.numq.haskcore.core.text.TextRevision
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.SharingStarted
@@ -37,7 +38,7 @@ internal class LocalJournalService(
         journalData.copy(records = newRecords, currentIndex = newRecords.size - 1)
     }.map {}
 
-    override suspend fun undo(revision: Long) = either {
+    override suspend fun undo(revision: TextRevision) = either {
         var edit: TextEdit? = null
 
         journalDataSource.update { journalData ->
@@ -57,7 +58,7 @@ internal class LocalJournalService(
         edit
     }
 
-    override suspend fun redo(revision: Long) = either {
+    override suspend fun redo(revision: TextRevision) = either {
         var edit: TextEdit? = null
 
         journalDataSource.update { journalData ->

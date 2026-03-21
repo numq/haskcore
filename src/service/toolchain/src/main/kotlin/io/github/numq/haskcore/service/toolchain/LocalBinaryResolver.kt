@@ -23,7 +23,7 @@ internal class LocalBinaryResolver : BinaryResolver {
         val foldersToSearch = when {
             paths.isNotEmpty() -> paths.asSequence()
 
-            else -> System.getenv("PATH")?.split(pathSeparator)?.asSequence() ?: emptySequence()
+            else -> System.getenv("PATH")?.split(pathSeparator)?.asSequence().orEmpty()
         }
 
         foldersToSearch.filter(String::isNotBlank).map { folder ->

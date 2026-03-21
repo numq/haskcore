@@ -2,12 +2,13 @@ package io.github.numq.haskcore.service.journal
 
 import io.github.numq.haskcore.core.text.TextEdit
 import io.github.numq.haskcore.core.text.TextPosition
+import io.github.numq.haskcore.core.text.TextRevision
 
-internal fun TextEdit.toJournalRecordData(revision: Long) = data.toJournalRecordData(revision = revision)
+internal fun TextEdit.toJournalRecordData(revision: TextRevision) = data.toJournalRecordData(revision = revision)
 
-internal fun TextEdit.Data.toJournalRecordData(revision: Long): JournalRecordData = when (this) {
+internal fun TextEdit.Data.toJournalRecordData(revision: TextRevision): JournalRecordData = when (this) {
     is TextEdit.Data.Single.Insert -> JournalRecordData.Insert(
-        revision = revision,
+        revision = revision.value,
         startByte = startByte,
         newEndByte = newEndByte,
         startLine = startPosition.line,
@@ -19,7 +20,7 @@ internal fun TextEdit.Data.toJournalRecordData(revision: Long): JournalRecordDat
     )
 
     is TextEdit.Data.Single.Replace -> JournalRecordData.Replace(
-        revision = revision,
+        revision = revision.value,
         startByte = startByte,
         oldEndByte = oldEndByte,
         newEndByte = newEndByte,
@@ -35,7 +36,7 @@ internal fun TextEdit.Data.toJournalRecordData(revision: Long): JournalRecordDat
     )
 
     is TextEdit.Data.Single.Delete -> JournalRecordData.Delete(
-        revision = revision,
+        revision = revision.value,
         startByte = startByte,
         oldEndByte = oldEndByte,
         startLine = startPosition.line,
@@ -47,7 +48,7 @@ internal fun TextEdit.Data.toJournalRecordData(revision: Long): JournalRecordDat
     )
 
     is TextEdit.Data.Batch -> JournalRecordData.Batch(
-        revision = revision,
+        revision = revision.value,
         timestampNanos = timestamp.nanoseconds,
         records = singles.map { single -> single.toJournalRecordData(revision = revision) })
 }
@@ -86,9 +87,7 @@ internal fun JournalRecordData.toData(): TextEdit {
         })
     }
 
-    return TextEdit.User(data = data, revision = revision)
+    return TextEdit.User(revision = TextRevision(value = revision), data = data)
 }
 
-internal fun JournalData.toJournal() = Journal(
-    edits = records.map(JournalRecordData::toData), currentIndex = currentIndex
-)
+internal fun JournalData.toJournal() = Journal(edits = records.map(JournalRecordData::toData))
