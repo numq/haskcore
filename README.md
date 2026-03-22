@@ -19,25 +19,16 @@ work with the language, whether you're a beginner or not.*
 
 <br>
 
-<div align="center">
-  <table border="0" cellpadding="0" cellspacing="0">
-    <tr>
-      <td align="center" valign="middle" style="border: none; padding-right: 20px;">
-        <a href="https://numq.github.io/support">
-          <img src="https://api.qrserver.com/v1/create-qr-code/?size=112x112&data=https://numq.github.io/support&bgcolor=1a1b26&color=7aa2f7" width="120" style="border-radius: 4px;" alt="QR code">
-        </a>
-      </td>
-      <td align="left" valign="middle" style="border: none;">
-        <b style="font-size: 1.2em;">Support the development</b>
-        <br>
-        <br>
-        <a href="https://numq.github.io/support" style="text-decoration: none;">
-          <code style="color: #7aa2f7;">numq.github.io/support</code>
-        </a>
-      </td>
-    </tr>
-  </table>
-</div>
+<p align="center">
+  <a href="https://numq.github.io/support">
+    <img src="https://api.qrserver.com/v1/create-qr-code/?size=112x112&data=https://numq.github.io/support&bgcolor=1a1b26&color=7aa2f7" width="112" height="112" align="center" style="border-radius: 4px;" alt="QR code">
+  </a>
+  <br>
+  <br>
+  <a href="https://numq.github.io/support" style="text-decoration: none;">
+    <code><font color="#bb9af7">numq.github.io/support</font></code>
+  </a>
+</p>
 
 ## Features
 
