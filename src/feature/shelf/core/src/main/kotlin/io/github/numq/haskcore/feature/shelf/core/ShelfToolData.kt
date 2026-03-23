@@ -6,10 +6,10 @@ import kotlinx.serialization.Serializable
 @Serializable
 internal sealed interface ShelfToolData {
     @Serializable
-    @SerialName("explorer")
+    @SerialName("Explorer")
     data object Explorer : ShelfToolData
 
     @Serializable
-    @SerialName("log")
+    @SerialName("Log")
     data object Log : ShelfToolData
 }

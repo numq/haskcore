@@ -42,7 +42,7 @@ val workspaceCoreModule = module {
             CloseWorkspace(path = projectPath, sessionService = get())
         }
 
-        scopedOwner { ObserveWorkspace(workspaceService = get(), documentService = get(), projectService = get()) }
+        scopedOwner { ObserveWorkspace(workspaceService = get(), projectService = get()) }
 
         scopedOwner { OpenWorkspaceDocument(projectService = get()) }
 

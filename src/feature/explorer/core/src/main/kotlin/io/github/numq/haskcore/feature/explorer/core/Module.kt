@@ -40,9 +40,7 @@ val explorerCoreModule = module {
         } bind ExplorerService::class
 
         scopedOwner {
-            ObserveExplorerTree(
-                root = get<ExplorerRoot>(), explorerService = get(), documentService = get(), vfsService = get()
-            )
+            ObserveExplorerTree(root = get<ExplorerRoot>(), explorerService = get(), vfsService = get())
         }
 
         scopedOwner { OpenFile(projectService = get()) }

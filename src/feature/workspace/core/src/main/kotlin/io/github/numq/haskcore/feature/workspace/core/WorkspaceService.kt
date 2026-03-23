@@ -6,6 +6,8 @@ import kotlinx.coroutines.flow.StateFlow
 interface WorkspaceService : AutoCloseable {
     val workspace: StateFlow<Workspace>
 
+    suspend fun getName(path: String): Either<Throwable, String>
+
     suspend fun saveDimensions(
         x: Float, y: Float, width: Float, height: Float, isFullscreen: Boolean
     ): Either<Throwable, Unit>

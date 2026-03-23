@@ -4,17 +4,13 @@ import arrow.core.getOrElse
 import arrow.core.raise.Raise
 import io.github.numq.haskcore.core.usecase.UseCase
 import io.github.numq.haskcore.feature.explorer.core.*
-import io.github.numq.haskcore.service.document.DocumentService
 import io.github.numq.haskcore.service.vfs.VfsService
 import io.github.numq.haskcore.service.vfs.VirtualFile
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 
 class ObserveExplorerTree(
-    private val root: ExplorerRoot,
-    private val explorerService: ExplorerService,
-    private val documentService: DocumentService,
-    private val vfsService: VfsService
+    private val root: ExplorerRoot, private val explorerService: ExplorerService, private val vfsService: VfsService
 ) : UseCase<Unit, Flow<ExplorerTree>> {
     private suspend fun buildTree(cache: Map<String, List<VirtualFile>>, explorer: Explorer): ExplorerTree {
         val rootPath = root.path
@@ -26,8 +22,7 @@ class ObserveExplorerTree(
         val nodes = buildList {
             add(
                 ExplorerNode.Directory(
-                    name = documentService.getName(path = rootPath).getOrElse { "" }
-                        .ifEmpty { rootPath },
+                    name = explorerService.getName(path = rootPath).getOrElse { "" }.ifEmpty { rootPath },
                     path = rootPath,
                     level = 0,
                     segments = emptyList(),

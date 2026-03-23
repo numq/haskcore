@@ -6,6 +6,8 @@ import kotlinx.coroutines.flow.StateFlow
 interface ExplorerService {
     val explorer: StateFlow<Explorer>
 
+    suspend fun getName(path: String): Either<Throwable, String>
+
     suspend fun collapseDirectory(node: ExplorerNode.Directory): Either<Throwable, Unit>
 
     suspend fun expandDirectory(node: ExplorerNode.Directory): Either<Throwable, Unit>

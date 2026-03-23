@@ -13,7 +13,7 @@ internal sealed interface OutputLineData {
     val timestampNanos: Long
 
     @Serializable
-    @SerialName("system")
+    @SerialName("System")
     data class System(
         @ProtoNumber(1) override val id: String,
         @ProtoNumber(2) override val text: String,
@@ -21,7 +21,7 @@ internal sealed interface OutputLineData {
     ) : OutputLineData
 
     @Serializable
-    @SerialName("normal")
+    @SerialName("Normal")
     data class Normal(
         @ProtoNumber(1) override val id: String,
         @ProtoNumber(2) override val text: String,

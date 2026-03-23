@@ -15,7 +15,7 @@ internal sealed interface OutputSessionData {
     val lines: List<OutputLineData>
 
     @Serializable
-    @SerialName("active")
+    @SerialName("Active")
     data class Active(
         @ProtoNumber(1) override val id: String,
         @ProtoNumber(2) override val name: String,
@@ -24,7 +24,7 @@ internal sealed interface OutputSessionData {
     ) : OutputSessionData
 
     @Serializable
-    @SerialName("completed")
+    @SerialName("Completed")
     data class Completed(
         @ProtoNumber(1) override val id: String,
         @ProtoNumber(2) override val name: String,
