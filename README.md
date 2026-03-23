@@ -4,31 +4,14 @@
 
 <h1 align="center" title="A lightweight and standalone Haskell IDE powered by Compose Desktop">haskcore</h1>
 
-<div align="center"><img src="media/logo.webp" alt="haskcore logo"></div>
-
-<br>
+<p align="center">A lightweight and standalone Haskell IDE powered by Compose Desktop</p>
 
 <p align="center"><img src="media/preview.png" alt="Preview"></p>
-
-<p align="center">A lightweight and standalone Haskell IDE powered by Compose Desktop</p>
 
 ## About
 
 *My mission is to create the only Haskell IDE that is comfortable and contains all the necessary features to effectively
 work with the language, whether you're a beginner or not.*
-
-<br>
-
-<p align="center">
-  <a href="https://numq.github.io/support">
-    <img src="https://api.qrserver.com/v1/create-qr-code/?size=112x112&data=https://numq.github.io/support&bgcolor=1a1b26&color=7aa2f7" width="112" height="112" align="center" style="border-radius: 4px;" alt="QR code">
-  </a>
-  <br>
-  <br>
-  <a href="https://numq.github.io/support" style="text-decoration: none;">
-    <code><font color="#bb9af7">numq.github.io/support</font></code>
-  </a>
-</p>
 
 ## Features
 
@@ -46,8 +29,10 @@ work with the language, whether you're a beginner or not.*
 
 ## Contribution
 
-The project is being developed solo and requires no contributions. You can contribute to its development by leaving
-feedback or making a [donation](https://numq.github.io/support).
+The project is being developed solo and requires no code contributions.
+
+> [!TIP]
+> You can support the development by leaving feedback or making a [donation](https://numq.github.io/support).
 
 ## Architecture
 
@@ -87,3 +72,19 @@ platform --> feature_presentation
 
 This project is licensed under the [GNU General Public License v3.0](LICENSE).
 For commercial licensing inquiries, please contact me directly via email.
+
+___
+
+<p align="center">
+  <a href="https://numq.github.io/support">
+    <img src="https://api.qrserver.com/v1/create-qr-code/?size=112x112&data=https://numq.github.io/support&bgcolor=1a1b26&color=7aa2f7" 
+         width="112" 
+         height="112" 
+         style="border-radius: 4px;" 
+         alt="QR code">
+  </a>
+  <br>
+  <a href="https://numq.github.io/support" style="text-decoration: none;">
+    <code><font color="#bb9af7">numq.github.io/support</font></code>
+  </a>
+</p>
