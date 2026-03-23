@@ -84,7 +84,6 @@ ___
          alt="QR code">
   </a>
   <br>
-  <br>
   <a href="https://numq.github.io/support" style="text-decoration: none;">
     <code><font color="#bb9af7">numq.github.io/support</font></code>
   </a>
