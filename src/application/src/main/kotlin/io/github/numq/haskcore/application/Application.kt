@@ -57,14 +57,14 @@ import io.github.numq.haskcore.platform.theme.themeModule
 import io.github.numq.haskcore.service.clipboard.clipboardModule
 import io.github.numq.haskcore.service.configuration.configurationModule
 import io.github.numq.haskcore.service.document.documentModule
-import io.github.numq.haskcore.service.syntax.syntaxModule
 import io.github.numq.haskcore.service.journal.journalModule
 import io.github.numq.haskcore.service.keymap.keymapModule
-import io.github.numq.haskcore.service.lsp.lspModule
 import io.github.numq.haskcore.service.logger.loggerModule
+import io.github.numq.haskcore.service.lsp.lspModule
 import io.github.numq.haskcore.service.project.projectModule
 import io.github.numq.haskcore.service.runtime.runtimeModule
 import io.github.numq.haskcore.service.session.sessionModule
+import io.github.numq.haskcore.service.syntax.syntaxModule
 import io.github.numq.haskcore.service.text.textModule
 import io.github.numq.haskcore.service.toolchain.toolchainModule
 import io.github.numq.haskcore.service.vfs.vfsModule
@@ -168,7 +168,7 @@ internal fun main() {
             )
         }
 
-        val icon = painterResource("drawable/icon.png")
+        val icon = painterResource("drawable/icon.svg")
 
         val isDark = isSystemInDarkTheme()
 
