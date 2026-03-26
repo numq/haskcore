@@ -20,6 +20,7 @@ okio = "3.16.4"
 tree-sitter = "0.26.6"
 tree-sitter-haskell = "0.23.1"
 java-diff-utils = "4.16"
+turbine = "1.2.1"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -49,6 +50,7 @@ directory-watcher = { module = "io.methvin:directory-watcher", version.ref = "di
 tree-sitter = { module = "io.github.bonede:tree-sitter", version.ref = "tree-sitter" }
 tree-sitter-haskell = { module = "io.github.bonede:tree-sitter-haskell", version.ref = "tree-sitter-haskell" }
 java-diff-utils = { module = "io.github.java-diff-utils:java-diff-utils", version.ref = "java-diff-utils" }
+turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
 
 [plugins]
 compose-hot-reload = { id = "org.jetbrains.compose.hot-reload", version.ref = "compose-hot-reload" }
