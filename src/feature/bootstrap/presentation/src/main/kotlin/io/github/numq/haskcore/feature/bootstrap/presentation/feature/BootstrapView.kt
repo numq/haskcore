@@ -37,8 +37,6 @@ fun BootstrapView(
     exitApplication: () -> Unit,
     content: @Composable (Bootstrap) -> Unit
 ) {
-    if (applicationScope.closed) return
-
     val feature = koinInject<BootstrapFeature>(scope = applicationScope)
 
     val state by feature.state.collectAsState()
