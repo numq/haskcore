@@ -25,8 +25,6 @@ import org.koin.core.scope.Scope
 
 @Composable
 fun LogView(projectScope: Scope, handleError: (Throwable) -> Unit) {
-    if (projectScope.closed) return
-
     val feature = koinInject<LogFeature>(scope = projectScope)
 
     val state by feature.state.collectAsState()
