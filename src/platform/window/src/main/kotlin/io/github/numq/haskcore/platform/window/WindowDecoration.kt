@@ -9,9 +9,11 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.FullscreenExit
 import androidx.compose.material.icons.filled.Minimize
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.pointer.pointerInput
@@ -46,6 +48,7 @@ fun WindowDecoration(
     onPreviewKeyEvent: (KeyEvent) -> Boolean = { false },
     onKeyEvent: (KeyEvent) -> Boolean = { false },
     onCloseRequest: () -> Unit,
+    titleIcon: Painter? = null,
     titleContent: @Composable RowScope.(WindowDecorationColors) -> Unit = {},
     controlsContent: @Composable RowScope.() -> Unit = {},
     content: @Composable (WindowScope.(WindowDecorationState) -> Unit),
@@ -151,10 +154,21 @@ fun WindowDecoration(
                     })
                 }) {
                     Row(
-                        modifier = Modifier.fillMaxSize().padding(start = 12.dp, end = 16.dp),
+                        modifier = Modifier.fillMaxSize().padding(end = 16.dp),
                         horizontalArrangement = Arrangement.Start,
                         verticalAlignment = Alignment.CenterVertically,
-                        content = { titleContent(windowDecorationColors) })
+                        content = {
+                            titleIcon?.let { painter ->
+                                Icon(
+                                    painter = titleIcon,
+                                    contentDescription = null,
+                                    tint = Color.Unspecified,
+                                    modifier = Modifier.aspectRatio(1f).padding(8.dp)
+                                )
+                            }
+
+                            titleContent(windowDecorationColors)
+                        })
                 }
                 Row(
                     modifier = Modifier.fillMaxHeight(),
