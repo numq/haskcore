@@ -36,4 +36,6 @@ interface GutterColorPalette : ColorPalette {
     val gitModifiedColor: Int
 
     val gitDeletedColor: Int
+
+    val runActionColor: Int
 }

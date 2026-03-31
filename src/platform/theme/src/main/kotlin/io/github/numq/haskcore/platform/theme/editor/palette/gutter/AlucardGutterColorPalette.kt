@@ -34,4 +34,6 @@ internal object AlucardGutterColorPalette : GutterColorPalette {
     override val gitModifiedColor = 0xFF036a96.toInt()
 
     override val gitDeletedColor = 0xFFcb3a2a.toInt()
+    
+    override val runActionColor = 0xFF14710a.toInt()
 }

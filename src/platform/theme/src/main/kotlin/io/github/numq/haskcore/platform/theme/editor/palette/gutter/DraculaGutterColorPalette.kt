@@ -34,4 +34,6 @@ internal object DraculaGutterColorPalette : GutterColorPalette {
     override val gitModifiedColor = 0xFFffb86c.toInt()
 
     override val gitDeletedColor = 0xFFff5555.toInt()
+
+    override val runActionColor = 0xFF50fa7b.toInt()
 }
