@@ -29,7 +29,7 @@ internal sealed interface JournalRecordData {
     val timestampNanos: Long
 
     @Serializable
-    @SerialName("insert")
+    @SerialName("Insert")
     data class Insert(
         @ProtoNumber(1) override val revision: Long,
         @ProtoNumber(2) override val startByte: Int,
@@ -49,7 +49,7 @@ internal sealed interface JournalRecordData {
     }
 
     @Serializable
-    @SerialName("replace")
+    @SerialName("Replace")
     data class Replace(
         @ProtoNumber(1) override val revision: Long,
         @ProtoNumber(2) override val startByte: Int,
@@ -67,7 +67,7 @@ internal sealed interface JournalRecordData {
     ) : JournalRecordData
 
     @Serializable
-    @SerialName("delete")
+    @SerialName("Delete")
     data class Delete(
         @ProtoNumber(1) override val revision: Long,
         @ProtoNumber(2) override val startByte: Int,
@@ -87,7 +87,7 @@ internal sealed interface JournalRecordData {
     }
 
     @Serializable
-    @SerialName("batch")
+    @SerialName("Batch")
     data class Batch(
         @ProtoNumber(1) override val revision: Long,
         @ProtoNumber(2) override val timestampNanos: Long,
