@@ -75,6 +75,8 @@ internal class LocalOutputService(
     override suspend fun stopSession(
         id: String, exitCode: Int, duration: Duration
     ) = outputDataSource.update { outputData ->
+        var activeSession: OutputSessionData? = null
+
         val sessions = outputData.sessions.map { sessionData ->
             when {
                 (sessionData as? OutputSessionData.Active)?.id == id -> {
@@ -84,7 +86,7 @@ internal class LocalOutputService(
                         timestampNanos = Timestamp.now().nanoseconds
                     )
 
-                    OutputSessionData.Completed(
+                    val completedSession = OutputSessionData.Completed(
                         id = id,
                         name = sessionData.name,
                         configuration = sessionData.configuration,
@@ -92,35 +94,41 @@ internal class LocalOutputService(
                         exitCode = exitCode,
                         durationNanos = duration.inWholeNanoseconds
                     )
+
+                    if (outputData.activeSession?.id == id) {
+                        activeSession = completedSession
+                    }
+
+                    completedSession
                 }
 
                 else -> sessionData
             }
         }
 
-        val selectedSession = sessions.find { sessionData ->
-            sessionData.id == id
-        }
-
-        outputData.copy(sessions = sessions, activeSession = selectedSession)
+        outputData.copy(sessions = sessions, activeSession = activeSession ?: outputData.activeSession)
     }.map {}
 
     override suspend fun push(id: String, line: OutputLine) = outputDataSource.update { outputData ->
+        var activeSession: OutputSessionData? = null
+
         val sessions = outputData.sessions.map { session ->
             when {
                 (session as? OutputSessionData.Active)?.id == id -> {
-                    session.copy(lines = session.lines + line.toOutputLineData())
+                    val newSession = session.copy(lines = session.lines + line.toOutputLineData())
+
+                    if (outputData.activeSession?.id == id) {
+                        activeSession = newSession
+                    }
+
+                    newSession
                 }
 
                 else -> session
             }
         }
 
-        val selectedSession = sessions.find { sessionData ->
-            sessionData.id == id
-        }
-
-        outputData.copy(sessions = sessions, activeSession = selectedSession)
+        outputData.copy(sessions = sessions, activeSession = activeSession ?: outputData.activeSession)
     }.map {}
 
     override fun close() {
