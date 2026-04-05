@@ -23,9 +23,7 @@ import androidx.compose.ui.window.Popup
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun Menu(
-    state: MenuState, items: () -> List<MenuItem>, onState: (MenuState) -> Unit, content: @Composable () -> Unit
-) {
+fun Menu(state: MenuState, onState: (MenuState) -> Unit, items: () -> List<MenuItem>, content: @Composable () -> Unit) {
     val currentOnState by rememberUpdatedState(onState)
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -48,14 +46,19 @@ fun Menu(
                 ), onDismissRequest = {
                     currentOnState(MenuState.Hidden)
                 }) {
-                Surface(shape = RoundedCornerShape(4.dp), shadowElevation = 8.dp, tonalElevation = 8.dp) {
+                Surface(
+                    shape = RoundedCornerShape(4.dp),
+                    shadowElevation = 8.dp,
+                    tonalElevation = 8.dp,
+                    modifier = Modifier.width(200.dp)
+                ) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(space = 8.dp, alignment = Alignment.CenterVertically)
                     ) {
                         items().forEach { item ->
                             Row(
-                                modifier = Modifier.alpha(
+                                modifier = Modifier.fillMaxWidth().alpha(
                                     alpha = when {
                                         item.enabled -> 1f
 
@@ -67,7 +70,9 @@ fun Menu(
 
                                         currentOnState(MenuState.Hidden)
                                     }).padding(horizontal = 16.dp, vertical = 12.dp),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                horizontalArrangement = Arrangement.spacedBy(
+                                    space = 12.dp, alignment = Alignment.Start
+                                ),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 item.leadingIcon?.let { iconContent ->
@@ -78,8 +83,10 @@ fun Menu(
 
                                 Text(
                                     text = item.label,
+                                    modifier = Modifier.weight(1f),
                                     style = MaterialTheme.typography.labelLarge,
-                                    textAlign = TextAlign.Start
+                                    textAlign = TextAlign.Start,
+                                    maxLines = 1
                                 )
 
                                 item.trailingIcon?.let { iconContent ->
