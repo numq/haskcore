@@ -13,7 +13,7 @@ internal sealed interface LoggerData {
     val timestampNanos: Long
 
     @Serializable
-    @SerialName("info")
+    @SerialName("Info")
     data class Info(
         @ProtoNumber(1) override val projectId: String?,
         @ProtoNumber(2) override val message: String,
@@ -21,7 +21,7 @@ internal sealed interface LoggerData {
     ) : LoggerData
 
     @Serializable
-    @SerialName("warning")
+    @SerialName("Warning")
     data class Warning(
         @ProtoNumber(1) override val projectId: String?,
         @ProtoNumber(2) override val message: String,
@@ -35,7 +35,7 @@ internal sealed interface LoggerData {
         val stackTrace: String
 
         @Serializable
-        @SerialName("handled")
+        @SerialName("Handled")
         data class Handled(
             @ProtoNumber(1) override val projectId: String?,
             @ProtoNumber(2) override val message: String,
@@ -45,7 +45,7 @@ internal sealed interface LoggerData {
         ) : Error
 
         @Serializable
-        @SerialName("internal")
+        @SerialName("Internal")
         data class Internal(
             @ProtoNumber(1) override val projectId: String?,
             @ProtoNumber(2) override val message: String,
@@ -55,7 +55,7 @@ internal sealed interface LoggerData {
         ) : Error
 
         @Serializable
-        @SerialName("critical")
+        @SerialName("Critical")
         data class Critical(
             @ProtoNumber(1) override val projectId: String?,
             @ProtoNumber(2) override val message: String,
