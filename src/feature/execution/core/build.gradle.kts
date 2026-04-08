@@ -11,6 +11,7 @@ dependencies {
     implementation(projects.core)
     implementation(libs.datastore)
     implementation(projects.service.configuration)
+    implementation(projects.service.document)
     implementation(projects.service.runtime)
     implementation(projects.service.toolchain)
     implementation(projects.service.vfs)
