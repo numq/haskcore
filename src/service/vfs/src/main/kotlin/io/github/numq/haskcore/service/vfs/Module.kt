@@ -1,5 +1,7 @@
 package io.github.numq.haskcore.service.vfs
 
+import androidx.datastore.core.DataStoreFactory
+import io.github.numq.haskcore.core.di.ScopeQualifier
 import io.github.numq.haskcore.core.di.ScopeQualifierType
 import io.github.numq.haskcore.core.di.scopedOwner
 import kotlinx.coroutines.CoroutineScope
@@ -7,10 +9,23 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import org.koin.dsl.bind
 import org.koin.dsl.module
+import java.nio.file.Files
+import java.nio.file.Path
 
 val vfsModule = module {
-    scope<ScopeQualifierType.Application> {
-        scopedOwner { LocalVfsDataSource() } bind VfsDataSource::class
+    scope<ScopeQualifierType.Project> {
+        scopedOwner {
+            val projectPath = get<String>(qualifier = ScopeQualifier.Project)
+
+            val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
+            val dataStore = DataStoreFactory.create(
+                serializer = SnapshotDataSerializer, scope = scope, produceFile = {
+                    Path.of(projectPath, ".haskcore").also(Files::createDirectories).resolve("vfs.pb").toFile()
+                })
+
+            LocalVfsDataSource(scope = scope, dataStore = dataStore)
+        } bind VfsDataSource::class
 
         scopedOwner {
             val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
