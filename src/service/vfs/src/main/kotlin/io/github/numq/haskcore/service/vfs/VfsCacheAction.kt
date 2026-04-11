@@ -1,7 +1,7 @@
 package io.github.numq.haskcore.service.vfs
 
 internal sealed interface VfsCacheAction {
-    data class SetDirectory(val path: String, val files: List<VirtualFile>) : VfsCacheAction
+    data class SetDirectory(val path: String, val files: Map<String, VirtualFile>) : VfsCacheAction
 
     data class RemoveDirectory(val path: String) : VfsCacheAction
 
