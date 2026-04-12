@@ -3,12 +3,20 @@ package io.github.numq.haskcore.service.vfs
 import arrow.core.Either
 import kotlinx.coroutines.flow.Flow
 
-internal interface VfsDataSource {
+internal interface VfsDataSource : AutoCloseable {
+    val snapshotData: Flow<SnapshotData?>
+
+    suspend fun getSnapshotData(): Either<Throwable, SnapshotData?>
+
+    suspend fun updateSnapshotData(transform: (SnapshotData?) -> SnapshotData?): Either<Throwable, SnapshotData?>
+
     suspend fun fetchSingleEntry(path: String): Either<Throwable, VirtualFile?>
 
     suspend fun watch(path: String): Either<Throwable, Flow<VfsEvent>>
 
     suspend fun list(path: String): Either<Throwable, List<VirtualFile>>
+
+    suspend fun listRecursive(path: String): Either<Throwable, List<VirtualFile>>
 
     suspend fun create(path: String, isDirectory: Boolean): Either<Throwable, Unit>
 
