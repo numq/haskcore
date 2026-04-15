@@ -1,14 +1,18 @@
 package io.github.numq.haskcore.service.vfs
 
+import androidx.datastore.core.DataStore
 import arrow.core.Either
 import io.github.numq.haskcore.core.timestamp.Timestamp
 import io.methvin.watcher.DirectoryChangeEvent
 import io.methvin.watcher.DirectoryWatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import java.io.IOException
@@ -18,12 +22,17 @@ import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 import java.util.concurrent.TimeUnit
 import kotlin.io.path.*
+import kotlin.streams.asSequence
 
-internal class LocalVfsDataSource : VfsDataSource {
+internal class LocalVfsDataSource(
+    private val scope: CoroutineScope, private val dataStore: DataStore<SnapshotData?>
+) : VfsDataSource {
     private fun createVirtualFile(path: String): VirtualFile? {
         val nioPath = Path.of(path)
 
         val name = nioPath.fileName.toString()
+
+        val nameWithoutExtension = nioPath.nameWithoutExtension
 
         val extension = when {
             name.startsWith(".") && name.count('.'::equals) == 1 -> null
@@ -35,6 +44,7 @@ internal class LocalVfsDataSource : VfsDataSource {
             nioPath.exists() -> VirtualFile(
                 path = path,
                 name = name,
+                nameWithoutExtension = nameWithoutExtension,
                 extension = extension,
                 isDirectory = nioPath.isDirectory(),
                 isMetadata = path.contains(".haskcore") || name.endsWith(".tmp"),
@@ -43,11 +53,19 @@ internal class LocalVfsDataSource : VfsDataSource {
 
                     else -> 0L
                 },
-                lastModified = Timestamp(nioPath.getLastModifiedTime().to(TimeUnit.NANOSECONDS))
+                lastModifiedTimestamp = Timestamp(nioPath.getLastModifiedTime().to(TimeUnit.NANOSECONDS))
             )
 
             else -> null
         }
+    }
+
+    override val snapshotData = dataStore.data
+
+    override suspend fun getSnapshotData() = Either.catch { dataStore.data.first() }
+
+    override suspend fun updateSnapshotData(transform: (SnapshotData?) -> SnapshotData?) = Either.catch {
+        dataStore.updateData(transform)
     }
 
     override suspend fun fetchSingleEntry(path: String) = Either.catch {
@@ -89,6 +107,16 @@ internal class LocalVfsDataSource : VfsDataSource {
             Path.of(path).listDirectoryEntries()
         }.mapNotNull { entry ->
             createVirtualFile(path = entry.absolutePathString())
+        }
+    }
+
+    override suspend fun listRecursive(path: String) = Either.catch {
+        withContext(Dispatchers.IO) {
+            Files.walk(Path.of(path)).use { paths ->
+                paths.asSequence().mapNotNull { path ->
+                    createVirtualFile(path = path.absolutePathString())
+                }.toList()
+            }
         }
     }
 
@@ -198,5 +226,9 @@ internal class LocalVfsDataSource : VfsDataSource {
 
             Unit
         }
+    }
+
+    override fun close() {
+        scope.cancel()
     }
 }
