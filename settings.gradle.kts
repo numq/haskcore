@@ -33,11 +33,9 @@ plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }
 
-val baseModules = listOf("application", "core")
+val rootModules = listOf("api", "common", "feature", "platform")
 
-val platformModules = listOf("font", "overlay", "splitpane", "theme", "window")
-
-val serviceModules = listOf(
+val apiModules = listOf(
     "clipboard",
     "configuration",
     "document",
@@ -54,6 +52,8 @@ val serviceModules = listOf(
     "vfs"
 )
 
+val commonModules = listOf("core", "presentation")
+
 val featureModules = listOf(
     "bootstrap",
     "editor",
@@ -69,28 +69,32 @@ val featureModules = listOf(
     "workspace"
 )
 
-baseModules.forEach { name ->
-    val path = ":$name"
+rootModules.forEach { module ->
+    val path = ":$module"
     include(path)
-    project(path).projectDir = file("src/$name")
+    project(path).projectDir = file("src/$module")
 }
 
-platformModules.forEach { name ->
-    val path = ":platform:$name"
+apiModules.forEach { moduleName ->
+    val path = ":api:$moduleName"
     include(path)
-    project(path).projectDir = file("src/platform/$name")
+    project(path).projectDir = file("src/api/$moduleName")
 }
 
-serviceModules.forEach { name ->
-    val path = ":service:$name"
+commonModules.forEach { moduleName ->
+    val path = ":common:$moduleName"
     include(path)
-    project(path).projectDir = file("src/service/$name")
+    project(path).projectDir = file("src/common/$moduleName")
 }
 
-featureModules.forEach { name ->
-    val corePath = ":feature:$name:core"
-    val presentationPath = ":feature:$name:presentation"
-    include(corePath, presentationPath)
-    project(corePath).projectDir = file("src/feature/$name/core")
-    project(presentationPath).projectDir = file("src/feature/$name/presentation")
+featureModules.forEach { moduleName ->
+    val featureParent = ":feature:$moduleName"
+    include(featureParent)
+    project(featureParent).projectDir = file("src/feature/$moduleName")
+
+    val core = "$featureParent:core"
+    val pres = "$featureParent:presentation"
+    include(core, pres)
+    project(core).projectDir = file("src/feature/$moduleName/core")
+    project(pres).projectDir = file("src/feature/$moduleName/presentation")
 }
