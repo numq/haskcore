@@ -1,13 +1,13 @@
 package io.github.numq.haskcore.feature.bootstrap.presentation.feature
 
-import io.github.numq.haskcore.core.feature.Reducer
-import io.github.numq.haskcore.core.feature.action
-import io.github.numq.haskcore.core.feature.effect
-import io.github.numq.haskcore.core.feature.event
+import io.github.numq.haskcore.common.presentation.feature.Reducer
+import io.github.numq.haskcore.common.presentation.feature.action
+import io.github.numq.haskcore.common.presentation.feature.effect
+import io.github.numq.haskcore.common.presentation.feature.event
 import io.github.numq.haskcore.feature.bootstrap.core.usecase.Boot
 
 internal class BootstrapReducer(
-    private val boot: Boot
+    private val boot: Boot,
 ) : Reducer<BootstrapState, BootstrapCommand, BootstrapEvent> {
     override fun reduce(state: BootstrapState, command: BootstrapCommand) = when (command) {
         is BootstrapCommand.HandleFailure -> transition(state).event(BootstrapEvent.HandleFailure(throwable = command.throwable))

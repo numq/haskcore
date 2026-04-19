@@ -35,7 +35,7 @@ fun BootstrapView(
     title: String,
     icon: Painter,
     exitApplication: () -> Unit,
-    content: @Composable (Bootstrap) -> Unit
+    content: @Composable (Bootstrap) -> Unit,
 ) {
     val feature = koinInject<BootstrapFeature>(scope = applicationScope)
 
