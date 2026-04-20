@@ -14,7 +14,7 @@ sealed interface ExplorerNode {
         override val path: String,
         override val level: Int,
         override val segments: List<String>,
-        val extension: String? = null
+        val extension: String? = null,
     ) : ExplorerNode
 
     data class Directory(
@@ -22,6 +22,6 @@ sealed interface ExplorerNode {
         override val path: String,
         override val level: Int,
         override val segments: List<String>,
-        val isExpanded: Boolean = false
+        val isExpanded: Boolean = false,
     ) : ExplorerNode
 }

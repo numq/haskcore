@@ -2,17 +2,17 @@ package io.github.numq.haskcore.feature.explorer.core.usecase
 
 import arrow.core.getOrElse
 import arrow.core.raise.Raise
-import io.github.numq.haskcore.core.usecase.UseCase
+import io.github.numq.haskcore.api.vfs.VfsApi
+import io.github.numq.haskcore.api.vfs.VirtualFileDto
+import io.github.numq.haskcore.common.core.usecase.UseCase
 import io.github.numq.haskcore.feature.explorer.core.*
-import io.github.numq.haskcore.service.vfs.VfsService
-import io.github.numq.haskcore.service.vfs.VirtualFile
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 
 class ObserveExplorerTree(
-    private val root: ExplorerRoot, private val explorerService: ExplorerService, private val vfsService: VfsService
+    private val root: ExplorerRoot, private val explorerService: ExplorerService, private val vfsApi: VfsApi,
 ) : UseCase<Unit, Flow<ExplorerTree>> {
-    private suspend fun buildTree(cache: Map<String, List<VirtualFile>>, explorer: Explorer): ExplorerTree {
+    private suspend fun buildTree(cache: Map<String, List<VirtualFileDto>>, explorer: Explorer): ExplorerTree {
         val rootPath = root.path
 
         val expandedPath = explorer.expandedPaths.toSet()
@@ -22,7 +22,8 @@ class ObserveExplorerTree(
         val nodes = buildList {
             add(
                 ExplorerNode.Directory(
-                    name = explorerService.getName(path = rootPath).getOrElse { "" }.ifEmpty { rootPath },
+                    name = explorerService.getName(path = rootPath).getOrElse { "" }
+                        .ifEmpty { rootPath },
                     path = rootPath,
                     level = 0,
                     segments = emptyList(),
@@ -39,7 +40,7 @@ class ObserveExplorerTree(
                     val isMetaFile = !file.isDirectory && (file.name.endsWith(".pb") || file.name.endsWith(".tmp"))
 
                     isMetaDir || isMetaFile
-                }?.sortedWith(compareByDescending(VirtualFile::isDirectory).thenBy(VirtualFile::path)) ?: return
+                }?.sortedWith(compareByDescending(VirtualFileDto::isDirectory).thenBy(VirtualFileDto::path)) ?: return
 
                 files.forEach { file ->
                     val isExpanded = expandedPath.contains(file.path)
@@ -89,13 +90,13 @@ class ObserveExplorerTree(
     @OptIn(ExperimentalCoroutinesApi::class)
     override suspend fun Raise<Throwable>.execute(input: Unit) = explorerService.explorer.map { explorer ->
         explorer.expandedPaths.toSet() + root.path
-    }.distinctUntilChanged().scan(emptyMap<String, Flow<Pair<String, List<VirtualFile>>>>()) { acc, paths ->
+    }.distinctUntilChanged().scan(emptyMap<String, Flow<Pair<String, List<VirtualFileDto>>>>()) { acc, paths ->
         val current = acc.filterKeys(paths::contains)
 
         val newPaths = paths - current.keys
 
         current + newPaths.associateWith { path ->
-            vfsService.observeVisibleFiles(path = path).fold(ifLeft = {
+            vfsApi.observeVisibleFiles(path = path).fold(ifLeft = {
                 flowOf(path to emptyList())
             }, ifRight = { flow ->
                 flow.map { files ->
@@ -107,7 +108,7 @@ class ObserveExplorerTree(
         when {
             observers.isEmpty() -> flowOf(mapOf(root.path to emptyList()))
 
-            else -> combine(flows = observers.values, transform = Array<Pair<String, List<VirtualFile>>>::toMap)
+            else -> combine(flows = observers.values, transform = Array<Pair<String, List<VirtualFileDto>>>::toMap)
         }
     }.combine(explorerService.explorer) { cache, data ->
         buildTree(cache = cache, explorer = data)

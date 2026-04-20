@@ -7,7 +7,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 
 internal class LocalExplorerDataSource(
-    private val scope: CoroutineScope, private val dataStore: DataStore<ExplorerData>
+    private val scope: CoroutineScope, private val dataStore: DataStore<ExplorerData>,
 ) : ExplorerDataSource {
     override val explorerData = dataStore.data
 

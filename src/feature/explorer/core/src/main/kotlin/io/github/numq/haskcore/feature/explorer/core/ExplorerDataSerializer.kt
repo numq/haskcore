@@ -1,6 +1,8 @@
 package io.github.numq.haskcore.feature.explorer.core
 
 import androidx.datastore.core.Serializer
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.encodeToByteArray
@@ -13,7 +15,9 @@ internal object ExplorerDataSerializer : Serializer<ExplorerData> {
     override val defaultValue = ExplorerData()
 
     override suspend fun readFrom(input: InputStream): ExplorerData {
-        val bytes = input.readAllBytes()
+        val bytes = withContext(Dispatchers.IO) {
+            input.readAllBytes()
+        }
 
         return when {
             bytes.isEmpty() -> defaultValue
@@ -22,5 +26,7 @@ internal object ExplorerDataSerializer : Serializer<ExplorerData> {
         }
     }
 
-    override suspend fun writeTo(t: ExplorerData, output: OutputStream) = output.write(ProtoBuf.encodeToByteArray(t))
+    override suspend fun writeTo(t: ExplorerData, output: OutputStream) = withContext(Dispatchers.IO) {
+        output.write(ProtoBuf.encodeToByteArray(t))
+    }
 }

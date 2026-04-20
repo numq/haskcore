@@ -1,9 +1,8 @@
 package io.github.numq.haskcore.feature.explorer.core
 
 import androidx.datastore.core.DataStoreFactory
-import io.github.numq.haskcore.core.di.ScopeQualifier
-import io.github.numq.haskcore.core.di.ScopeQualifierType
-import io.github.numq.haskcore.core.di.scopedOwner
+import io.github.numq.haskcore.common.core.di.ScopeQualifier
+import io.github.numq.haskcore.common.core.di.scopedOwner
 import io.github.numq.haskcore.feature.explorer.core.usecase.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -13,8 +12,8 @@ import org.koin.dsl.module
 import java.nio.file.Files
 import java.nio.file.Path
 
-val explorerCoreModule = module {
-    scope<ScopeQualifierType.Project> {
+val explorerFeatureCoreModule = module {
+    scope<ScopeQualifier.Type.Project> {
         scopedOwner {
             val projectPath = get<String>(qualifier = ScopeQualifier.Project)
 
@@ -40,10 +39,10 @@ val explorerCoreModule = module {
         } bind ExplorerService::class
 
         scopedOwner {
-            ObserveExplorerTree(root = get<ExplorerRoot>(), explorerService = get(), vfsService = get())
+            ObserveExplorerTree(root = get<ExplorerRoot>(), explorerService = get(), vfsApi = get())
         }
 
-        scopedOwner { OpenFile(projectService = get()) }
+        scopedOwner { OpenFile(projectApi = get()) }
 
         scopedOwner { SaveExplorerPosition(explorerService = get()) }
 

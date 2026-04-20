@@ -12,7 +12,7 @@ import java.nio.file.Path
 import kotlin.io.path.name
 
 internal class LocalExplorerService(
-    private val scope: CoroutineScope, private val explorerDataSource: ExplorerDataSource
+    private val scope: CoroutineScope, private val explorerDataSource: ExplorerDataSource,
 ) : ExplorerService {
     private val separator = File.separator
 

@@ -8,10 +8,10 @@ dependencies {
     implementation(libs.arrow.core)
     implementation(libs.koin.core)
     implementation(libs.datastore)
-    implementation(projects.core)
-    implementation(projects.service.document)
-    implementation(projects.service.project)
-    implementation(projects.service.vfs)
+    implementation(projects.common.core)
+    implementation(projects.api.document)
+    implementation(projects.api.project)
+    implementation(projects.api.vfs)
 }
 
 tasks.withType<Test>().configureEach {

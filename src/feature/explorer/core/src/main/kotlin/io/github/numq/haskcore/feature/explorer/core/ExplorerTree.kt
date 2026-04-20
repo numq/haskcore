@@ -6,6 +6,6 @@ sealed interface ExplorerTree {
     data class Loading(override val root: ExplorerRoot) : ExplorerTree
 
     data class Loaded(
-        override val root: ExplorerRoot, val nodes: List<ExplorerNode>, val position: ExplorerPosition
+        override val root: ExplorerRoot, val nodes: List<ExplorerNode>, val position: ExplorerPosition,
     ) : ExplorerTree
 }

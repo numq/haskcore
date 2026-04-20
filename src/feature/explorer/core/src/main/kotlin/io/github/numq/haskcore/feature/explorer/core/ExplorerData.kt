@@ -7,5 +7,5 @@ import kotlinx.serialization.protobuf.ProtoNumber
 internal data class ExplorerData(
     @ProtoNumber(1) val expandedPaths: List<String> = emptyList(),
     @ProtoNumber(2) val index: Int = 0,
-    @ProtoNumber(3) val offset: Int = 0
+    @ProtoNumber(3) val offset: Int = 0,
 )
