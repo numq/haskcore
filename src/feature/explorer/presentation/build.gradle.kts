@@ -10,7 +10,8 @@ dependencies {
     implementation(compose.foundation)
     implementation(compose.material3)
     implementation(compose.materialIconsExtended)
-    implementation(projects.core)
+    implementation(projects.common.core)
+    implementation(projects.common.presentation)
     implementation(projects.feature.explorer.core)
 }
 

@@ -30,7 +30,7 @@ internal fun ExplorerNodeItem(
     isSelected: Boolean,
     toggleDirectoryExpansion: (ExplorerNode.Directory) -> Unit,
     select: (ExplorerNode) -> Unit,
-    openDocument: (ExplorerNode) -> Unit
+    openDocument: (ExplorerNode) -> Unit,
 ) {
     val backgroundColor = when {
         isSelected -> MaterialTheme.colorScheme.secondaryContainer

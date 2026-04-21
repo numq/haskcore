@@ -18,7 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.unit.dp
-import io.github.numq.haskcore.core.feature.Feature
+import io.github.numq.haskcore.common.presentation.feature.Feature
 import io.github.numq.haskcore.feature.explorer.core.ExplorerNode
 import io.github.numq.haskcore.feature.explorer.core.ExplorerPosition
 import io.github.numq.haskcore.feature.explorer.core.ExplorerTree
@@ -37,7 +37,7 @@ import kotlin.time.Duration.Companion.milliseconds
 fun ExplorerView(
     feature: Feature<ExplorerState, ExplorerCommand, ExplorerEvent>,
     handleError: (Throwable) -> Unit,
-    selectedPath: String?
+    selectedPath: String?,
 ) {
     val state by feature.state.collectAsState()
 

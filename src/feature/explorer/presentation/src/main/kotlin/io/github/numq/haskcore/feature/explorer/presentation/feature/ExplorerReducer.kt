@@ -1,6 +1,6 @@
 package io.github.numq.haskcore.feature.explorer.presentation.feature
 
-import io.github.numq.haskcore.core.feature.*
+import io.github.numq.haskcore.common.presentation.feature.*
 import io.github.numq.haskcore.feature.explorer.core.ExplorerNode
 import io.github.numq.haskcore.feature.explorer.core.ExplorerTree
 import io.github.numq.haskcore.feature.explorer.core.usecase.*
@@ -14,7 +14,7 @@ internal class ExplorerReducer(
     private val openFile: OpenFile,
 ) : Reducer<ExplorerState, ExplorerCommand, ExplorerEvent> {
     override fun reduce(
-        state: ExplorerState, command: ExplorerCommand
+        state: ExplorerState, command: ExplorerCommand,
     ): Transition<ExplorerState, ExplorerEvent> = when (command) {
         is ExplorerCommand.HandleFailure -> transition(state).event(ExplorerEvent.HandleFailure(throwable = command.throwable))
 
