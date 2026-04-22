@@ -9,8 +9,8 @@ dependencies {
     implementation(libs.arrow.core)
     implementation(libs.koin.core)
     implementation(libs.datastore)
-    implementation(projects.core)
-    implementation(projects.service.logger)
+    implementation(projects.common.core)
+    implementation(projects.api.logger)
 }
 
 tasks.withType<Test>().configureEach {
