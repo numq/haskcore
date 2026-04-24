@@ -1,6 +1,6 @@
 package io.github.numq.haskcore.feature.log.presentation.feature
 
-import io.github.numq.haskcore.core.feature.*
+import io.github.numq.haskcore.common.presentation.feature.*
 import io.github.numq.haskcore.feature.log.core.usecase.ObserveLogs
 import kotlinx.coroutines.flow.map
 

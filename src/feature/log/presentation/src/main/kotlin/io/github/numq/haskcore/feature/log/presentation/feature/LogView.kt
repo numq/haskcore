@@ -19,7 +19,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import io.github.numq.haskcore.core.log.Log
+import io.github.numq.haskcore.common.core.log.Log
 import org.koin.compose.koinInject
 import org.koin.core.scope.Scope
 

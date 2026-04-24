@@ -1,6 +1,6 @@
 package io.github.numq.haskcore.feature.log.presentation.feature
 
-import io.github.numq.haskcore.core.log.Log
+import io.github.numq.haskcore.common.core.log.Log
 import kotlinx.coroutines.flow.Flow
 
 internal sealed interface LogCommand {
