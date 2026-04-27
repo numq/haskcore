@@ -39,6 +39,8 @@ fun ExplorerView(
     handleError: (Throwable) -> Unit,
     selectedPath: String?,
 ) {
+    val scope = rememberCoroutineScope()
+
     val state by feature.state.collectAsState()
 
     LaunchedEffect(Unit) {
@@ -48,8 +50,6 @@ fun ExplorerView(
             }
         }
     }
-
-    val scope = rememberCoroutineScope()
 
     Surface(
         modifier = Modifier.fillMaxSize(),
