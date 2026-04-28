@@ -25,6 +25,8 @@ import org.koin.core.scope.Scope
 
 @Composable
 fun LogView(projectScope: Scope, handleError: (Throwable) -> Unit) {
+    val listState = rememberLazyListState()
+
     val feature = koinInject<LogFeature>(scope = projectScope)
 
     val state by feature.state.collectAsState()
@@ -36,8 +38,6 @@ fun LogView(projectScope: Scope, handleError: (Throwable) -> Unit) {
             }
         }
     }
-
-    val listState = rememberLazyListState()
 
     LaunchedEffect(state.logs.size) {
         if (state.logs.isNotEmpty()) {
