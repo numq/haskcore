@@ -8,8 +8,8 @@ dependencies {
     implementation(libs.kotlinx.serialization.protobuf)
     implementation(libs.arrow.core)
     implementation(libs.koin.core)
-    implementation(projects.core)
-    implementation(projects.service.session)
+    implementation(projects.common.core)
+    implementation(projects.api.session)
 }
 
 tasks.withType<Test>().configureEach {
