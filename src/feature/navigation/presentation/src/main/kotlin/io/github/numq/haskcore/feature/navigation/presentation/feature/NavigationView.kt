@@ -13,9 +13,9 @@ fun NavigationView(
     handleError: (Throwable) -> Unit,
     initialDestinations: List<Destination>,
     welcome: @Composable (openProject: (path: String, name: String?) -> Unit) -> Unit,
-    workspace: @Composable (Destination) -> Unit
+    workspace: @Composable (Destination) -> Unit,
 ) {
-    if (applicationScope.closed) return
+    val scope = rememberCoroutineScope()
 
     val feature = koinInject<NavigationFeature>(scope = applicationScope) {
         parametersOf(initialDestinations)
@@ -30,8 +30,6 @@ fun NavigationView(
             }
         }
     }
-
-    val scope = rememberCoroutineScope()
 
     state.destinations.takeIf(List<Destination>::isNotEmpty)?.forEach { destination ->
         workspace(destination)

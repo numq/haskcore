@@ -1,15 +1,13 @@
 package io.github.numq.haskcore.feature.navigation.presentation.feature
 
-import io.github.numq.haskcore.core.feature.*
+import io.github.numq.haskcore.common.presentation.feature.*
 import io.github.numq.haskcore.feature.navigation.core.usecase.GetDestinations
 import io.github.numq.haskcore.feature.navigation.core.usecase.OpenProject
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.map
 
 internal class NavigationReducer(
-    private val getDestinations: GetDestinations, private val openProject: OpenProject
+    private val getDestinations: GetDestinations, private val openProject: OpenProject,
 ) : Reducer<NavigationState, NavigationCommand, NavigationEvent> {
-    @OptIn(ExperimentalCoroutinesApi::class)
     override fun reduce(state: NavigationState, command: NavigationCommand) = when (command) {
         is NavigationCommand.HandleFailure -> transition(state).event(NavigationEvent.HandleFailure(throwable = command.throwable))
 
