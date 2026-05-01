@@ -1,6 +1,6 @@
 package io.github.numq.haskcore.feature.output.core
 
-import io.github.numq.haskcore.core.timestamp.Timestamp
+import io.github.numq.haskcore.common.core.timestamp.Timestamp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.SharingStarted
@@ -10,7 +10,7 @@ import java.util.*
 import kotlin.time.Duration
 
 internal class LocalOutputService(
-    private val scope: CoroutineScope, private val outputDataSource: OutputDataSource
+    private val scope: CoroutineScope, private val outputDataSource: OutputDataSource,
 ) : OutputService {
     private companion object {
         const val SESSION_LIMIT = 10
@@ -43,7 +43,7 @@ internal class LocalOutputService(
     }.map {}
 
     override suspend fun startSession(
-        id: String, name: String, configuration: String
+        id: String, name: String, configuration: String,
     ) = outputDataSource.update { outputData ->
         val systemLine = OutputLineData.System(
             id = UUID.randomUUID().toString(),
@@ -73,7 +73,7 @@ internal class LocalOutputService(
     }.map {}
 
     override suspend fun stopSession(
-        id: String, exitCode: Int, duration: Duration
+        id: String, exitCode: Int, duration: Duration,
     ) = outputDataSource.update { outputData ->
         var activeSession: OutputSessionData? = null
 

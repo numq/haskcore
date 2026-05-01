@@ -1,6 +1,6 @@
 package io.github.numq.haskcore.feature.output.core
 
-import io.github.numq.haskcore.core.timestamp.Timestamp
+import io.github.numq.haskcore.common.core.timestamp.Timestamp
 import kotlin.time.Duration.Companion.nanoseconds
 
 internal fun OutputLineData.toOutputLine() = when (this) {

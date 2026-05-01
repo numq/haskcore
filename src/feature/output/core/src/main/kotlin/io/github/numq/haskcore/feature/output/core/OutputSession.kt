@@ -15,7 +15,7 @@ sealed interface OutputSession {
         override val id: String,
         override val name: String,
         override val configuration: String,
-        override val lines: List<OutputLine>
+        override val lines: List<OutputLine>,
     ) : OutputSession
 
     data class Completed(
@@ -24,6 +24,6 @@ sealed interface OutputSession {
         override val configuration: String,
         override val lines: List<OutputLine>,
         val exitCode: Int,
-        val duration: Duration
+        val duration: Duration,
     ) : OutputSession
 }

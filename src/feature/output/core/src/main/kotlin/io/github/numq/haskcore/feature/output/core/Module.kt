@@ -1,9 +1,8 @@
 package io.github.numq.haskcore.feature.output.core
 
 import androidx.datastore.core.DataStoreFactory
-import io.github.numq.haskcore.core.di.ScopeQualifier
-import io.github.numq.haskcore.core.di.ScopeQualifierType
-import io.github.numq.haskcore.core.di.scopedOwner
+import io.github.numq.haskcore.common.core.di.ScopeQualifier
+import io.github.numq.haskcore.common.core.di.scopedOwner
 import io.github.numq.haskcore.feature.output.core.usecase.CloseOutputSession
 import io.github.numq.haskcore.feature.output.core.usecase.CopySessionText
 import io.github.numq.haskcore.feature.output.core.usecase.ObserveOutput
@@ -16,8 +15,8 @@ import org.koin.dsl.module
 import java.nio.file.Files
 import java.nio.file.Path
 
-val outputCoreModule = module {
-    scope<ScopeQualifierType.Project> {
+val outputFeatureCoreModule = module {
+    scope<ScopeQualifier.Type.Project> {
         scopedOwner {
             val projectPath = get<String>(qualifier = ScopeQualifier.Project)
 
@@ -39,9 +38,9 @@ val outputCoreModule = module {
 
         scopedOwner { CloseOutputSession(outputService = get()) }
 
-        scopedOwner { CopySessionText(clipboardService = get()) }
+        scopedOwner { CopySessionText(clipboardApi = get()) }
 
-        scopedOwner { ObserveOutput(outputService = get(), runtimeService = get()) }
+        scopedOwner { ObserveOutput(outputService = get(), runtimeApi = get()) }
 
         scopedOwner { OpenOutputSession(outputService = get()) }
     }

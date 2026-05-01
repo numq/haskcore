@@ -17,7 +17,7 @@ internal sealed interface OutputLineData {
     data class System(
         @ProtoNumber(1) override val id: String,
         @ProtoNumber(2) override val text: String,
-        @ProtoNumber(3) override val timestampNanos: Long
+        @ProtoNumber(3) override val timestampNanos: Long,
     ) : OutputLineData
 
     @Serializable
@@ -25,7 +25,7 @@ internal sealed interface OutputLineData {
     data class Normal(
         @ProtoNumber(1) override val id: String,
         @ProtoNumber(2) override val text: String,
-        @ProtoNumber(3) override val timestampNanos: Long
+        @ProtoNumber(3) override val timestampNanos: Long,
     ) : OutputLineData
 
     @Serializable
@@ -33,6 +33,6 @@ internal sealed interface OutputLineData {
     data class Error(
         @ProtoNumber(1) override val id: String,
         @ProtoNumber(2) override val text: String,
-        @ProtoNumber(3) override val timestampNanos: Long
+        @ProtoNumber(3) override val timestampNanos: Long,
     ) : OutputLineData
 }
