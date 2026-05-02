@@ -14,7 +14,7 @@ import org.koin.core.scope.Scope
 
 @Composable
 fun OutputView(projectScope: Scope, handleError: (Throwable) -> Unit) {
-    if (projectScope.closed) return
+    val scope = rememberCoroutineScope()
 
     val feature = koinInject<OutputFeature>(scope = projectScope)
 
@@ -27,8 +27,6 @@ fun OutputView(projectScope: Scope, handleError: (Throwable) -> Unit) {
             }
         }
     }
-
-    val scope = rememberCoroutineScope()
 
     Column(
         modifier = Modifier.fillMaxSize(),
@@ -50,13 +48,13 @@ fun OutputView(projectScope: Scope, handleError: (Throwable) -> Unit) {
                 scope.launch {
                     feature.execute(OutputCommand.OpenMenu(x = x, y = y))
                 }
-            }, copyText = {
-                scope.launch {
-                    feature.execute(OutputCommand.CopyText(session = selectedSession))
-                }
             }, closeMenu = {
                 scope.launch {
                     feature.execute(OutputCommand.CloseMenu)
+                }
+            }, copyText = {
+                scope.launch {
+                    feature.execute(OutputCommand.CopyText(session = selectedSession))
                 }
             })
         }

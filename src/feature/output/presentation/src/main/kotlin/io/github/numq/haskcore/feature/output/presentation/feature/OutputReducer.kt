@@ -1,6 +1,10 @@
 package io.github.numq.haskcore.feature.output.presentation.feature
 
-import io.github.numq.haskcore.core.feature.*
+import io.github.numq.haskcore.common.presentation.feature.Reducer
+import io.github.numq.haskcore.common.presentation.feature.action
+import io.github.numq.haskcore.common.presentation.feature.effect
+import io.github.numq.haskcore.common.presentation.feature.event
+import io.github.numq.haskcore.common.presentation.feature.stream
 import io.github.numq.haskcore.feature.output.core.usecase.CloseOutputSession
 import io.github.numq.haskcore.feature.output.core.usecase.CopySessionText
 import io.github.numq.haskcore.feature.output.core.usecase.ObserveOutput
@@ -12,7 +16,7 @@ internal class OutputReducer(
     private val closeOutputSession: CloseOutputSession,
     private val copySessionText: CopySessionText,
     private val observeOutput: ObserveOutput,
-    private val openOutputSession: OpenOutputSession
+    private val openOutputSession: OpenOutputSession,
 ) : Reducer<OutputState, OutputCommand, OutputEvent> {
     override fun reduce(state: OutputState, command: OutputCommand) = when (command) {
         is OutputCommand.HandleFailure -> transition(state).event(OutputEvent.HandleFailure(throwable = command.throwable))

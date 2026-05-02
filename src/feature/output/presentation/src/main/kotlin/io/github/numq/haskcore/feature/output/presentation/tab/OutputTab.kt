@@ -11,7 +11,6 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
@@ -19,10 +18,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.numq.haskcore.feature.output.core.OutputSession
 
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 internal fun OutputTab(
-    session: OutputSession, isActive: Boolean, select: (OutputSession) -> Unit, close: (OutputSession) -> Unit
+    session: OutputSession, isActive: Boolean, select: (OutputSession) -> Unit, close: (OutputSession) -> Unit,
 ) {
     Tab(selected = isActive, onClick = { select(session) }, modifier = Modifier.height(32.dp), text = {
         Row(

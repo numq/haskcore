@@ -17,17 +17,17 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.dp
+import io.github.numq.haskcore.common.presentation.overlay.menu.Menu
+import io.github.numq.haskcore.common.presentation.overlay.menu.MenuItem
+import io.github.numq.haskcore.common.presentation.overlay.menu.MenuState
 import io.github.numq.haskcore.feature.output.core.OutputLine
 import io.github.numq.haskcore.feature.output.core.OutputSession
 import io.github.numq.haskcore.feature.output.presentation.line.OutputLineItem
 import io.github.numq.haskcore.feature.output.presentation.menu.OutputMenu
-import io.github.numq.haskcore.platform.overlay.menu.Menu
-import io.github.numq.haskcore.platform.overlay.menu.MenuItem
-import io.github.numq.haskcore.platform.overlay.menu.MenuState
 
 @Composable
 internal fun OutputSessionItem(
-    session: OutputSession, menu: OutputMenu, openMenu: (Offset) -> Unit, copyText: () -> Unit, closeMenu: () -> Unit
+    session: OutputSession, menu: OutputMenu, openMenu: (Offset) -> Unit, closeMenu: () -> Unit, copyText: () -> Unit,
 ) {
     val listState = rememberLazyListState()
 
@@ -55,7 +55,7 @@ internal fun OutputSessionItem(
                         Icon(
                             imageVector = Icons.Default.ContentCopy,
                             contentDescription = null,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(18.dp)
                         )
                     }, enabled = session.lines.isNotEmpty(), onClick = copyText
                 )
