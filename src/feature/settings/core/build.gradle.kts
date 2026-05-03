@@ -5,8 +5,8 @@ plugins {
 dependencies {
     implementation(libs.arrow.core)
     implementation(libs.koin.core)
-    implementation(projects.core)
-    implementation(projects.service.configuration)
+    implementation(projects.common.core)
+    implementation(projects.api.configuration)
 }
 
 tasks.withType<Test>().configureEach {

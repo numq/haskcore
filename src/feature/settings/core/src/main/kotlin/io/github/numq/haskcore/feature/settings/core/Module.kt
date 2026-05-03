@@ -1,10 +1,10 @@
 package io.github.numq.haskcore.feature.settings.core
 
-import io.github.numq.haskcore.core.di.ScopeQualifierType
+import io.github.numq.haskcore.common.core.di.ScopeQualifier
 import org.koin.dsl.module
 
-val settingsCoreModule = module {
-    scope<ScopeQualifierType.Application> {
+val settingsFeatureCoreModule = module {
+    scope<ScopeQualifier.Type.Application> {
 
     }
 }

@@ -7,8 +7,8 @@ plugins {
 dependencies {
     implementation(libs.arrow.core)
     implementation(libs.koin.compose)
-    implementation(compose.foundation)
-    implementation(projects.core)
+    implementation(libs.compose.foundation)
+    implementation(projects.common.presentation)
     implementation(projects.feature.settings.core)
 }
 
