@@ -5,5 +5,5 @@ data class Status(
     val ghc: StatusTool = StatusTool.Scanning,
     val cabal: StatusTool = StatusTool.Scanning,
     val stack: StatusTool = StatusTool.Scanning,
-    val hls: StatusTool = StatusTool.Scanning
+    val hls: StatusTool = StatusTool.Scanning,
 )
