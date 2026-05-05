@@ -1,12 +1,16 @@
 package io.github.numq.haskcore.feature.status.presentation.feature
 
-import io.github.numq.haskcore.core.feature.*
+import io.github.numq.haskcore.common.presentation.feature.Reducer
+import io.github.numq.haskcore.common.presentation.feature.action
+import io.github.numq.haskcore.common.presentation.feature.effect
+import io.github.numq.haskcore.common.presentation.feature.event
+import io.github.numq.haskcore.common.presentation.feature.stream
 import io.github.numq.haskcore.feature.status.core.usecase.ObserveStatus
 import io.github.numq.haskcore.feature.status.core.usecase.UpdatePaths
 import kotlinx.coroutines.flow.map
 
 internal class StatusReducer(
-    private val observeStatus: ObserveStatus, private val updatePaths: UpdatePaths
+    private val observeStatus: ObserveStatus, private val updatePaths: UpdatePaths,
 ) : Reducer<StatusState, StatusCommand, StatusEvent> {
     override fun reduce(state: StatusState, command: StatusCommand) = when (command) {
         is StatusCommand.HandleFailure -> transition(state).event(StatusEvent.HandleFailure(throwable = command.throwable))

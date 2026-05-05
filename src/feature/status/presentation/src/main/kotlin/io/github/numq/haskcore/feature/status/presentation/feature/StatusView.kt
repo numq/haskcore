@@ -9,15 +9,19 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import io.github.numq.haskcore.common.presentation.overlay.dialog.file.FileDialog
 import io.github.numq.haskcore.feature.status.presentation.breadcrumbs.Breadcrumbs
 import io.github.numq.haskcore.feature.status.presentation.tool.StatusToolItem
-import io.github.numq.haskcore.platform.overlay.dialog.file.FileDialog
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import org.koin.core.scope.Scope
 
 @Composable
 fun StatusView(projectScope: Scope, handleError: (Throwable) -> Unit, navigateToPath: suspend (path: String) -> Unit) {
+    val scope = rememberCoroutineScope()
+
+    val fileDialog = koinInject<FileDialog>(scope = projectScope)
+
     val feature = koinInject<StatusFeature>(scope = projectScope)
 
     val state by feature.state.collectAsState()
@@ -29,10 +33,6 @@ fun StatusView(projectScope: Scope, handleError: (Throwable) -> Unit, navigateTo
             }
         }
     }
-
-    val fileDialog = koinInject<FileDialog>(scope = projectScope)
-
-    val scope = rememberCoroutineScope()
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
         Row(

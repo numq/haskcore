@@ -120,27 +120,27 @@ internal fun StatusToolItem(name: String, tool: StatusTool, selectPath: () -> Un
                 })
                 DropdownMenuItem(
                     text = {
-                        Text(
-                            text = "Reset to default", style = MaterialTheme.typography.labelMedium
-                        )
-                    }, onClick = {
-                        expanded = false
-
-                        resetPath()
-                    }, leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }, colors = MenuItemColors(
-                        textColor = MaterialTheme.colorScheme.onSurface,
-                        leadingIconColor = MaterialTheme.colorScheme.secondary,
-                        trailingIconColor = MaterialTheme.colorScheme.onSurface,
-                        disabledTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = .38f),
-                        disabledLeadingIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = .38f),
-                        disabledTrailingIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = .38f)
+                    Text(
+                        text = "Reset to default", style = MaterialTheme.typography.labelMedium
                     )
+                }, onClick = {
+                    expanded = false
+
+                    resetPath()
+                }, leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }, colors = MenuItemColors(
+                    textColor = MaterialTheme.colorScheme.onSurface,
+                    leadingIconColor = MaterialTheme.colorScheme.secondary,
+                    trailingIconColor = MaterialTheme.colorScheme.onSurface,
+                    disabledTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = .38f),
+                    disabledLeadingIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = .38f),
+                    disabledTrailingIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = .38f)
+                )
                 )
             }
         }
