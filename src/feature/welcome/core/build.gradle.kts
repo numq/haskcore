@@ -6,9 +6,9 @@ dependencies {
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.arrow.core)
     implementation(libs.koin.core)
-    implementation(projects.core)
-    implementation(projects.service.project)
-    implementation(projects.service.session)
+    implementation(projects.common.core)
+    implementation(projects.api.project)
+    implementation(projects.api.session)
 }
 
 tasks.withType<Test>().configureEach {
