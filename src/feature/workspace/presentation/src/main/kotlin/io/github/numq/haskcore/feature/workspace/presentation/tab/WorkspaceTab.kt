@@ -30,7 +30,7 @@ internal fun WorkspaceTab(
     document: WorkspaceDocument,
     isActive: Boolean,
     select: (WorkspaceDocument) -> Unit,
-    close: (WorkspaceDocument) -> Unit
+    close: (WorkspaceDocument) -> Unit,
 ) {
     var isHovered by remember { mutableStateOf(false) }
 

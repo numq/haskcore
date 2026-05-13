@@ -1,9 +1,8 @@
 package io.github.numq.haskcore.service.toolchain
 
 import androidx.datastore.core.DataStoreFactory
-import io.github.numq.haskcore.core.di.ScopeQualifier
-import io.github.numq.haskcore.core.di.ScopeQualifierType
-import io.github.numq.haskcore.core.di.scopedOwner
+import io.github.numq.haskcore.common.core.di.ScopeQualifier
+import io.github.numq.haskcore.common.core.di.scopedOwner
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -13,7 +12,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 val toolchainModule = module {
-    scope<ScopeQualifierType.Application> {
+    scope<ScopeQualifier.Type.Application> {
         scopedOwner { LocalBinaryResolver() } bind BinaryResolver::class
 
         scopedOwner { LocalProcessRunner() } bind ProcessRunner::class
@@ -25,7 +24,8 @@ val toolchainModule = module {
 
             val dataStore = DataStoreFactory.create(
                 serializer = ToolchainDataSerializer, scope = scope, produceFile = {
-                    Path.of(applicationPath, ".haskcore").also(Files::createDirectories).resolve("toolchain.pb").toFile()
+                    Path.of(applicationPath, ".haskcore").also(Files::createDirectories).resolve("toolchain.pb")
+                        .toFile()
                 })
 
             LocalToolchainDataSource(scope = scope, dataStore = dataStore)

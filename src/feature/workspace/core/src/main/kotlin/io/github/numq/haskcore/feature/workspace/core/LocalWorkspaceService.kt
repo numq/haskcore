@@ -12,7 +12,7 @@ import java.nio.file.Path
 import kotlin.io.path.name
 
 internal class LocalWorkspaceService(
-    private val scope: CoroutineScope, private val workspaceDataSource: WorkspaceDataSource
+    private val scope: CoroutineScope, private val workspaceDataSource: WorkspaceDataSource,
 ) : WorkspaceService {
     override val workspace = workspaceDataSource.workspaceData.map(WorkspaceData::toWorkspace).stateIn(
         scope = scope, started = SharingStarted.Eagerly, initialValue = Workspace()
@@ -24,14 +24,51 @@ internal class LocalWorkspaceService(
         }
     }
 
-    override suspend fun saveDimensions(
-        x: Float, y: Float, width: Float, height: Float, isFullscreen: Boolean
-    ) = workspaceDataSource.update { workspaceData ->
-        workspaceData.copy(x = x, y = y, width = width, height = height, isFullscreen = isFullscreen)
+    override suspend fun selectShelfTool(tool: ShelfTool) = workspaceDataSource.update { workspaceData ->
+        val toolData = tool.toShelfToolData()
+
+        val shelfData = workspaceData.shelfData ?: ShelfData()
+
+        fun updatePanel(panel: ShelfPanelData) = when (toolData) {
+            in panel.tools -> panel.copy(
+                activeTool = when (panel.activeTool) {
+                    toolData -> null
+
+                    else -> toolData
+                }
+            )
+
+            else -> panel
+        }
+
+        workspaceData.copy(
+            shelfData = shelfData.copy(
+                leftPanel = updatePanel(panel = shelfData.leftPanel),
+                rightPanel = updatePanel(panel = shelfData.rightPanel)
+            )
+        )
     }.map {}
 
-    override suspend fun saveRatio(ratio: Float) = workspaceDataSource.update { workspaceData ->
-        workspaceData.copy(ratio = ratio)
+    override suspend fun saveLeftShelfPanelRatio(ratio: Float) = workspaceDataSource.update { workspaceData ->
+        val shelfData = workspaceData.shelfData ?: ShelfData()
+
+        workspaceData.copy(shelfData = shelfData.copy(leftPanel = shelfData.leftPanel.copy(ratio = ratio)))
+    }.map {}
+
+    override suspend fun saveRightShelfPanelRatio(ratio: Float) = workspaceDataSource.update { workspaceData ->
+        val shelfData = workspaceData.shelfData ?: ShelfData()
+
+        workspaceData.copy(shelfData = shelfData.copy(rightPanel = shelfData.rightPanel.copy(ratio = ratio)))
+    }.map {}
+
+    override suspend fun saveVerticalRatio(ratio: Float) = workspaceDataSource.update { workspaceData ->
+        workspaceData.copy(verticalRatio = ratio)
+    }.map {}
+
+    override suspend fun saveDimensions(
+        x: Float, y: Float, width: Float, height: Float, isFullscreen: Boolean,
+    ) = workspaceDataSource.update { workspaceData ->
+        workspaceData.copy(x = x, y = y, width = width, height = height, isFullscreen = isFullscreen)
     }.map {}
 
     override fun close() {

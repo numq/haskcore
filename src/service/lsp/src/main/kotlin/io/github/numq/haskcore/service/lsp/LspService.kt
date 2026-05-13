@@ -1,7 +1,7 @@
 package io.github.numq.haskcore.service.lsp
 
 import arrow.core.Either
-import io.github.numq.haskcore.core.text.*
+import io.github.numq.haskcore.common.core.text.*
 import io.github.numq.haskcore.service.lsp.completion.LspCompletion
 import io.github.numq.haskcore.service.lsp.connection.LspConnection
 import io.github.numq.haskcore.service.lsp.diagnostic.LspDiagnostic

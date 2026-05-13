@@ -29,7 +29,7 @@ internal class LocalToolchainService(
         }.stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = Toolchain.Scanning)
 
     private suspend fun <T : Tool> validateTool(
-        configuredPath: String?, binaryName: String, factory: (path: String, version: String) -> T
+        configuredPath: String?, binaryName: String, factory: (path: String, version: String) -> T,
     ): Either<Throwable, T> = either {
         val path = when {
             configuredPath == null -> binaryResolver.findBinary(name = binaryName).bind() ?: raise(
@@ -102,7 +102,7 @@ internal class LocalToolchainService(
     }.fold(ifLeft = Toolchain::Error, ifRight = ::identity)
 
     override suspend fun updatePaths(
-        ghcPath: String?, cabalPath: String?, stackPath: String?, hlsPath: String?
+        ghcPath: String?, cabalPath: String?, stackPath: String?, hlsPath: String?,
     ) = toolchainDataSource.update { toolchainData ->
         toolchainData.copy(
             ghcPath = ghcPath ?: toolchainData.ghcPath,

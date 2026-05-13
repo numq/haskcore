@@ -15,7 +15,7 @@ import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.isShiftPressed
 import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.platform.LocalDensity
-import io.github.numq.haskcore.platform.theme.editor.EditorTheme
+import io.github.numq.haskcore.common.presentation.theme.editor.EditorTheme
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalComposeUiApi::class)
@@ -30,7 +30,7 @@ internal fun ScrollbarContainer(
     minimalHeight: Float,
     thickness: Float,
     theme: EditorTheme,
-    content: @Composable (viewportWidth: Float, viewportHeight: Float) -> Unit
+    content: @Composable (viewportWidth: Float, viewportHeight: Float) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
 

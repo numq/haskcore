@@ -7,6 +7,8 @@ import kotlinx.coroutines.flow.SharedFlow
 interface RuntimeService : AutoCloseable {
     val events: SharedFlow<RuntimeEvent>
 
+    suspend fun isActive(id: String): Either<Throwable, Boolean>
+
     suspend fun execute(request: RuntimeRequest): Either<Throwable, Flow<RuntimeEvent>>
 
     suspend fun start(request: RuntimeRequest): Either<Throwable, Unit>

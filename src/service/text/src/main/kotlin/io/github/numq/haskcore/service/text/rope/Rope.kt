@@ -14,12 +14,12 @@ internal class Rope private constructor(
     private val root: RopeNode,
     private val charset: Charset,
     private val ropeNodeLeafFactory: RopeNodeLeafFactory,
-    val textVersion: Long = 0L
+    val textVersion: Long = 0L,
 ) {
     constructor(
         initialText: String = "",
         charset: Charset = StandardCharsets.UTF_8,
-        ropeNodeLeafFactory: RopeNodeLeafFactory = RopeNodeLeafFactory(enablePooling = true, charset = charset)
+        ropeNodeLeafFactory: RopeNodeLeafFactory = RopeNodeLeafFactory(enablePooling = true, charset = charset),
     ) : this(
         root = if (initialText.isEmpty()) RopeNode.Empty else ropeNodeLeafFactory.createLeaf(content = initialText),
         charset = charset,

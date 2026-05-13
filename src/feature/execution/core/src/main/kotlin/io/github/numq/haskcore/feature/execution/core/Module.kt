@@ -1,12 +1,9 @@
 package io.github.numq.haskcore.feature.execution.core
 
 import androidx.datastore.core.DataStoreFactory
-import io.github.numq.haskcore.core.di.ScopeQualifier
-import io.github.numq.haskcore.core.di.ScopeQualifierType
-import io.github.numq.haskcore.core.di.scopedOwner
-import io.github.numq.haskcore.feature.execution.core.usecase.ObserveExecution
-import io.github.numq.haskcore.feature.execution.core.usecase.SelectArtifact
-import io.github.numq.haskcore.feature.execution.core.usecase.StartExecution
+import io.github.numq.haskcore.common.core.di.ScopeQualifier
+import io.github.numq.haskcore.common.core.di.scopedOwner
+import io.github.numq.haskcore.feature.execution.core.usecase.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -15,8 +12,8 @@ import org.koin.dsl.module
 import java.nio.file.Files
 import java.nio.file.Path
 
-val executionCoreModule = module {
-    scope<ScopeQualifierType.Project> {
+val executionFeatureCoreModule = module {
+    scope<ScopeQualifier.Type.Project> {
         scopedOwner {
             val projectPath = get<String>(qualifier = ScopeQualifier.Project)
 
@@ -36,16 +33,29 @@ val executionCoreModule = module {
             LocalExecutionService(scope = scope, executionDataSource = get())
         } bind ExecutionService::class
 
+        scopedOwner { BuildConfiguration(runtimeService = get()) }
+
+        scopedOwner { DeleteConfiguration(executionService = get()) }
+
+        scopedOwner { EditConfiguration(executionService = get()) }
+
         scopedOwner {
             val projectPath = get<String>(qualifier = ScopeQualifier.Project)
 
             ObserveExecution(
-                rootPath = projectPath, executionService = get(), toolchainService = get(), vfsService = get()
+                rootPath = projectPath,
+                documentService = get(),
+                executionService = get(),
+                runtimeService = get(),
+                toolchainService = get(),
+                vfsService = get()
             )
         }
 
-        scopedOwner { StartExecution(runtimeService = get()) }
+        scopedOwner { RunConfiguration(runtimeService = get()) }
 
-        scopedOwner { SelectArtifact(executionService = get()) }
+        scopedOwner { SetCurrentConfiguration(executionService = get()) }
+
+        scopedOwner { StopConfiguration(runtimeService = get()) }
     }
 }

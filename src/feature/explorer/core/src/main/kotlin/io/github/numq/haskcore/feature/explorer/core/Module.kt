@@ -39,10 +39,10 @@ val explorerFeatureCoreModule = module {
         } bind ExplorerService::class
 
         scopedOwner {
-            ObserveExplorerTree(root = get<ExplorerRoot>(), explorerService = get(), vfsApi = get())
+            ObserveExplorerTree(root = get<ExplorerRoot>(), explorerService = get(), vfsService = get())
         }
 
-        scopedOwner { OpenFile(projectApi = get()) }
+        scopedOwner { OpenFile(projectService = get()) }
 
         scopedOwner { SaveExplorerPosition(explorerService = get()) }
 

@@ -2,9 +2,9 @@ package io.github.numq.haskcore.feature.editor.core.caret
 
 import arrow.core.Either
 import arrow.core.raise.either
-import io.github.numq.haskcore.core.text.TextEdit
-import io.github.numq.haskcore.core.text.TextPosition
-import io.github.numq.haskcore.core.text.TextSnapshot
+import io.github.numq.haskcore.common.core.text.TextEdit
+import io.github.numq.haskcore.common.core.text.TextPosition
+import io.github.numq.haskcore.common.core.text.TextSnapshot
 import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.cancel

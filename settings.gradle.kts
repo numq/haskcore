@@ -4,28 +4,18 @@ enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
 pluginManagement {
     repositories {
-        google {
-            mavenContent {
-                includeGroupAndSubgroups("androidx")
-                includeGroupAndSubgroups("com.android")
-                includeGroupAndSubgroups("com.google")
-            }
-        }
-        mavenCentral()
+        maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
+        google()
         gradlePluginPortal()
+        mavenCentral()
     }
 }
 
 dependencyResolutionManagement {
     repositories {
-        google {
-            mavenContent {
-                includeGroupAndSubgroups("androidx")
-                includeGroupAndSubgroups("com.android")
-                includeGroupAndSubgroups("com.google")
-            }
-        }
+        google()
         mavenCentral()
+        maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
     }
 }
 
@@ -33,9 +23,25 @@ plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }
 
-val rootModules = listOf("api", "common", "feature", "platform")
+val rootModules = listOf("common", "entrypoint", "feature", "service", "platform")
 
-val apiModules = listOf(
+val commonModules = listOf("core", "presentation")
+
+val featureModules = listOf(
+    "bootstrap",
+    "editor",
+    "execution",
+    "explorer",
+    "log",
+    "navigation",
+    "output",
+    "settings",
+    "status",
+    "welcome",
+    "workspace"
+)
+
+val serviceModules = listOf(
     "clipboard",
     "configuration",
     "document",
@@ -52,33 +58,10 @@ val apiModules = listOf(
     "vfs"
 )
 
-val commonModules = listOf("core", "presentation")
-
-val featureModules = listOf(
-    "bootstrap",
-    "editor",
-    "execution",
-    "explorer",
-    "log",
-    "navigation",
-    "output",
-    "settings",
-    "shelf",
-    "status",
-    "welcome",
-    "workspace"
-)
-
 rootModules.forEach { module ->
     val path = ":$module"
     include(path)
     project(path).projectDir = file("src/$module")
-}
-
-apiModules.forEach { moduleName ->
-    val path = ":api:$moduleName"
-    include(path)
-    project(path).projectDir = file("src/api/$moduleName")
 }
 
 commonModules.forEach { moduleName ->
@@ -97,4 +80,10 @@ featureModules.forEach { moduleName ->
     include(core, pres)
     project(core).projectDir = file("src/feature/$moduleName/core")
     project(pres).projectDir = file("src/feature/$moduleName/presentation")
+}
+
+serviceModules.forEach { moduleName ->
+    val path = ":service:$moduleName"
+    include(path)
+    project(path).projectDir = file("src/service/$moduleName")
 }

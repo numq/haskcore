@@ -1,9 +1,8 @@
 package io.github.numq.haskcore.service.logger
 
 import androidx.datastore.core.DataStoreFactory
-import io.github.numq.haskcore.core.di.ScopeQualifier
-import io.github.numq.haskcore.core.di.ScopeQualifierType
-import io.github.numq.haskcore.core.di.scopedOwner
+import io.github.numq.haskcore.common.core.di.ScopeQualifier
+import io.github.numq.haskcore.common.core.di.scopedOwner
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -14,8 +13,8 @@ import java.nio.file.Path
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-val loggerModule = module {
-    scope<ScopeQualifierType.Application> {
+val loggerServiceModule = module {
+    scope<ScopeQualifier.Type.Application> {
         scopedOwner {
             val applicationPath = get<String>(qualifier = ScopeQualifier.Application)
 
@@ -30,7 +29,7 @@ val loggerModule = module {
         } bind LoggerDataSource::class
     }
 
-    scope<ScopeQualifierType.Project> {
+    scope<ScopeQualifier.Type.Project> {
         scopedOwner {
             val projectPath = get<String>(qualifier = ScopeQualifier.Project)
 
@@ -48,8 +47,7 @@ val loggerModule = module {
             val externalDateTimeFormatter =
                 DateTimeFormatter.ofPattern(externalPattern).withZone(ZoneId.systemDefault())
 
-            val labelDateTimeFormatter =
-                DateTimeFormatter.ofPattern(labelPattern).withZone(ZoneId.systemDefault())
+            val labelDateTimeFormatter = DateTimeFormatter.ofPattern(labelPattern).withZone(ZoneId.systemDefault())
 
             LocalLoggerService(
                 projectId = projectPath,

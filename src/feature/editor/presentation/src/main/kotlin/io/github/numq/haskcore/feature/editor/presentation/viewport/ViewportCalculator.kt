@@ -1,6 +1,6 @@
 package io.github.numq.haskcore.feature.editor.presentation.viewport
 
-import io.github.numq.haskcore.core.text.TextSnapshot
+import io.github.numq.haskcore.common.core.text.TextSnapshot
 import kotlin.math.ceil
 import kotlin.math.floor
 
@@ -12,7 +12,7 @@ internal object ViewportCalculator {
         scrollY: Float,
         ascent: Float,
         textHeight: Float,
-        lineHeight: Float
+        lineHeight: Float,
     ) = when {
         width <= 0 || height <= 0 || lineHeight <= 0 -> Viewport.EMPTY
 

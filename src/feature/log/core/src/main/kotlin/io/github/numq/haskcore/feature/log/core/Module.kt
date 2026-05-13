@@ -7,6 +7,6 @@ import org.koin.dsl.module
 
 val logFeatureCoreModule = module {
     scope<ScopeQualifier.Type.Project> {
-        scopedOwner { ObserveLogs(loggerApi = get()) }
+        scopedOwner { ObserveLogs(loggerService = get()) }
     }
 }

@@ -1,6 +1,6 @@
 package io.github.numq.haskcore.feature.editor.presentation.feature
 
-import io.github.numq.haskcore.core.text.TextPosition
+import io.github.numq.haskcore.common.core.text.TextPosition
 import io.github.numq.haskcore.feature.editor.core.Editor
 import kotlinx.coroutines.flow.Flow
 
@@ -59,8 +59,28 @@ internal sealed interface EditorCommand {
         val contentWidth: Float,
         val contentHeight: Float,
         val viewportWidth: Float,
-        val viewportHeight: Float
+        val viewportHeight: Float,
     ) : EditorCommand {
         val key = Key.SCROLL
+    }
+
+    sealed interface Menu : EditorCommand {
+        data class Open(val x: Float, val y: Float) : Menu
+
+        data object Close : Menu
+
+        data object RunStack : Menu
+
+        data object RunCabal : Menu
+
+        data object RunGhc : Menu
+
+        data object Cut : Menu
+
+        data object Copy : Menu
+
+        data object Paste : Menu
+
+        data object SelectAll : Menu
     }
 }

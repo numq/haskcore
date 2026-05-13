@@ -1,9 +1,9 @@
 package io.github.numq.haskcore.service.syntax
 
-import io.github.numq.haskcore.core.di.ScopeQualifierType
-import io.github.numq.haskcore.core.di.scopedOwner
-import io.github.numq.haskcore.service.syntax.folding.SyntaxFoldingProvider
+import io.github.numq.haskcore.common.core.di.ScopeQualifier
+import io.github.numq.haskcore.common.core.di.scopedOwner
 import io.github.numq.haskcore.service.syntax.folding.HaskellSyntaxFoldingProvider
+import io.github.numq.haskcore.service.syntax.folding.SyntaxFoldingProvider
 import io.github.numq.haskcore.service.syntax.initializer.DefaultSyntaxServiceInitializer
 import io.github.numq.haskcore.service.syntax.initializer.SyntaxServiceInitializer
 import io.github.numq.haskcore.service.syntax.occurrence.HaskellSyntaxOccurrenceProvider
@@ -24,8 +24,8 @@ import org.koin.dsl.binds
 import org.koin.dsl.module
 import org.treesitter.TreeSitterHaskell
 
-val syntaxModule = module {
-    scope<ScopeQualifierType.Application> {
+val syntaxServiceModule = module {
+    scope<ScopeQualifier.Type.Application> {
         scopedOwner {
             HaskellSyntaxQueryProvider(
                 language = TreeSitterHaskell(),
@@ -39,7 +39,7 @@ val syntaxModule = module {
         scopedOwner { DefaultSyntaxServiceInitializer(queryProvider = get()) } bind SyntaxServiceInitializer::class
     }
 
-    scope<ScopeQualifierType.Document> {
+    scope<ScopeQualifier.Type.Document> {
         scopedOwner { HaskellSyntaxFoldingProvider() } bind SyntaxFoldingProvider::class
 
         scopedOwner { DefaultSymbolTable() } bind SymbolTable::class

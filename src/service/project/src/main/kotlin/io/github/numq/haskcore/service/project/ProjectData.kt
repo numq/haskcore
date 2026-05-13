@@ -7,5 +7,5 @@ import kotlinx.serialization.protobuf.ProtoNumber
 internal data class ProjectData(
     @ProtoNumber(1) val name: String? = null,
     @ProtoNumber(2) val openedDocumentPaths: List<String> = emptyList(),
-    @ProtoNumber(3) val activeDocumentPath: String? = null
+    @ProtoNumber(3) val activeDocumentPath: String? = null,
 )

@@ -10,7 +10,7 @@ dependencies {
     implementation(libs.gson)
     implementation(libs.lsp4j)
     implementation(libs.lsp4j.jsonrpc)
-    implementation(projects.core)
+    implementation(projects.common.core)
 }
 
 tasks.withType<Test>().configureEach {

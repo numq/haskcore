@@ -2,7 +2,7 @@ package io.github.numq.haskcore.service.text.buffer
 
 import arrow.core.Either
 import arrow.core.raise.Raise
-import io.github.numq.haskcore.core.text.*
+import io.github.numq.haskcore.common.core.text.*
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.nio.charset.Charset

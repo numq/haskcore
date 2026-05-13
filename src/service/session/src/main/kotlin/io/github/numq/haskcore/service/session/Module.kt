@@ -1,9 +1,8 @@
 package io.github.numq.haskcore.service.session
 
 import androidx.datastore.core.DataStoreFactory
-import io.github.numq.haskcore.core.di.ScopeQualifier
-import io.github.numq.haskcore.core.di.ScopeQualifierType
-import io.github.numq.haskcore.core.di.scopedOwner
+import io.github.numq.haskcore.common.core.di.ScopeQualifier
+import io.github.numq.haskcore.common.core.di.scopedOwner
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -12,8 +11,8 @@ import org.koin.dsl.module
 import java.nio.file.Files
 import java.nio.file.Path
 
-val sessionModule = module {
-    scope<ScopeQualifierType.Application> {
+val sessionServiceModule = module {
+    scope<ScopeQualifier.Type.Application> {
         scopedOwner {
             val applicationPath = get<String>(qualifier = ScopeQualifier.Application)
 

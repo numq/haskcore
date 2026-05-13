@@ -1,7 +1,7 @@
 package io.github.numq.haskcore.service.session
 
 import arrow.core.raise.either
-import io.github.numq.haskcore.core.timestamp.Timestamp
+import io.github.numq.haskcore.common.core.timestamp.Timestamp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.SharingStarted
@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
 internal class LocalSessionService(
-    private val scope: CoroutineScope, private val sessionDataSource: SessionDataSource
+    private val scope: CoroutineScope, private val sessionDataSource: SessionDataSource,
 ) : SessionService {
     private companion object {
         const val HISTORY_LIMIT = 30

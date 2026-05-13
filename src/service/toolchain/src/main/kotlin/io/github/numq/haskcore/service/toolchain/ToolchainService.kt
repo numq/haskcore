@@ -7,6 +7,6 @@ interface ToolchainService : AutoCloseable {
     val toolchain: StateFlow<Toolchain>
 
     suspend fun updatePaths(
-        ghcPath: String?, cabalPath: String?, stackPath: String?, hlsPath: String?
+        ghcPath: String?, cabalPath: String?, stackPath: String?, hlsPath: String?,
     ): Either<Throwable, Unit>
 }

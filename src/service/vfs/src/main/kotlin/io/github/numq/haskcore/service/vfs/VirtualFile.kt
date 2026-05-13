@@ -1,6 +1,6 @@
 package io.github.numq.haskcore.service.vfs
 
-import io.github.numq.haskcore.core.timestamp.Timestamp
+import io.github.numq.haskcore.common.core.timestamp.Timestamp
 
 data class VirtualFile(
     val path: String,
@@ -10,5 +10,5 @@ data class VirtualFile(
     val isDirectory: Boolean,
     val isMetadata: Boolean,
     val size: Long,
-    val lastModifiedTimestamp: Timestamp
+    val lastModifiedTimestamp: Timestamp,
 )

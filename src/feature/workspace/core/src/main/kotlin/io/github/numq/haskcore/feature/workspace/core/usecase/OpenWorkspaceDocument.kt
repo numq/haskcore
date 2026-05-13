@@ -1,8 +1,8 @@
 package io.github.numq.haskcore.feature.workspace.core.usecase
 
 import arrow.core.raise.Raise
-import io.github.numq.haskcore.core.usecase.UseCase
 import io.github.numq.haskcore.service.project.ProjectService
+import io.github.numq.haskcore.common.core.usecase.UseCase
 
 class OpenWorkspaceDocument(private val projectService: ProjectService) : UseCase<OpenWorkspaceDocument.Input, Unit> {
     data class Input(val path: String)

@@ -1,7 +1,7 @@
 package io.github.numq.haskcore.feature.status.core.usecase
 
 import arrow.core.raise.Raise
-import io.github.numq.haskcore.api.toolchain.ToolchainService
+import io.github.numq.haskcore.service.toolchain.ToolchainService
 import io.github.numq.haskcore.common.core.usecase.UseCase
 
 class UpdatePaths(private val toolchainService: ToolchainService) : UseCase<UpdatePaths.Input, Unit> {

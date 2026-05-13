@@ -1,8 +1,8 @@
 package io.github.numq.haskcore.service.text.rope
 
-import io.github.numq.haskcore.core.text.TextLineEnding
-import io.github.numq.haskcore.core.text.TextPosition
-import io.github.numq.haskcore.core.text.TextRange
+import io.github.numq.haskcore.common.core.text.TextLineEnding
+import io.github.numq.haskcore.common.core.text.TextPosition
+import io.github.numq.haskcore.common.core.text.TextRange
 import kotlin.math.max
 
 internal object RopeNavigator {

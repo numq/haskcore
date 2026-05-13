@@ -26,7 +26,7 @@ sealed interface RuntimeRequest {
         override val name: String,
         override val arguments: List<String>,
         override val workingDir: String?,
-        override val env: Map<String, String> = emptyMap()
+        override val env: Map<String, String> = emptyMap(),
     ) : RuntimeRequest {
         override val command = STACK_COMMAND
     }
@@ -36,7 +36,7 @@ sealed interface RuntimeRequest {
         override val name: String,
         override val arguments: List<String>,
         override val workingDir: String?,
-        override val env: Map<String, String> = emptyMap()
+        override val env: Map<String, String> = emptyMap(),
     ) : RuntimeRequest {
         override val command = CABAL_COMMAND
     }
@@ -46,7 +46,7 @@ sealed interface RuntimeRequest {
         override val name: String,
         override val arguments: List<String>,
         override val workingDir: String?,
-        override val env: Map<String, String> = emptyMap()
+        override val env: Map<String, String> = emptyMap(),
     ) : RuntimeRequest {
         override val command = GHC_COMMAND
     }
@@ -57,6 +57,6 @@ sealed interface RuntimeRequest {
         override val command: String,
         override val arguments: List<String>,
         override val workingDir: String?,
-        override val env: Map<String, String> = emptyMap()
+        override val env: Map<String, String> = emptyMap(),
     ) : RuntimeRequest
 }

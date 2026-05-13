@@ -1,6 +1,6 @@
 package io.github.numq.haskcore.feature.editor.core.syntax
 
-import io.github.numq.haskcore.core.text.TextRange
+import io.github.numq.haskcore.common.core.text.TextRange
 
 sealed interface Occurrence {
     val range: TextRange

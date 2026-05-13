@@ -1,7 +1,7 @@
 package io.github.numq.haskcore.service.logger
 
 import arrow.core.Either
-import io.github.numq.haskcore.core.log.Log
+import io.github.numq.haskcore.common.core.log.Log
 import kotlinx.coroutines.flow.StateFlow
 
 interface LoggerService : AutoCloseable {

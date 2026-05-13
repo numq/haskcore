@@ -2,15 +2,15 @@ package io.github.numq.haskcore.feature.editor.core.usecase
 
 import arrow.core.getOrElse
 import arrow.core.right
-import io.github.numq.haskcore.core.text.*
-import io.github.numq.haskcore.feature.editor.core.EditorService
-import io.github.numq.haskcore.feature.editor.core.caret.Caret
-import io.github.numq.haskcore.feature.editor.core.selection.Selection
 import io.github.numq.haskcore.service.clipboard.ClipboardService
 import io.github.numq.haskcore.service.document.DocumentService
 import io.github.numq.haskcore.service.journal.JournalService
 import io.github.numq.haskcore.service.keymap.KeymapService
 import io.github.numq.haskcore.service.text.TextService
+import io.github.numq.haskcore.common.core.text.*
+import io.github.numq.haskcore.feature.editor.core.EditorService
+import io.github.numq.haskcore.feature.editor.core.caret.Caret
+import io.github.numq.haskcore.feature.editor.core.selection.Selection
 import io.mockk.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest

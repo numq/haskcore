@@ -3,16 +3,19 @@ package io.github.numq.haskcore.service.vfs
 import arrow.core.Either
 import arrow.core.flatMap
 import arrow.core.raise.either
-import io.github.numq.haskcore.core.timestamp.Timestamp
-import kotlinx.coroutines.*
+import io.github.numq.haskcore.common.core.timestamp.Timestamp
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
 import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
 
-@OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
+@OptIn(FlowPreview::class)
 internal class CachedVfsService(
-    private val scope: CoroutineScope, private val vfsDataSource: VfsDataSource
+    private val scope: CoroutineScope, private val vfsDataSource: VfsDataSource,
 ) : VfsService {
     private companion object {
         const val BUFFER_CAPACITY = 64

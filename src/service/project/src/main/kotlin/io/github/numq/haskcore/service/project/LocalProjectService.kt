@@ -3,7 +3,7 @@ package io.github.numq.haskcore.service.project
 import kotlinx.coroutines.flow.map
 
 internal class LocalProjectService(
-    private val path: String, private val projectDataSource: ProjectDataSource
+    private val path: String, private val projectDataSource: ProjectDataSource,
 ) : ProjectService {
     override val project = projectDataSource.projectData.map { projectData ->
         projectData.toProject(path = path)

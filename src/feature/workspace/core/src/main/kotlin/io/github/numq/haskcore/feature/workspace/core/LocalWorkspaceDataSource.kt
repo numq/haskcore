@@ -7,7 +7,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 
 internal class LocalWorkspaceDataSource(
-    private val scope: CoroutineScope, private val dataStore: DataStore<WorkspaceData>
+    private val scope: CoroutineScope, private val dataStore: DataStore<WorkspaceData>,
 ) : WorkspaceDataSource {
     override val workspaceData = dataStore.data
 

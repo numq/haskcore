@@ -18,19 +18,6 @@ internal class LocalDocumentServiceTest {
     lateinit var tempDir: Path
 
     @Test
-    fun `getName should return document name`() = runTest(UnconfinedTestDispatcher()) {
-        val fileName = "test.hs"
-        val file = File(tempDir.toFile(), fileName)
-
-        val result = service.getName(file.path)
-
-        assertTrue(result.isRight())
-        result.onRight { name ->
-            assertEquals(fileName, name)
-        }
-    }
-
-    @Test
     fun `readDocument should return document content`() = runTest(UnconfinedTestDispatcher()) {
         val fileName = "test.hs"
         val content = "main = putStrLn \"Hello\""

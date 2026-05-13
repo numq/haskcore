@@ -1,15 +1,13 @@
 package io.github.numq.haskcore.feature.workspace.presentation.feature
 
-import io.github.numq.haskcore.core.feature.Feature
-import io.github.numq.haskcore.feature.workspace.core.Workspace
+import io.github.numq.haskcore.common.presentation.feature.Feature
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 
 internal class WorkspaceFeature(
-    workspace: Workspace,
     scope: CoroutineScope = CoroutineScope(Dispatchers.Default + SupervisorJob()),
-    reducer: WorkspaceReducer
+    reducer: WorkspaceReducer,
 ) : Feature<WorkspaceState, WorkspaceCommand, WorkspaceEvent> by Feature(
-    initialState = WorkspaceState(workspace = workspace), scope = scope, reducer = reducer, WorkspaceCommand.Initialize
+    initialState = WorkspaceState.Loading, scope = scope, reducer = reducer, WorkspaceCommand.Initialize
 )

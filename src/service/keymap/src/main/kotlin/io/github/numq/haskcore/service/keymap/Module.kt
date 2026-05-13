@@ -1,12 +1,12 @@
 package io.github.numq.haskcore.service.keymap
 
-import io.github.numq.haskcore.core.di.ScopeQualifierType
-import io.github.numq.haskcore.core.di.scopedOwner
+import io.github.numq.haskcore.common.core.di.ScopeQualifier
+import io.github.numq.haskcore.common.core.di.scopedOwner
 import org.koin.dsl.bind
 import org.koin.dsl.module
 
-val keymapModule = module {
-    scope<ScopeQualifierType.Application> {
+val keymapServiceModule = module {
+    scope<ScopeQualifier.Type.Application> {
         scopedOwner {
             DefaultKeymapService(keymapData = mapOf(KeymapContext.EDITOR to Keymap.editor))
         } bind KeymapService::class

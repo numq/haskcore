@@ -3,10 +3,10 @@ package io.github.numq.haskcore.service.keymap
 import arrow.core.Either
 
 internal class DefaultKeymapService(
-    private val keymapData: Map<KeymapContext, Map<KeyStroke, String>>
+    private val keymapData: Map<KeymapContext, Map<KeyStroke, String>>,
 ) : KeymapService {
     override fun getActionId(
-        keyStroke: KeyStroke, context: KeymapContext
+        keyStroke: KeyStroke, context: KeymapContext,
     ) = Either.catch {
         val localAction = keymapData[context]?.get(keyStroke)
 

@@ -1,9 +1,9 @@
 package io.github.numq.haskcore.feature.editor.core
 
 import arrow.core.right
-import io.github.numq.haskcore.core.text.TextEdit
-import io.github.numq.haskcore.core.text.TextPosition
-import io.github.numq.haskcore.core.text.TextSnapshot
+import io.github.numq.haskcore.common.core.text.TextEdit
+import io.github.numq.haskcore.common.core.text.TextPosition
+import io.github.numq.haskcore.common.core.text.TextSnapshot
 import io.github.numq.haskcore.feature.editor.core.caret.Caret
 import io.github.numq.haskcore.feature.editor.core.caret.CaretManager
 import io.github.numq.haskcore.feature.editor.core.selection.Selection

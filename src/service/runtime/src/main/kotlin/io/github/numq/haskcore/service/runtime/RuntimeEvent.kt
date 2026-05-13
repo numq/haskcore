@@ -1,6 +1,6 @@
 package io.github.numq.haskcore.service.runtime
 
-import io.github.numq.haskcore.core.timestamp.Timestamp
+import io.github.numq.haskcore.common.core.timestamp.Timestamp
 import kotlin.time.Duration
 
 sealed interface RuntimeEvent {
@@ -13,6 +13,6 @@ sealed interface RuntimeEvent {
     data class Stderr(override val request: RuntimeRequest, val text: String, val timestamp: Timestamp) : RuntimeEvent
 
     data class Terminated(
-        override val request: RuntimeRequest, val exitCode: Int, val duration: Duration
+        override val request: RuntimeRequest, val exitCode: Int, val duration: Duration,
     ) : RuntimeEvent
 }

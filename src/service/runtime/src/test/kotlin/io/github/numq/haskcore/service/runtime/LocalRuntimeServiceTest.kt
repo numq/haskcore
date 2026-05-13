@@ -24,10 +24,10 @@ internal class LocalRuntimeServiceTest {
 
     @Test
     fun `should receive process output`() = runTest {
-        val service = LocalRuntimeService(this)
+        val api = LocalRuntimeService(this)
         val request = RuntimeRequest.Cabal("id", "name", listOf("--version"))
 
-        val flow = service.execute(request).getOrElse { throw it }
+        val flow = api.execute(request).getOrElse { throw it }
 
         val events = flow.toList()
 

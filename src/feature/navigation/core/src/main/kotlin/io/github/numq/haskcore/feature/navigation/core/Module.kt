@@ -8,8 +8,8 @@ import org.koin.dsl.module
 
 val navigationFeatureCoreModule = module {
     scope<ScopeQualifier.Type.Application> {
-        scopedOwner { GetDestinations(sessionApi = get()) }
+        scopedOwner { GetDestinations(sessionService = get()) }
 
-        scopedOwner { OpenProject(sessionApi = get()) }
+        scopedOwner { OpenProject(sessionService = get()) }
     }
 }

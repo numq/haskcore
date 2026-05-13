@@ -7,7 +7,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 
 internal class LocalLoggerDataSource(
-    private val scope: CoroutineScope, private val dataStore: DataStore<List<LoggerData>>
+    private val scope: CoroutineScope, private val dataStore: DataStore<List<LoggerData>>,
 ) : LoggerDataSource {
     override val loggerData = dataStore.data
 

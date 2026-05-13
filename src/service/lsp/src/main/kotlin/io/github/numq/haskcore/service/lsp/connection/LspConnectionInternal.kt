@@ -19,7 +19,7 @@ internal sealed interface LspConnectionInternal : AutoCloseable {
     }
 
     data class Connected(
-        val process: Process, val future: Future<Void>, val server: LanguageServer, val tokenLegend: LspTokenLegend
+        val process: Process, val future: Future<Void>, val server: LanguageServer, val tokenLegend: LspTokenLegend,
     ) : LspConnectionInternal {
         private companion object {
             const val SERVER_SHUTDOWN_TIMEOUT_MILLIS = 500L

@@ -9,7 +9,7 @@ dependencies {
     implementation(libs.koin.core)
     implementation(libs.tree.sitter)
     implementation(libs.tree.sitter.haskell)
-    implementation(projects.core)
+    implementation(projects.common.core)
     testImplementation(libs.junit)
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlinx.coroutines.test)

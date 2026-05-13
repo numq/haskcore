@@ -1,6 +1,8 @@
 package io.github.numq.haskcore.service.logger
 
 import androidx.datastore.core.Serializer
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.encodeToByteArray
@@ -13,7 +15,9 @@ internal object LoggerDataSerializer : Serializer<List<LoggerData>> {
     override val defaultValue = emptyList<LoggerData>()
 
     override suspend fun readFrom(input: InputStream): List<LoggerData> {
-        val bytes = input.readAllBytes()
+        val bytes = withContext(Dispatchers.IO) {
+            input.readAllBytes()
+        }
 
         return when {
             bytes.isEmpty() -> defaultValue
@@ -22,6 +26,7 @@ internal object LoggerDataSerializer : Serializer<List<LoggerData>> {
         }
     }
 
-    override suspend fun writeTo(t: List<LoggerData>, output: OutputStream) =
+    override suspend fun writeTo(t: List<LoggerData>, output: OutputStream) = withContext(Dispatchers.IO) {
         output.write(ProtoBuf.encodeToByteArray(t))
+    }
 }

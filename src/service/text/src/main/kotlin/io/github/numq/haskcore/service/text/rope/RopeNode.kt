@@ -36,7 +36,7 @@ internal sealed interface RopeNode {
         override val prefixLineLength: Int,
         override val suffixLineLength: Int,
         override val maxLineLength: Int,
-        override val color: Color = Color.BLACK
+        override val color: Color = Color.BLACK,
     ) : RopeNode {
         override val charCount: Int get() = content.length
 
@@ -52,7 +52,7 @@ internal sealed interface RopeNode {
     }
 
     data class Branch(
-        override val left: RopeNode, override val right: RopeNode, override val color: Color = Color.BLACK
+        override val left: RopeNode, override val right: RopeNode, override val color: Color = Color.BLACK,
     ) : RopeNode {
         override val charCount = left.charCount + right.charCount
 

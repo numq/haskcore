@@ -1,79 +1,129 @@
 package io.github.numq.haskcore.service.vfs
 
-import arrow.core.Either
-import io.github.numq.haskcore.core.timestamp.Timestamp
+import app.cash.turbine.test
+import arrow.core.right
+import io.github.numq.haskcore.common.core.timestamp.Timestamp
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Test
+import kotlin.test.*
 
 @OptIn(ExperimentalCoroutinesApi::class)
-internal class CachedVfsServiceTest {
+class CachedVfsServiceTest {
+    private val testScope = TestScope()
     private val vfsDataSource = mockk<VfsDataSource>()
-    private val testPath = "/test/dir"
+    private lateinit var service: CachedVfsService
 
-    @Test
-    fun `observeDirectory should populate cache on first call`() = runTest(UnconfinedTestDispatcher()) {
-        val service = CachedVfsService(backgroundScope, vfsDataSource)
-        val initialFiles = listOf(
-            VirtualFile(
-                path = "$testPath/file.hs",
-                name = "file.hs",
-                extension = "hs",
-                isDirectory = false,
-                isMetadata = false,
-                size = 100,
-                lastModified = Timestamp(0)
-            )
-        )
-
-        coEvery { vfsDataSource.list(testPath) } returns Either.Right(initialFiles)
-        coEvery { vfsDataSource.watch(testPath) } returns Either.Right(MutableSharedFlow())
-
-        val flow = service.observeFiles(testPath).getOrNull()!!
-
-        runCurrent()
-
-        val result = flow.first()
-
-        assertEquals(initialFiles, result)
-        coVerify(exactly = 1) { vfsDataSource.list(testPath) }
+    @BeforeTest
+    fun setup() {
+        coEvery { vfsDataSource.getSnapshotData() } returns null.right()
+        coEvery { vfsDataSource.updateSnapshotData(any()) } returns null.right()
+        service = CachedVfsService(testScope, vfsDataSource)
     }
 
     @Test
-    fun `cache should update on Deleted event`() = runTest(UnconfinedTestDispatcher()) {
-        val service = CachedVfsService(backgroundScope, vfsDataSource)
-        val file = VirtualFile(
-            path = "$testPath/to_delete.hs",
-            name = "to_delete.hs",
-            extension = "hs",
-            isDirectory = false,
-            isMetadata = false,
-            size = 10,
-            lastModified = Timestamp(0)
+    fun `observeFiles emits data after cache is populated`() = runTest {
+        val path = "/test"
+        val timestamp = Timestamp.now()
+        val files = listOf(
+            VirtualFile(
+                path = "$path/f1.hs",
+                name = "f1.hs",
+                nameWithoutExtension = "f1",
+                extension = "hs",
+                isDirectory = false,
+                isMetadata = false,
+                size = 10,
+                lastModifiedTimestamp = timestamp
+            )
         )
-        val events = MutableSharedFlow<VfsEvent>(replay = 1)
+        val eventFlow = MutableSharedFlow<VfsEvent>()
 
-        coEvery { vfsDataSource.list(testPath) } returns Either.Right(listOf(file))
-        coEvery { vfsDataSource.watch(testPath) } returns Either.Right(events)
+        coEvery { vfsDataSource.list(path) } returns files.right()
+        coEvery { vfsDataSource.watch(path) } returns eventFlow.right()
 
-        val flow = service.observeFiles(testPath).getOrNull()!!
+        service.observeFiles(path).onRight { flow ->
+            flow.test {
+                runCurrent()
 
-        val initial = flow.first()
-        assertEquals(1, initial.size)
+                val item = awaitItem()
+                assertEquals(1, item.size)
+                assertEquals("f1.hs", item.first().name)
+            }
+        }
+    }
 
-        events.emit(VfsEvent.Deleted("$testPath/to_delete.hs"))
+    @Test
+    fun `observeVisibleFiles filters metadata correctly`() = runTest {
+        val path = "/test"
+        val timestamp = Timestamp.now()
+        val files = listOf(
+            VirtualFile(
+                path = "$path/main.hs",
+                name = "main.hs",
+                nameWithoutExtension = "main",
+                extension = "hs",
+                isDirectory = false,
+                isMetadata = false,
+                size = 1,
+                lastModifiedTimestamp = timestamp
+            ), VirtualFile(
+                path = "$path/.config",
+                name = ".config",
+                nameWithoutExtension = "",
+                extension = null,
+                isDirectory = true,
+                isMetadata = true,
+                size = 0,
+                lastModifiedTimestamp = timestamp
+            )
+        )
 
-        val updated = flow.filter { it.isEmpty() }.first()
+        coEvery { vfsDataSource.list(path) } returns files.right()
+        coEvery { vfsDataSource.watch(path) } returns flowOf<VfsEvent>().right()
 
-        assertEquals(0, updated.size)
+        service.observeVisibleFiles(path).onRight { flow ->
+            flow.test {
+                runCurrent()
+
+                val items = awaitItem()
+                assertEquals(1, items.size)
+                assertFalse(items.any { it.isMetadata })
+            }
+        }
+    }
+
+    @Test
+    fun `delete updates cache actions`() = runTest {
+        val path = "/test/file.hs"
+        coEvery { vfsDataSource.delete(path) } returns Unit.right()
+
+        val result = service.delete(path)
+
+        assertTrue(result.isRight())
+        coVerify { vfsDataSource.delete(path) }
+    }
+
+    @Test
+    fun `backgroundSync triggers recursive listing`() = runTest {
+        val root = "/project"
+        val timestamp = Timestamp.now()
+        val snapshotData = mockk<SnapshotData>()
+
+        coEvery { snapshotData.toSnapshot() } returns Snapshot(root, timestamp, emptyMap())
+        coEvery { vfsDataSource.getSnapshotData() } returns snapshotData.right()
+        coEvery { vfsDataSource.listRecursive(root) } returns emptyList<VirtualFile>().right()
+
+        CachedVfsService(testScope, vfsDataSource)
+
+        testScope.runCurrent()
+
+        coVerify(timeout = 2000) { vfsDataSource.listRecursive(root) }
     }
 }

@@ -11,7 +11,7 @@ sealed interface Toolchain {
         val ghc: Either<Throwable, Tool.Ghc>,
         val cabal: Either<Throwable, Tool.Cabal>,
         val stack: Either<Throwable, Tool.Stack>,
-        val hls: Either<Throwable, Tool.Hls>
+        val hls: Either<Throwable, Tool.Hls>,
     ) : Toolchain
 
     data class Error(val throwable: Throwable) : Toolchain

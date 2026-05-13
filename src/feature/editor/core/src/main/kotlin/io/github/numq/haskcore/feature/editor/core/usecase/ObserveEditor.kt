@@ -6,21 +6,8 @@ import arrow.core.raise.Raise
 import arrow.core.raise.either
 import com.github.difflib.DiffUtils
 import com.github.difflib.patch.DeltaType
-import io.github.numq.haskcore.core.text.*
-import io.github.numq.haskcore.core.timestamp.Timestamp
-import io.github.numq.haskcore.core.usecase.UseCase
-import io.github.numq.haskcore.feature.editor.core.Editor
-import io.github.numq.haskcore.feature.editor.core.EditorService
-import io.github.numq.haskcore.feature.editor.core.analysis.Analysis
-import io.github.numq.haskcore.feature.editor.core.analysis.CodeIssue
-import io.github.numq.haskcore.feature.editor.core.analysis.CodeSuggestion
-import io.github.numq.haskcore.feature.editor.core.guideline.Guideline
-import io.github.numq.haskcore.feature.editor.core.syntax.FoldingRegion
-import io.github.numq.haskcore.feature.editor.core.syntax.Occurrence
-import io.github.numq.haskcore.feature.editor.core.syntax.Syntax
-import io.github.numq.haskcore.feature.editor.core.syntax.Token
-import io.github.numq.haskcore.service.document.Document
 import io.github.numq.haskcore.service.document.DocumentService
+import io.github.numq.haskcore.service.document.Document
 import io.github.numq.haskcore.service.journal.JournalService
 import io.github.numq.haskcore.service.logger.LoggerService
 import io.github.numq.haskcore.service.lsp.LspService
@@ -34,6 +21,19 @@ import io.github.numq.haskcore.service.text.TextService
 import io.github.numq.haskcore.service.toolchain.Toolchain
 import io.github.numq.haskcore.service.toolchain.ToolchainService
 import io.github.numq.haskcore.service.vfs.VfsService
+import io.github.numq.haskcore.common.core.text.*
+import io.github.numq.haskcore.common.core.timestamp.Timestamp
+import io.github.numq.haskcore.common.core.usecase.UseCase
+import io.github.numq.haskcore.feature.editor.core.Editor
+import io.github.numq.haskcore.feature.editor.core.EditorService
+import io.github.numq.haskcore.feature.editor.core.analysis.Analysis
+import io.github.numq.haskcore.feature.editor.core.analysis.CodeIssue
+import io.github.numq.haskcore.feature.editor.core.analysis.CodeSuggestion
+import io.github.numq.haskcore.feature.editor.core.guideline.Guideline
+import io.github.numq.haskcore.feature.editor.core.syntax.FoldingRegion
+import io.github.numq.haskcore.feature.editor.core.syntax.Occurrence
+import io.github.numq.haskcore.feature.editor.core.syntax.Syntax
+import io.github.numq.haskcore.feature.editor.core.syntax.Token
 import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -149,20 +149,20 @@ class ObserveEditor(
                             val position = caret.position
 
                             if (edit?.revision == revision) {
-                                lspService.applyEdit(
+                                this@ObserveEditor.lspService.applyEdit(
                                     path = documentPath, revision = revision, edit = edit
                                 ).getOrElse { throwable ->
                                     println(throwable) // todo
                                 }
                             }
 
-                            lspService.requestCompletions(
+                            this@ObserveEditor.lspService.requestCompletions(
                                 path = documentPath, position = position
                             ).getOrElse { throwable ->
                                 println(throwable) // todo
                             }
 
-                            lspService.requestReferences(
+                            this@ObserveEditor.lspService.requestReferences(
                                 path = documentPath, position = position
                             ).getOrElse { throwable ->
                                 println(throwable) // todo
@@ -198,7 +198,7 @@ class ObserveEditor(
     private suspend fun observeAutoSave() {
         textService.snapshot.filterNotNull().drop(1).sample(AUTO_SAVE_SAMPLE_MILLIS).collect { snapshot ->
             documentService.saveDocument(path = documentPath, content = snapshot.text).flatMap {
-                documentService.getLastModifiedTimestamp(path = documentPath)
+                editorService.getLastModifiedTimestamp(path = documentPath)
             }.onRight { lastModifiedTimestamp ->
                 lastWrite.value = lastModifiedTimestamp
             }.getOrElse(::println) // todo
@@ -215,7 +215,7 @@ class ObserveEditor(
     }
 
     private suspend fun observeFileSystemChanges() {
-        documentService.getParentPath(path = documentPath).flatMap { parentPath ->
+        editorService.getParentPath(path = documentPath).flatMap { parentPath ->
             vfsService.observeVisibleFiles(path = parentPath)
         }.map { virtualFiles ->
             virtualFiles.mapNotNull { virtualFiles ->
@@ -223,13 +223,13 @@ class ObserveEditor(
                     virtualFile.path == documentPath
                 }
             }.conflate().filter { virtualFile ->
-                virtualFile.lastModified > lastWrite.value
+                virtualFile.lastModifiedTimestamp > lastWrite.value
             }.mapNotNull { virtualFile ->
                 when (val snapshot = textService.snapshot.value) {
                     null -> Unit
 
                     else -> reloadFromDisk(path = documentPath, snapshot = snapshot).onRight {
-                        lastWrite.value = virtualFile.lastModified
+                        lastWrite.value = virtualFile.lastModifiedTimestamp
                     }.getOrElse(::println) // todo
                 }
             }
@@ -262,7 +262,7 @@ class ObserveEditor(
 
                     else -> {
                         if (fullParseNeeded) {
-                            syntaxService.fullParse(snapshot = snapshot).getOrElse(::println) // todo
+                            this@ObserveEditor.syntaxService.fullParse(snapshot = snapshot).getOrElse(::println) // todo
 
                             fullParseNeeded = false
                         }

@@ -1,14 +1,12 @@
 package io.github.numq.haskcore.service.keymap
 
 import arrow.core.getOrElse
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.awt.event.KeyEvent
 
-@OptIn(ExperimentalCoroutinesApi::class)
 internal class DefaultKeymapServiceTest {
     private val testAction = "test.action"
     private val globalAction = "global.action"

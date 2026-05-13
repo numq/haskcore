@@ -1,7 +1,7 @@
 package io.github.numq.haskcore.feature.workspace.core.usecase
 
 import arrow.core.raise.Raise
-import io.github.numq.haskcore.core.usecase.UseCase
+import io.github.numq.haskcore.common.core.usecase.UseCase
 import io.github.numq.haskcore.feature.workspace.core.WorkspaceService
 
 class SaveDimensions(private val workspaceService: WorkspaceService) : UseCase<SaveDimensions.Input, Unit> {

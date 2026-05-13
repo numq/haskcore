@@ -1,9 +1,10 @@
 package io.github.numq.haskcore.feature.editor.core
 
 import arrow.core.Either
-import io.github.numq.haskcore.core.text.TextEdit
-import io.github.numq.haskcore.core.text.TextPosition
-import io.github.numq.haskcore.core.text.TextSnapshot
+import io.github.numq.haskcore.common.core.text.TextEdit
+import io.github.numq.haskcore.common.core.text.TextPosition
+import io.github.numq.haskcore.common.core.text.TextSnapshot
+import io.github.numq.haskcore.common.core.timestamp.Timestamp
 import io.github.numq.haskcore.feature.editor.core.caret.Caret
 import io.github.numq.haskcore.feature.editor.core.selection.Selection
 import kotlinx.coroutines.flow.StateFlow
@@ -14,6 +15,12 @@ interface EditorService : AutoCloseable {
     val selection: StateFlow<Selection>
 
     val activeLines: StateFlow<IntRange>
+
+    suspend fun getParentPath(path: String): Either<Throwable, String>
+
+    suspend fun getName(path: String): Either<Throwable, String>
+
+    suspend fun getLastModifiedTimestamp(path: String): Either<Throwable, Timestamp>
 
     suspend fun updateActiveLines(start: Int, end: Int): Either<Throwable, Unit>
 

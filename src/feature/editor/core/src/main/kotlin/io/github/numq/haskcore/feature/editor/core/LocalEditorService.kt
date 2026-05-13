@@ -3,22 +3,27 @@ package io.github.numq.haskcore.feature.editor.core
 import arrow.core.Either
 import arrow.core.raise.either
 import arrow.core.right
-import io.github.numq.haskcore.core.text.TextEdit
-import io.github.numq.haskcore.core.text.TextPosition
-import io.github.numq.haskcore.core.text.TextSnapshot
+import io.github.numq.haskcore.common.core.text.TextEdit
+import io.github.numq.haskcore.common.core.text.TextPosition
+import io.github.numq.haskcore.common.core.text.TextSnapshot
+import io.github.numq.haskcore.common.core.timestamp.Timestamp
 import io.github.numq.haskcore.feature.editor.core.caret.CaretManager
 import io.github.numq.haskcore.feature.editor.core.selection.SelectionManager
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.withContext
+import java.nio.file.Path
+import java.util.concurrent.TimeUnit
+import kotlin.io.path.getLastModifiedTime
+import kotlin.io.path.name
 
-@OptIn(FlowPreview::class)
 internal class LocalEditorService(
     private val scope: CoroutineScope,
     private val caretManager: CaretManager,
-    private val selectionManager: SelectionManager
+    private val selectionManager: SelectionManager,
 ) : EditorService {
     override val caret = caretManager.caret
 
@@ -27,6 +32,24 @@ internal class LocalEditorService(
     private val _activeLines = MutableStateFlow(IntRange.EMPTY)
 
     override val activeLines = _activeLines.asStateFlow()
+
+    override suspend fun getParentPath(path: String) = Either.catch {
+        withContext(Dispatchers.IO) {
+            Path.of(path).parent.toString()
+        }
+    }
+
+    override suspend fun getName(path: String) = Either.catch {
+        withContext(Dispatchers.IO) {
+            Path.of(path).name
+        }
+    }
+
+    override suspend fun getLastModifiedTimestamp(path: String) = Either.catch {
+        withContext(Dispatchers.IO) {
+            Timestamp(nanoseconds = Path.of(path).getLastModifiedTime().to(TimeUnit.NANOSECONDS))
+        }
+    }
 
     override suspend fun updateActiveLines(start: Int, end: Int): Either<Throwable, Unit> {
         _activeLines.value = start..end

@@ -1,6 +1,6 @@
 package io.github.numq.haskcore.service.lsp.diagnostic
 
-import io.github.numq.haskcore.core.text.TextRange
+import io.github.numq.haskcore.common.core.text.TextRange
 
 sealed interface LspDiagnostic {
     val path: String
@@ -18,7 +18,7 @@ sealed interface LspDiagnostic {
         override val range: TextRange,
         override val code: String?,
         override val source: String?,
-        override val message: String
+        override val message: String,
     ) : LspDiagnostic
 
     data class Error(
@@ -26,7 +26,7 @@ sealed interface LspDiagnostic {
         override val range: TextRange,
         override val code: String?,
         override val source: String?,
-        override val message: String
+        override val message: String,
     ) : LspDiagnostic
 
     data class Warning(
@@ -34,7 +34,7 @@ sealed interface LspDiagnostic {
         override val range: TextRange,
         override val code: String?,
         override val source: String?,
-        override val message: String
+        override val message: String,
     ) : LspDiagnostic
 
     data class Information(
@@ -42,7 +42,7 @@ sealed interface LspDiagnostic {
         override val range: TextRange,
         override val code: String?,
         override val source: String?,
-        override val message: String
+        override val message: String,
     ) : LspDiagnostic
 
     data class Hint(
@@ -50,6 +50,6 @@ sealed interface LspDiagnostic {
         override val range: TextRange,
         override val code: String?,
         override val source: String?,
-        override val message: String
+        override val message: String,
     ) : LspDiagnostic
 }

@@ -31,7 +31,7 @@ fun WorkspaceTabs(
     documents: List<WorkspaceDocument>,
     activeDocumentPath: String?,
     selectDocument: (WorkspaceDocument) -> Unit,
-    closeDocument: (WorkspaceDocument) -> Unit
+    closeDocument: (WorkspaceDocument) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
 

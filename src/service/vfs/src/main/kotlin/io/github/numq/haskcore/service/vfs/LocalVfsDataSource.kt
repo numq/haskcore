@@ -2,7 +2,7 @@ package io.github.numq.haskcore.service.vfs
 
 import androidx.datastore.core.DataStore
 import arrow.core.Either
-import io.github.numq.haskcore.core.timestamp.Timestamp
+import io.github.numq.haskcore.common.core.timestamp.Timestamp
 import io.methvin.watcher.DirectoryChangeEvent
 import io.methvin.watcher.DirectoryWatcher
 import kotlinx.coroutines.CoroutineScope
@@ -25,7 +25,7 @@ import kotlin.io.path.*
 import kotlin.streams.asSequence
 
 internal class LocalVfsDataSource(
-    private val scope: CoroutineScope, private val dataStore: DataStore<SnapshotData?>
+    private val scope: CoroutineScope, private val dataStore: DataStore<SnapshotData?>,
 ) : VfsDataSource {
     private fun createVirtualFile(path: String): VirtualFile? {
         val nioPath = Path.of(path)

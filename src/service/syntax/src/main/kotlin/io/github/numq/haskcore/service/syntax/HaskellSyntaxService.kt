@@ -3,29 +3,31 @@ package io.github.numq.haskcore.service.syntax
 import arrow.core.Either
 import arrow.core.getOrElse
 import arrow.core.raise.either
-import io.github.numq.haskcore.core.text.TextEdit
-import io.github.numq.haskcore.core.text.TextPosition
-import io.github.numq.haskcore.core.text.TextRange
-import io.github.numq.haskcore.core.text.TextSnapshot
+import io.github.numq.haskcore.common.core.text.TextEdit
+import io.github.numq.haskcore.common.core.text.TextPosition
+import io.github.numq.haskcore.common.core.text.TextRange
+import io.github.numq.haskcore.common.core.text.TextSnapshot
 import io.github.numq.haskcore.service.syntax.folding.SyntaxFoldingProvider
 import io.github.numq.haskcore.service.syntax.occurrence.SyntaxOccurrenceProvider
 import io.github.numq.haskcore.service.syntax.query.SyntaxQueryProvider
 import io.github.numq.haskcore.service.syntax.symbol.SymbolIndexer
 import io.github.numq.haskcore.service.syntax.token.SyntaxTokenProvider
 import io.github.numq.haskcore.service.syntax.tree.SyntaxTree
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.withContext
 import org.treesitter.TSInputEdit
 import org.treesitter.TSParser
 
-@OptIn(ExperimentalCoroutinesApi::class)
 internal class HaskellSyntaxService(
     private val scope: CoroutineScope,
     private val foldingProvider: SyntaxFoldingProvider,
     private val occurrenceProvider: SyntaxOccurrenceProvider,
     private val symbolIndexer: SymbolIndexer,
     private val syntaxTokenProvider: SyntaxTokenProvider,
-    private val queryProvider: SyntaxQueryProvider
+    private val queryProvider: SyntaxQueryProvider,
 ) : SyntaxService {
     private val dispatcher = Dispatchers.Default.limitedParallelism(1)
 
@@ -53,14 +55,16 @@ internal class HaskellSyntaxService(
                 }
 
                 SyntaxTree(
-                    revision = revision, tree = newTree, syntax = Syntax(revision = revision, text = snapshot.text)
+                    revision = revision,
+                    tree = newTree,
+                    syntax = Syntax(revision = revision, text = snapshot.text)
                 )
             }?.takeUnless(SyntaxTree::isClosed)?.tree?.close() ?: Unit
         }
     }
 
     override suspend fun applyChange(
-        snapshot: TextSnapshot, data: TextEdit.Data, range: TextRange, position: TextPosition
+        snapshot: TextSnapshot, data: TextEdit.Data, range: TextRange, position: TextPosition,
     ) = Either.catch {
         withContext(dispatcher) {
             val oldTree = _syntaxTree.value?.takeUnless(SyntaxTree::isClosed)?.tree ?: return@withContext
@@ -93,7 +97,9 @@ internal class HaskellSyntaxService(
 
                 _syntaxTree.getAndUpdate { currentSyntaxTree ->
                     currentSyntaxTree?.copy(
-                        revision = revision, tree = newTree, syntax = currentSyntaxTree.syntax.copy(revision = revision)
+                        revision = revision,
+                        tree = newTree,
+                        syntax = currentSyntaxTree.syntax.copy(revision = revision)
                     )
                 }?.takeUnless(SyntaxTree::isClosed)?.tree?.close()
             } catch (throwable: Throwable) {

@@ -14,7 +14,7 @@ import java.awt.datatransfer.Transferable
 import java.awt.datatransfer.Clipboard as SystemClipboard
 
 internal class DefaultClipboardService(
-    scope: CoroutineScope, private val systemClipboard: SystemClipboard
+    scope: CoroutineScope, private val systemClipboard: SystemClipboard,
 ) : ClipboardService, ClipboardOwner {
     private val _clipboard = MutableStateFlow(Clipboard(text = currentText()))
 

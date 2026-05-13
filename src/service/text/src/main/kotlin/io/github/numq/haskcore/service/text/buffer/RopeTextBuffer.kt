@@ -3,11 +3,11 @@ package io.github.numq.haskcore.service.text.buffer
 import arrow.core.Either
 import arrow.core.raise.Raise
 import arrow.core.raise.either
-import io.github.numq.haskcore.core.text.*
 import io.github.numq.haskcore.service.text.rope.Rope
 import io.github.numq.haskcore.service.text.rope.RopeNavigator
 import io.github.numq.haskcore.service.text.rope.RopeNodeLeafFactory
 import io.github.numq.haskcore.service.text.snapshot.ImmutableTextSnapshot
+import io.github.numq.haskcore.common.core.text.*
 import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
@@ -18,7 +18,7 @@ import java.nio.charset.StandardCharsets
 internal class RopeTextBuffer(
     private val initialText: String,
     initialTextLineEnding: TextLineEnding = TextLineEnding.analyze(initialText).dominant,
-    initialCharset: Charset = StandardCharsets.UTF_8
+    initialCharset: Charset = StandardCharsets.UTF_8,
 ) : TextBuffer {
     private companion object {
         const val DATA_CAPACITY = 64
@@ -204,10 +204,7 @@ internal class RopeTextBuffer(
         val revision = TextRevision(value = _revision.incrementAndGet())
 
         val snapshot = ImmutableTextSnapshot(
-            rope = newRope,
-            revision = revision,
-            charset = _charset.value,
-            textLineEnding = _lineEnding.value
+            rope = newRope, revision = revision, charset = _charset.value, textLineEnding = _lineEnding.value
         )
 
         _rope.value = newRope
@@ -285,7 +282,7 @@ internal class RopeTextBuffer(
                 }
 
                 private suspend fun applyToBatch(
-                    action: suspend (Rope) -> Either<Throwable, Pair<Rope, TextEdit.Data.Single>?>
+                    action: suspend (Rope) -> Either<Throwable, Pair<Rope, TextEdit.Data.Single>?>,
                 ): Either<Throwable, TextEdit.Data.Single> = either {
                     when (val result = action(currentRope).bind()) {
                         null -> TextEdit.Data.Single.Insert(

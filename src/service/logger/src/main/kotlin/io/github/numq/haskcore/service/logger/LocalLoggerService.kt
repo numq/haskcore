@@ -1,8 +1,8 @@
 package io.github.numq.haskcore.service.logger
 
 import arrow.core.Either
-import io.github.numq.haskcore.core.log.Log
-import io.github.numq.haskcore.core.timestamp.Timestamp
+import io.github.numq.haskcore.common.core.log.Log
+import io.github.numq.haskcore.common.core.timestamp.Timestamp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
@@ -22,7 +22,7 @@ internal class LocalLoggerService(
     private val internalDateTimeFormatter: DateTimeFormatter,
     private val externalDateTimeFormatter: DateTimeFormatter,
     private val labelDateTimeFormatter: DateTimeFormatter,
-    private val loggerDataSource: LoggerDataSource
+    private val loggerDataSource: LoggerDataSource,
 ) : LoggerService {
     private companion object {
         const val MAX_LOGS = 100
@@ -36,7 +36,7 @@ internal class LocalLoggerService(
 
             val timestampLabel = formatTimestamp(dateTimeFormatter = labelDateTimeFormatter, timestamp = timestamp)
 
-            loggerData.toLog(timestamp = timestamp, timestampLabel = timestampLabel)
+            loggerData.toLogger(timestamp = timestamp, timestampLabel = timestampLabel)
         }
     }.stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = emptyList())
 
@@ -91,7 +91,7 @@ internal class LocalLoggerService(
     }
 
     override suspend fun submit(log: Log) = loggerDataSource.update { loggerData ->
-        loggerData.plus(log.toLogData()).takeLast(MAX_LOGS)
+        loggerData.plus(log.toLoggerData()).takeLast(MAX_LOGS)
     }.map {}
 
     override suspend fun clear() = loggerDataSource.update { loggerData ->

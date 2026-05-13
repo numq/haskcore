@@ -1,8 +1,7 @@
 package io.github.numq.haskcore.feature.editor.core
 
-import io.github.numq.haskcore.core.di.ScopeQualifier
-import io.github.numq.haskcore.core.di.ScopeQualifierType
-import io.github.numq.haskcore.core.di.scopedOwner
+import io.github.numq.haskcore.common.core.di.ScopeQualifier
+import io.github.numq.haskcore.common.core.di.scopedOwner
 import io.github.numq.haskcore.feature.editor.core.caret.CaretManager
 import io.github.numq.haskcore.feature.editor.core.caret.DefaultCaretManager
 import io.github.numq.haskcore.feature.editor.core.selection.DefaultSelectionManager
@@ -14,8 +13,8 @@ import kotlinx.coroutines.SupervisorJob
 import org.koin.dsl.bind
 import org.koin.dsl.module
 
-val editorCoreModule = module {
-    scope<ScopeQualifierType.Document> {
+val editorFeatureCoreModule = module {
+    scope<ScopeQualifier.Type.Document> {
         scopedOwner {
             val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 

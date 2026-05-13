@@ -3,45 +3,58 @@ package io.github.numq.haskcore.feature.editor.presentation.feature.view
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.runtime.*
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.awt.awtEventOrNull
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
-import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.key.utf16CodePoint
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.LayoutDirection
+import io.github.numq.haskcore.common.presentation.font.EditorFont
+import io.github.numq.haskcore.common.presentation.theme.editor.EditorTheme
 import io.github.numq.haskcore.feature.editor.presentation.feature.EditorCommand
 import io.github.numq.haskcore.feature.editor.presentation.feature.EditorState
 import io.github.numq.haskcore.feature.editor.presentation.layer.LayerFactory
 import io.github.numq.haskcore.feature.editor.presentation.measurements.Measurements
+import io.github.numq.haskcore.feature.editor.presentation.menu.ContextMenu
 import io.github.numq.haskcore.feature.editor.presentation.mouse.EditorMouseHandler
 import io.github.numq.haskcore.feature.editor.presentation.scrollbar.ScrollbarContainer
 import io.github.numq.haskcore.feature.editor.presentation.viewport.ViewportCalculator
-import io.github.numq.haskcore.platform.font.EditorFont
-import io.github.numq.haskcore.platform.theme.editor.EditorTheme
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import org.jetbrains.skia.Image
 import org.jetbrains.skia.Rect
 import java.awt.Cursor
+import java.awt.event.KeyEvent
 import kotlin.math.absoluteValue
+import kotlin.time.Duration.Companion.milliseconds
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 internal fun EditorViewReady(
     state: EditorState.Ready,
     font: EditorFont,
     theme: EditorTheme,
     layerFactory: LayerFactory,
-    execute: suspend (EditorCommand) -> Unit
+    execute: suspend (EditorCommand) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
 
@@ -53,11 +66,11 @@ internal fun EditorViewReady(
         mutableStateOf(false)
     }
 
-    val gutterWidth by remember(state.editor.snapshot.lines) {
+    val gutterWidth by remember(state.editor.snapshot.lines, font.lineHeight) {
         derivedStateOf {
             val maxTextWidth = font.measureTextWidth("${state.editor.snapshot.lines + 1}")
 
-            Measurements.GUTTER_PADDING_START + maxTextWidth + Measurements.GUTTER_GAP + Measurements.GUTTER_ACTION_WIDTH + Measurements.GUTTER_PADDING_END
+            Measurements.GUTTER_PADDING_START + maxTextWidth + Measurements.GUTTER_GAP + font.lineHeight + Measurements.GUTTER_PADDING_END
         }
     }
 
@@ -127,7 +140,7 @@ internal fun EditorViewReady(
                 caretVisible = true
 
                 while (isActive) {
-                    delay(530L)
+                    delay(530L.milliseconds)
 
                     caretVisible = !caretVisible
                 }
@@ -185,6 +198,61 @@ internal fun EditorViewReady(
 
             val currentGutterLineLayers by rememberUpdatedState(gutterLineLayers)
 
+            val density = LocalDensity.current
+
+            val playIconPainter = rememberVectorPainter(image = Icons.Rounded.PlayArrow)
+
+            val gutterActionImage = remember(density, theme.gutterColorPalette.runActionColor) {
+                val iconSizeDp = with(density) { (font.lineHeight * .9f).toDp() }
+
+                val iconSize = with(density) { iconSizeDp.toPx() }.toInt()
+
+                val iconColor = Color(theme.gutterColorPalette.runActionColor)
+
+                val bitmap = ImageBitmap(iconSize, iconSize)
+
+                val canvas = Canvas(bitmap)
+
+                val scope = CanvasDrawScope()
+
+                scope.draw(
+                    density = density,
+                    layoutDirection = LayoutDirection.Ltr,
+                    canvas = canvas,
+                    size = Size(iconSize.toFloat(), iconSize.toFloat())
+                ) {
+                    with(playIconPainter) {
+                        draw(
+                            size = Size(iconSize.toFloat(), iconSize.toFloat()),
+                            colorFilter = ColorFilter.tint(iconColor)
+                        )
+                    }
+                }
+
+                bitmap.asSkiaBitmap().use(Image::makeFromBitmap)
+            }
+
+            DisposableEffect(gutterActionImage) {
+                onDispose {
+                    if (!gutterActionImage.isClosed) {
+                        gutterActionImage.close()
+                    }
+                }
+            }
+
+            val gutterActionLayers by remember(currentViewport.viewportLines, gutterActionImage, gutterWidth, theme) {
+                derivedStateOf {
+                    layerFactory.createGutterActionLayers(
+                        viewportLines = currentViewport.viewportLines,
+                        image = gutterActionImage,
+                        gutterWidth = gutterWidth,
+                        theme = theme
+                    )
+                }
+            }
+
+            val currentGutterActionLayers by rememberUpdatedState(gutterActionLayers)
+
             val gutterSeparatorLayer by remember(gutterWidth, currentViewport.height, theme) {
                 derivedStateOf {
                     layerFactory.createGutterSeparatorLayer(
@@ -229,19 +297,6 @@ internal fun EditorViewReady(
 
             val currentContentLayers by rememberUpdatedState(contentLayers)
 
-            val selectionLayer by remember(state.editor.selection, currentContentLayers, state.scrollbar.x, theme) {
-                derivedStateOf {
-                    layerFactory.createSelectionLayer(
-                        selection = state.editor.selection,
-                        contentLayers = currentContentLayers,
-                        scrollX = state.scrollbar.x,
-                        theme = theme
-                    )
-                }
-            }
-
-            val currentSelectionLayer by rememberUpdatedState(selectionLayer)
-
             val occurrenceLayers by remember(
                 state.editor.caret, state.editor.syntax, currentContentLayers, state.scrollbar.x, theme
             ) {
@@ -261,6 +316,34 @@ internal fun EditorViewReady(
             }
 
             val currentOccurrenceLayers by rememberUpdatedState(occurrenceLayers)
+
+            val issueLayers by remember(currentContentLayers, state.editor.analysis, state.scrollbar.x, theme) {
+                derivedStateOf {
+                    state.editor.analysis?.let { analysis ->
+                        layerFactory.createIssueLayers(
+                            contentLayers = currentContentLayers,
+                            issues = analysis.issues,
+                            scrollX = state.scrollbar.x,
+                            theme = theme
+                        )
+                    } ?: emptyList()
+                }
+            }
+
+            val currentIssueLayers by rememberUpdatedState(issueLayers)
+
+            val selectionLayer by remember(state.editor.selection, currentContentLayers, state.scrollbar.x, theme) {
+                derivedStateOf {
+                    layerFactory.createSelectionLayer(
+                        selection = state.editor.selection,
+                        contentLayers = currentContentLayers,
+                        scrollX = state.scrollbar.x,
+                        theme = theme
+                    )
+                }
+            }
+
+            val currentSelectionLayer by rememberUpdatedState(selectionLayer)
 
             val caretLayer by remember(state.editor.caret, currentContentLayers, state.scrollbar.x, font, theme) {
                 derivedStateOf {
@@ -323,86 +406,135 @@ internal fun EditorViewReady(
                 execute = execute,
                 focusRequester = focusRequester
             ) { mouseModifier ->
-                Box(
-                    modifier = Modifier.fillMaxSize().focusRequester(focusRequester).onFocusChanged { focusState ->
-                        isFocused = focusState.isFocused
-                    }.focusable().onKeyEvent { keyEvent ->
-                        when (keyEvent.type) {
-                            KeyEventType.KeyDown -> {
-                                keyEvent.awtEventOrNull?.let { awtEvent ->
-                                    scope.launch {
-                                        execute(
-                                            EditorCommand.ProcessKey(
-                                                keyCode = awtEvent.keyCode,
-                                                modifiers = awtEvent.modifiersEx,
-                                                utf16CodePoint = keyEvent.utf16CodePoint
+                ContextMenu(menu = state.menu, openMenu = { (x, y) ->
+                    scope.launch {
+                        execute(EditorCommand.Menu.Open(x = x, y = y))
+                    }
+                }, closeMenu = {
+                    scope.launch {
+                        execute(EditorCommand.Menu.Close)
+                    }
+                }, runStack = {
+                    scope.launch {
+                        execute(EditorCommand.Menu.RunStack)
+                    }
+                }, runCabal = {
+                    scope.launch {
+                        execute(EditorCommand.Menu.RunStack)
+                    }
+                }, runGhc = {
+                    scope.launch {
+                        execute(EditorCommand.Menu.RunStack)
+                    }
+                }, cut = {
+                    scope.launch {
+                        execute(EditorCommand.ProcessKey(KeyEvent.VK_X, KeyEvent.CTRL_DOWN_MASK, 0))
+                    }
+                }, copy = {
+                    scope.launch {
+                        execute(EditorCommand.ProcessKey(KeyEvent.VK_C, KeyEvent.CTRL_DOWN_MASK, 0))
+                    }
+                }, paste = {
+                    scope.launch {
+                        execute(EditorCommand.ProcessKey(KeyEvent.VK_V, KeyEvent.CTRL_DOWN_MASK, 0))
+                    }
+                }, selectAll = {
+                    scope.launch {
+                        execute(EditorCommand.ProcessKey(KeyEvent.VK_A, KeyEvent.CTRL_DOWN_MASK, 0))
+                    }
+                }, content = {
+                    Box(
+                        modifier = Modifier.fillMaxSize().focusRequester(focusRequester).onFocusChanged { focusState ->
+                            isFocused = focusState.isFocused
+                        }.focusable().onKeyEvent { keyEvent ->
+                            when (keyEvent.type) {
+                                KeyEventType.KeyDown -> {
+                                    keyEvent.awtEventOrNull?.let { awtEvent ->
+                                        scope.launch {
+                                            execute(
+                                                EditorCommand.ProcessKey(
+                                                    keyCode = awtEvent.keyCode,
+                                                    modifiers = awtEvent.modifiersEx,
+                                                    utf16CodePoint = keyEvent.utf16CodePoint
+                                                )
+                                            )
+                                        }
+                                    }
+
+                                    true
+                                }
+
+                                else -> false
+                            }
+                        }.then(mouseModifier).drawWithCache {
+                            val bounds = Rect.makeWH(w = size.width, h = size.height)
+
+                            onDrawBehind {
+                                if (!bounds.isEmpty) {
+                                    drawIntoCanvas { canvas ->
+                                        val nativeCanvas = canvas.nativeCanvas
+
+                                        nativeCanvas.save()
+
+                                        nativeCanvas.clipRect(
+                                            r = Rect.makeWH(
+                                                w = bounds.width, h = bounds.height
                                             )
                                         )
+
+                                        nativeCanvas.clear(color = theme.backgroundColorPalette.backgroundColor)
+
+                                        currentBackgroundLayer.render(canvas = nativeCanvas)
+
+                                        currentHighlightedLineLayer?.render(canvas = nativeCanvas)
+
+                                        currentGutterLineLayers.forEach { lineLayer ->
+                                            lineLayer.render(canvas = nativeCanvas)
+                                        }
+
+                                        currentGutterActionLayers.forEach { actionLayer ->
+                                            actionLayer.render(canvas = nativeCanvas)
+                                        }
+
+                                        currentGutterSeparatorLayer.render(canvas = nativeCanvas)
+
+                                        nativeCanvas.save()
+
+                                        nativeCanvas.translate(dx = gutterWidth, dy = 0f)
+
+                                        nativeCanvas.clipRect(
+                                            r = Rect.makeWH(w = bounds.width - gutterWidth, h = bounds.height)
+                                        )
+
+                                        currentIssueLayers.forEach { issueLayer ->
+                                            issueLayer.render(canvas = nativeCanvas)
+                                        }
+
+                                        currentGuidelineLayer?.render(canvas = nativeCanvas)
+
+                                        currentOccurrenceLayers.forEach { occurrenceLayer ->
+                                            occurrenceLayer.render(canvas = nativeCanvas)
+                                        }
+
+                                        currentSelectionLayer.render(canvas = nativeCanvas)
+
+                                        currentContentLayers.forEach { contentLayer ->
+                                            contentLayer.render(canvas = nativeCanvas)
+                                        }
+
+                                        if (caretVisible) {
+                                            currentCaretLayer?.render(canvas = nativeCanvas)
+                                        }
+
+                                        nativeCanvas.restore()
+
+                                        nativeCanvas.restore()
                                     }
                                 }
-
-                                true
                             }
-
-                            else -> false
-                        }
-                    }.then(mouseModifier).drawWithCache {
-                        val bounds = Rect.makeWH(w = size.width, h = size.height)
-
-                        onDrawBehind {
-                            if (!bounds.isEmpty) {
-                                drawIntoCanvas { canvas ->
-                                    val nativeCanvas = canvas.nativeCanvas
-
-                                    nativeCanvas.save()
-
-                                    nativeCanvas.clipRect(r = Rect.makeWH(w = bounds.width, h = bounds.height))
-
-                                    nativeCanvas.clear(color = theme.backgroundColorPalette.backgroundColor)
-
-                                    currentBackgroundLayer.render(canvas = nativeCanvas)
-
-                                    currentHighlightedLineLayer?.render(canvas = nativeCanvas)
-
-                                    currentGutterLineLayers.forEach { lineLayer ->
-                                        lineLayer.render(canvas = nativeCanvas)
-                                    }
-
-                                    currentGutterSeparatorLayer.render(canvas = nativeCanvas)
-
-                                    nativeCanvas.save()
-
-                                    nativeCanvas.translate(dx = gutterWidth, dy = 0f)
-
-                                    nativeCanvas.clipRect(
-                                        r = Rect.makeWH(w = bounds.width - gutterWidth, h = bounds.height)
-                                    )
-
-                                    currentGuidelineLayer?.render(canvas = nativeCanvas)
-
-                                    currentOccurrenceLayers.forEach { occurrenceLayer ->
-                                        occurrenceLayer.render(canvas = nativeCanvas)
-                                    }
-
-                                    currentSelectionLayer.render(canvas = nativeCanvas)
-
-                                    currentContentLayers.forEach { contentLayer ->
-                                        contentLayer.render(canvas = nativeCanvas)
-                                    }
-
-
-                                    if (caretVisible) {
-                                        currentCaretLayer?.render(canvas = nativeCanvas)
-                                    }
-
-                                    nativeCanvas.restore()
-
-                                    nativeCanvas.restore()
-                                }
-                            }
-                        }
-                    }.pointerHoverIcon(PointerIcon(Cursor(Cursor.TEXT_CURSOR)))
-                )
+                        }.pointerHoverIcon(PointerIcon(Cursor(Cursor.TEXT_CURSOR)))
+                    )
+                })
             }
         })
 }

@@ -14,7 +14,7 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 internal fun ExecutionButton(
-    imageVector: ImageVector, tint: Color, enabled: Boolean, onClick: () -> Unit
+    imageVector: ImageVector, tint: Color, enabled: Boolean, onClick: () -> Unit,
 ) {
     Box(
         modifier = Modifier.fillMaxHeight().aspectRatio(1f).clip(RoundedCornerShape(4.dp))

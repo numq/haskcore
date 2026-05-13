@@ -1,8 +1,8 @@
 package io.github.numq.haskcore.service.journal
 
 import arrow.core.Either
-import io.github.numq.haskcore.core.text.TextEdit
-import io.github.numq.haskcore.core.text.TextRevision
+import io.github.numq.haskcore.common.core.text.TextEdit
+import io.github.numq.haskcore.common.core.text.TextRevision
 import kotlinx.coroutines.flow.StateFlow
 
 interface JournalService : AutoCloseable {

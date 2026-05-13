@@ -5,9 +5,6 @@ plugins {
 }
 
 dependencies {
-    implementation(libs.arrow.core)
-    implementation(libs.koin.compose)
-    implementation(libs.compose.foundation)
     implementation(projects.common.presentation)
     implementation(projects.feature.settings.core)
 }

@@ -11,7 +11,7 @@ val statusFeatureCoreModule = module {
     scope<ScopeQualifier.Type.Project> {
         scopedOwner { DefaultStatusService() } bind StatusService::class
 
-        scopedOwner { ObserveStatus(statusService = get(), projectApi = get(), toolchainService = get()) }
+        scopedOwner { ObserveStatus(statusService = get(), projectService = get(), toolchainService = get()) }
 
         scopedOwner { UpdatePaths(toolchainService = get()) }
     }

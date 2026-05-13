@@ -1,10 +1,16 @@
 package io.github.numq.haskcore.feature.editor.presentation.feature
 
-import io.github.numq.haskcore.core.feature.*
+import io.github.numq.haskcore.common.presentation.feature.Reducer
+import io.github.numq.haskcore.common.presentation.feature.action
+import io.github.numq.haskcore.common.presentation.feature.effect
+import io.github.numq.haskcore.common.presentation.feature.event
+import io.github.numq.haskcore.common.presentation.feature.stream
 import io.github.numq.haskcore.feature.editor.core.usecase.*
+import io.github.numq.haskcore.feature.editor.presentation.menu.MenuReducer
 import kotlinx.coroutines.flow.map
 
 internal class EditorReducer(
+    private val menuReducer: MenuReducer,
     private val observeEditor: ObserveEditor,
     private val updateActiveLines: UpdateActiveLines,
     private val processKey: ProcessKey,
@@ -13,6 +19,12 @@ internal class EditorReducer(
     private val extendSelection: ExtendSelection,
 ) : Reducer<EditorState, EditorCommand, EditorEvent> {
     override fun reduce(state: EditorState, command: EditorCommand) = when (command) {
+        is EditorCommand.Menu -> when (state) {
+            is EditorState.Loading -> transition(state)
+
+            is EditorState.Ready -> menuReducer.reduce(state = state, command = command)
+        }
+
         is EditorCommand.HandleFailure -> transition(state).event(EditorEvent.HandleFailure(throwable = command.throwable))
 
         is EditorCommand.Initialize -> transition(state).effect(

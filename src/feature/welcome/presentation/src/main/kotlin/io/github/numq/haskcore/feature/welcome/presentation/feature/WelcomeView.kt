@@ -20,13 +20,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.rememberWindowState
+import io.github.numq.haskcore.common.presentation.font.LogoFont
+import io.github.numq.haskcore.common.presentation.font.MonoFont
+import io.github.numq.haskcore.common.presentation.overlay.dialog.file.FileDialog
 import io.github.numq.haskcore.feature.welcome.core.RecentProject
 import io.github.numq.haskcore.feature.welcome.presentation.button.ActionButton
 import io.github.numq.haskcore.feature.welcome.presentation.logo.DistortionLogo
 import io.github.numq.haskcore.feature.welcome.presentation.recent.RecentProjectItem
-import io.github.numq.haskcore.platform.font.LogoFont
-import io.github.numq.haskcore.platform.font.MonoFont
-import io.github.numq.haskcore.platform.overlay.dialog.file.FileDialog
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import org.koin.core.parameter.parametersOf
@@ -41,9 +41,15 @@ fun WelcomeView(
     logoFont: LogoFont,
     monoFont: MonoFont,
     openProject: (path: String, name: String?) -> Unit,
-    exitApplication: () -> Unit
+    exitApplication: () -> Unit,
 ) {
-    if (applicationScope.closed) return
+    val scope = rememberCoroutineScope()
+
+    val windowState = rememberWindowState(
+        position = WindowPosition(Alignment.Center), size = DpSize(width = 768.dp, height = 512.dp)
+    )
+
+    val fileDialog = koinInject<FileDialog>(scope = applicationScope)
 
     val feature = koinInject<WelcomeFeature>(scope = applicationScope) { parametersOf(title) }
 
@@ -60,14 +66,6 @@ fun WelcomeView(
             }
         }
     }
-
-    val fileDialog = koinInject<FileDialog>(scope = applicationScope)
-
-    val scope = rememberCoroutineScope()
-
-    val windowState = rememberWindowState(
-        position = WindowPosition(Alignment.Center), size = DpSize(width = 768.dp, height = 512.dp)
-    )
 
     Window(
         onCloseRequest = {

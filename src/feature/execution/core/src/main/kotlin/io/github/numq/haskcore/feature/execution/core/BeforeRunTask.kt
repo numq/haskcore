@@ -6,13 +6,14 @@ sealed interface BeforeRunTask {
     val isEnabled: Boolean
 
     data class Build(
-        override val id: String = "build-task", override val isEnabled: Boolean = true, val cleanFirst: Boolean = false
+        override val id: String = "build-task", override val isEnabled: Boolean = true, val cleanFirst: Boolean = false,
     ) : BeforeRunTask
 
     data class ExternalTool(
         override val id: String,
         override val isEnabled: Boolean = true,
         val command: String,
-        val arguments: List<String>
+        val arguments: List<String>,
+        val workingDir: String? = null,
     ) : BeforeRunTask
 }

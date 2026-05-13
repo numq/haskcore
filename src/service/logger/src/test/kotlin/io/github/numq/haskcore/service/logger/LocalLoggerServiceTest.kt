@@ -1,8 +1,8 @@
 package io.github.numq.haskcore.service.logger
 
 import arrow.core.Either
-import io.github.numq.haskcore.core.log.Log
-import io.github.numq.haskcore.core.timestamp.Timestamp
+import io.github.numq.haskcore.common.core.log.Log
+import io.github.numq.haskcore.common.core.timestamp.Timestamp
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -30,7 +30,7 @@ internal class LocalLoggerServiceTest {
     @Test
     fun `should map data logs to domain logs correctly`() = runTest {
         val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS")
-        val service = LocalLoggerService(null, backgroundScope, formatter, formatter, loggerDataSource)
+        val service = LocalLoggerService(null, backgroundScope, formatter, formatter, formatter, loggerDataSource)
         val timestamp = 123456789L
         val dataLog = LoggerData.Info(null, "Test message", timestamp)
 
@@ -47,8 +47,8 @@ internal class LocalLoggerServiceTest {
     @Test
     fun `submit should call update on data source`() = runTest {
         val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS")
-        val service = LocalLoggerService(null, backgroundScope, formatter, formatter, loggerDataSource)
-        val log = Log.Info(null, "New log", Timestamp(0))
+        val service = LocalLoggerService(null, backgroundScope, formatter, formatter, formatter, loggerDataSource)
+        val log = Log.Info(null, "New log", Timestamp(0L), "")
         coEvery { loggerDataSource.update(any()) } returns Either.Right(emptyList())
 
         service.submit(log)

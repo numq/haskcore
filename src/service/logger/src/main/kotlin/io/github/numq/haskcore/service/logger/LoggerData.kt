@@ -17,7 +17,7 @@ internal sealed interface LoggerData {
     data class Info(
         @ProtoNumber(1) override val projectId: String?,
         @ProtoNumber(2) override val message: String,
-        @ProtoNumber(3) override val timestampNanos: Long
+        @ProtoNumber(3) override val timestampNanos: Long,
     ) : LoggerData
 
     @Serializable
@@ -25,7 +25,7 @@ internal sealed interface LoggerData {
     data class Warning(
         @ProtoNumber(1) override val projectId: String?,
         @ProtoNumber(2) override val message: String,
-        @ProtoNumber(3) override val timestampNanos: Long
+        @ProtoNumber(3) override val timestampNanos: Long,
     ) : LoggerData
 
     @Serializable
@@ -41,7 +41,7 @@ internal sealed interface LoggerData {
             @ProtoNumber(2) override val message: String,
             @ProtoNumber(3) override val timestampNanos: Long,
             @ProtoNumber(4) override val className: String,
-            @ProtoNumber(5) override val stackTrace: String
+            @ProtoNumber(5) override val stackTrace: String,
         ) : Error
 
         @Serializable
@@ -51,7 +51,7 @@ internal sealed interface LoggerData {
             @ProtoNumber(2) override val message: String,
             @ProtoNumber(3) override val timestampNanos: Long,
             @ProtoNumber(4) override val className: String,
-            @ProtoNumber(5) override val stackTrace: String
+            @ProtoNumber(5) override val stackTrace: String,
         ) : Error
 
         @Serializable
@@ -61,7 +61,7 @@ internal sealed interface LoggerData {
             @ProtoNumber(2) override val message: String,
             @ProtoNumber(3) override val timestampNanos: Long,
             @ProtoNumber(4) override val className: String,
-            @ProtoNumber(5) override val stackTrace: String
+            @ProtoNumber(5) override val stackTrace: String,
         ) : Error
     }
 }

@@ -7,7 +7,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 
 internal class LocalJournalDataSource(
-    private val scope: CoroutineScope, private val dataStore: DataStore<JournalData>
+    private val scope: CoroutineScope, private val dataStore: DataStore<JournalData>,
 ) : JournalDataSource {
     override val journalData = dataStore.data
 

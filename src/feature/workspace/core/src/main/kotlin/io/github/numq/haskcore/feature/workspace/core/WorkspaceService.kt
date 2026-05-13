@@ -8,9 +8,15 @@ interface WorkspaceService : AutoCloseable {
 
     suspend fun getName(path: String): Either<Throwable, String>
 
-    suspend fun saveDimensions(
-        x: Float, y: Float, width: Float, height: Float, isFullscreen: Boolean
-    ): Either<Throwable, Unit>
+    suspend fun selectShelfTool(tool: ShelfTool): Either<Throwable, Unit>
 
-    suspend fun saveRatio(ratio: Float): Either<Throwable, Unit>
+    suspend fun saveLeftShelfPanelRatio(ratio: Float): Either<Throwable, Unit>
+
+    suspend fun saveRightShelfPanelRatio(ratio: Float): Either<Throwable, Unit>
+
+    suspend fun saveVerticalRatio(ratio: Float): Either<Throwable, Unit>
+
+    suspend fun saveDimensions(
+        x: Float, y: Float, width: Float, height: Float, isFullscreen: Boolean,
+    ): Either<Throwable, Unit>
 }

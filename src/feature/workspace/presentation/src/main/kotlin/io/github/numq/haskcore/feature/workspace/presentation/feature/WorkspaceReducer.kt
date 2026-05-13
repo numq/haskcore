@@ -1,6 +1,6 @@
 package io.github.numq.haskcore.feature.workspace.presentation.feature
 
-import io.github.numq.haskcore.core.feature.*
+import io.github.numq.haskcore.common.presentation.feature.*
 import io.github.numq.haskcore.feature.workspace.core.usecase.*
 import kotlinx.coroutines.flow.map
 
@@ -9,8 +9,11 @@ internal class WorkspaceReducer(
     private val closeWorkspace: CloseWorkspace,
     private val observeWorkspace: ObserveWorkspace,
     private val openWorkspaceDocument: OpenWorkspaceDocument,
+    private val selectShelfTool: SelectShelfTool,
+    private val saveLeftShelfPanelRatio: SaveLeftShelfPanelRatio,
+    private val saveRightShelfPanelRatio: SaveRightShelfPanelRatio,
+    private val saveVerticalRatio: SaveVerticalRatio,
     private val saveDimensions: SaveDimensions,
-    private val saveRatio: SaveRatio,
 ) : Reducer<WorkspaceState, WorkspaceCommand, WorkspaceEvent> {
     override fun reduce(state: WorkspaceState, command: WorkspaceCommand) = when (command) {
         is WorkspaceCommand.HandleFailure -> transition(state).event(WorkspaceEvent.HandleFailure(throwable = command.throwable))
@@ -32,7 +35,11 @@ internal class WorkspaceReducer(
             )
         )
 
-        is WorkspaceCommand.UpdateWorkspace -> transition(state.copy(workspace = command.workspace))
+        is WorkspaceCommand.UpdateWorkspace -> when (state) {
+            is WorkspaceState.Loading -> transition(WorkspaceState.Ready(workspace = command.workspace))
+
+            is WorkspaceState.Ready -> transition(state.copy(workspace = command.workspace))
+        }
 
         is WorkspaceCommand.CloseWorkspace -> transition(state).effect(
             action(
@@ -64,6 +71,49 @@ internal class WorkspaceReducer(
 
         is WorkspaceCommand.CloseTabSuccess -> transition(state)
 
+        is WorkspaceCommand.SelectShelfTool -> transition(state).effect(
+            action(
+                key = command.key, fallback = WorkspaceCommand::HandleFailure, block = {
+                    selectShelfTool(input = SelectShelfTool.Input(tool = command.tool)).fold(
+                        ifLeft = WorkspaceCommand::HandleFailure, ifRight = { WorkspaceCommand.SelectShelfToolSuccess })
+                })
+        )
+
+        is WorkspaceCommand.SelectShelfToolSuccess -> transition(state)
+
+        is WorkspaceCommand.SaveLeftShelfPanelRatio -> transition(state).effect(
+            action(
+                key = command.key, fallback = WorkspaceCommand::HandleFailure, block = {
+                    saveLeftShelfPanelRatio(input = SaveLeftShelfPanelRatio.Input(ratio = command.ratio)).fold(
+                        ifLeft = WorkspaceCommand::HandleFailure,
+                        ifRight = { WorkspaceCommand.SaveLeftShelfPanelRatioSuccess })
+                })
+        )
+
+        is WorkspaceCommand.SaveLeftShelfPanelRatioSuccess -> transition(state)
+
+        is WorkspaceCommand.SaveRightShelfPanelRatio -> transition(state).effect(
+            action(
+                key = command.key, fallback = WorkspaceCommand::HandleFailure, block = {
+                    saveRightShelfPanelRatio(input = SaveRightShelfPanelRatio.Input(ratio = command.ratio)).fold(
+                        ifLeft = WorkspaceCommand::HandleFailure,
+                        ifRight = { WorkspaceCommand.SaveRightShelfPanelRatioSuccess })
+                })
+        )
+
+        is WorkspaceCommand.SaveRightShelfPanelRatioSuccess -> transition(state)
+
+        is WorkspaceCommand.SaveVerticalRatio -> transition(state).effect(
+            action(
+                key = command.key, fallback = WorkspaceCommand::HandleFailure, block = {
+                    saveVerticalRatio(input = SaveVerticalRatio.Input(ratio = command.ratio)).fold(
+                        ifLeft = WorkspaceCommand::HandleFailure,
+                        ifRight = { WorkspaceCommand.SaveVerticalRatioSuccess })
+                })
+        )
+
+        is WorkspaceCommand.SaveVerticalRatioSuccess -> transition(state)
+
         is WorkspaceCommand.SaveDimensions -> transition(state).effect(
             action(
                 key = command.key, fallback = WorkspaceCommand::HandleFailure, block = {
@@ -77,15 +127,5 @@ internal class WorkspaceReducer(
         )
 
         is WorkspaceCommand.SaveDimensionsSuccess -> transition(state)
-
-        is WorkspaceCommand.SaveRatio -> transition(state).effect(
-            action(
-                key = command.key, fallback = WorkspaceCommand::HandleFailure, block = {
-                    saveRatio(input = SaveRatio.Input(ratio = command.ratio)).fold(
-                        ifLeft = WorkspaceCommand::HandleFailure, ifRight = { WorkspaceCommand.SaveRatioSuccess })
-                })
-        )
-
-        is WorkspaceCommand.SaveRatioSuccess -> transition(state)
     }
 }

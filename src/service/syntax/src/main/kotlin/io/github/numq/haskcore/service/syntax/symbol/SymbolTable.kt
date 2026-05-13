@@ -1,8 +1,8 @@
 package io.github.numq.haskcore.service.syntax.symbol
 
 import arrow.core.Either
-import io.github.numq.haskcore.core.text.TextPosition
-import io.github.numq.haskcore.core.text.TextRange
+import io.github.numq.haskcore.common.core.text.TextPosition
+import io.github.numq.haskcore.common.core.text.TextRange
 
 internal interface SymbolTable {
     suspend fun findByName(name: String): Either<Throwable, List<Symbol>>

@@ -10,9 +10,10 @@ data class Workspace(
     val width: Float? = null,
     val height: Float? = null,
     val isFullscreen: Boolean? = null,
-    val ratio: Float = DEFAULT_RATIO
+    val shelf: Shelf = Shelf(),
+    val verticalRatio: Float = DEFAULT_VERTICAL_RATIO,
 ) {
     companion object {
-        const val DEFAULT_RATIO = .75f
+        const val DEFAULT_VERTICAL_RATIO = .75f
     }
 }

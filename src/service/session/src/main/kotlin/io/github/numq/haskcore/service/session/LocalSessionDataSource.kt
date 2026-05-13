@@ -7,7 +7,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 
 internal class LocalSessionDataSource(
-    private val scope: CoroutineScope, private val dataStore: DataStore<SessionData>
+    private val scope: CoroutineScope, private val dataStore: DataStore<SessionData>,
 ) : SessionDataSource {
     override val sessionData = dataStore.data
 

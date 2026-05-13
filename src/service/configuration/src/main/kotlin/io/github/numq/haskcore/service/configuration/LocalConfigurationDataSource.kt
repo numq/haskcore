@@ -7,7 +7,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 
 internal class LocalConfigurationDataSource(
-    private val scope: CoroutineScope, private val dataStore: DataStore<ConfigurationData>
+    private val scope: CoroutineScope, private val dataStore: DataStore<ConfigurationData>,
 ) : ConfigurationDataSource {
     override val configurationData = dataStore.data
 

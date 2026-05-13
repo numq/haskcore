@@ -1,6 +1,6 @@
 package io.github.numq.haskcore.feature.editor.presentation.cache
 
-import io.github.numq.haskcore.platform.font.EditorFont
+import io.github.numq.haskcore.common.presentation.font.EditorFont
 import org.jetbrains.skia.TextLine
 
 internal class TextLineCache(override val capacity: Int) : LruCache<TextLineCache.Key, TextLine>() {

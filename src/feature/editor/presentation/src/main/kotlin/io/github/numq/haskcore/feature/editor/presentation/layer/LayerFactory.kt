@@ -1,5 +1,8 @@
 package io.github.numq.haskcore.feature.editor.presentation.layer
 
+import io.github.numq.haskcore.common.presentation.font.EditorFont
+import io.github.numq.haskcore.common.presentation.theme.editor.EditorTheme
+import io.github.numq.haskcore.feature.editor.core.analysis.CodeIssue
 import io.github.numq.haskcore.feature.editor.core.caret.Caret
 import io.github.numq.haskcore.feature.editor.core.guideline.Guideline
 import io.github.numq.haskcore.feature.editor.core.selection.Selection
@@ -9,30 +12,35 @@ import io.github.numq.haskcore.feature.editor.presentation.background.Background
 import io.github.numq.haskcore.feature.editor.presentation.background.HighlightedLineLayer
 import io.github.numq.haskcore.feature.editor.presentation.caret.CaretLayer
 import io.github.numq.haskcore.feature.editor.presentation.guideline.GuidelineLayer
+import io.github.numq.haskcore.feature.editor.presentation.gutter.GutterActionLayer
 import io.github.numq.haskcore.feature.editor.presentation.gutter.GutterLineLayer
 import io.github.numq.haskcore.feature.editor.presentation.gutter.GutterSeparatorLayer
 import io.github.numq.haskcore.feature.editor.presentation.occurrence.OccurrenceLayer
+import io.github.numq.haskcore.feature.editor.presentation.overlay.IssueLayer
 import io.github.numq.haskcore.feature.editor.presentation.selection.SelectionLayer
 import io.github.numq.haskcore.feature.editor.presentation.text.TextContentLayer
 import io.github.numq.haskcore.feature.editor.presentation.viewport.ViewportLine
-import io.github.numq.haskcore.platform.font.EditorFont
-import io.github.numq.haskcore.platform.theme.editor.EditorTheme
+import org.jetbrains.skia.Image
 
 interface LayerFactory {
     fun createBackgroundLayer(width: Float, height: Float, theme: EditorTheme): BackgroundLayer
 
     fun createHighlightedLineLayer(
-        viewportLines: List<ViewportLine>, caret: Caret, theme: EditorTheme
+        viewportLines: List<ViewportLine>, caret: Caret, theme: EditorTheme,
     ): HighlightedLineLayer?
 
     fun createGutterLineLayer(
-        line: Int, width: Float, textY: Float, font: EditorFont, theme: EditorTheme
+        line: Int, width: Float, textY: Float, font: EditorFont, theme: EditorTheme,
     ): GutterLineLayer
+
+    fun createGutterActionLayers(
+        viewportLines: List<ViewportLine>, image: Image, gutterWidth: Float, theme: EditorTheme,
+    ): List<GutterActionLayer>
 
     fun createGutterSeparatorLayer(x: Float, height: Float, theme: EditorTheme): GutterSeparatorLayer
 
     fun createGuidelineLayer(
-        guideline: Guideline, height: Float, scrollX: Float, font: EditorFont, theme: EditorTheme
+        guideline: Guideline, height: Float, scrollX: Float, font: EditorFont, theme: EditorTheme,
     ): GuidelineLayer
 
     fun createCodeAreaContentLayers(
@@ -48,14 +56,18 @@ interface LayerFactory {
         occurrences: List<Occurrence>,
         caret: Caret,
         scrollX: Float,
-        theme: EditorTheme
+        theme: EditorTheme,
     ): List<OccurrenceLayer>
 
+    fun createIssueLayers(
+        contentLayers: List<TextContentLayer>, issues: List<CodeIssue>, scrollX: Float, theme: EditorTheme,
+    ): List<IssueLayer>
+
     fun createSelectionLayer(
-        contentLayers: List<TextContentLayer>, selection: Selection, scrollX: Float, theme: EditorTheme
+        contentLayers: List<TextContentLayer>, selection: Selection, scrollX: Float, theme: EditorTheme,
     ): SelectionLayer
 
     fun createCaretLayer(
-        contentLayers: List<TextContentLayer>, caret: Caret, scrollX: Float, font: EditorFont, theme: EditorTheme
+        contentLayers: List<TextContentLayer>, caret: Caret, scrollX: Float, font: EditorFont, theme: EditorTheme,
     ): CaretLayer?
 }

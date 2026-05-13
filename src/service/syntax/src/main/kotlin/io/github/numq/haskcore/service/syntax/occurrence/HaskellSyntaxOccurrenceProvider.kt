@@ -1,9 +1,9 @@
 package io.github.numq.haskcore.service.syntax.occurrence
 
 import arrow.core.raise.either
-import io.github.numq.haskcore.core.text.TextPosition
 import io.github.numq.haskcore.service.syntax.symbol.Symbol
 import io.github.numq.haskcore.service.syntax.symbol.SymbolTable
+import io.github.numq.haskcore.common.core.text.TextPosition
 
 internal class HaskellSyntaxOccurrenceProvider(private val symbolTable: SymbolTable) : SyntaxOccurrenceProvider {
     override suspend fun getSyntaxOccurrences(position: TextPosition) = either {

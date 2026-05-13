@@ -1,7 +1,7 @@
 package io.github.numq.haskcore.feature.editor.core.selection
 
-import io.github.numq.haskcore.core.text.TextPosition
-import io.github.numq.haskcore.core.text.TextRange
+import io.github.numq.haskcore.common.core.text.TextPosition
+import io.github.numq.haskcore.common.core.text.TextRange
 
 data class Selection(val range: TextRange, val direction: SelectionDirection = SelectionDirection.FORWARD) {
     val anchor: TextPosition

@@ -12,7 +12,7 @@ data class GutterLineLayer(
     val paint: Paint,
     val textX: Float,
     val textY: Float,
-    val isCurrentLine: Boolean = false
+    val isCurrentLine: Boolean = false,
 ) : Layer {
     override fun render(canvas: Canvas) {
         if (!paint.isClosed) {

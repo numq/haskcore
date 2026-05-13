@@ -1,6 +1,6 @@
 package io.github.numq.haskcore.service.text.snapshot
 
-import io.github.numq.haskcore.core.text.*
+import io.github.numq.haskcore.common.core.text.*
 import io.github.numq.haskcore.service.text.rope.Rope
 import io.github.numq.haskcore.service.text.rope.RopeNavigator
 import java.nio.charset.Charset

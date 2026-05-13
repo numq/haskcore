@@ -2,13 +2,13 @@ package io.github.numq.haskcore.feature.editor.core.usecase
 
 import arrow.core.flatMap
 import arrow.core.raise.Raise
-import io.github.numq.haskcore.core.text.TextPosition
-import io.github.numq.haskcore.core.usecase.UseCase
-import io.github.numq.haskcore.feature.editor.core.EditorService
 import io.github.numq.haskcore.service.text.TextService
+import io.github.numq.haskcore.common.core.text.TextPosition
+import io.github.numq.haskcore.common.core.usecase.UseCase
+import io.github.numq.haskcore.feature.editor.core.EditorService
 
 class ExtendSelection(
-    private val editorService: EditorService, private val textService: TextService
+    private val editorService: EditorService, private val textService: TextService,
 ) : UseCase<ExtendSelection.Input, Unit> {
     data class Input(val position: TextPosition)
 

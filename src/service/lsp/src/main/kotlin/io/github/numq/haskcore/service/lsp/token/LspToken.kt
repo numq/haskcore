@@ -1,6 +1,6 @@
 package io.github.numq.haskcore.service.lsp.token
 
-import io.github.numq.haskcore.core.text.TextRange
+import io.github.numq.haskcore.common.core.text.TextRange
 
 data class LspToken(val range: TextRange, val type: Type, val modifiers: Int = 0) {
     enum class Type(val value: String) {

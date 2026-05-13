@@ -1,16 +1,15 @@
 package io.github.numq.haskcore.service.lsp
 
-import io.github.numq.haskcore.core.di.ScopeQualifier
-import io.github.numq.haskcore.core.di.ScopeQualifierType
-import io.github.numq.haskcore.core.di.scopedOwner
+import io.github.numq.haskcore.common.core.di.ScopeQualifier
+import io.github.numq.haskcore.common.core.di.scopedOwner
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import org.koin.dsl.bind
 import org.koin.dsl.module
 
-val lspModule = module {
-    scope<ScopeQualifierType.Project> {
+val lspServiceModule = module {
+    scope<ScopeQualifier.Type.Project> {
         scopedOwner {
             val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 

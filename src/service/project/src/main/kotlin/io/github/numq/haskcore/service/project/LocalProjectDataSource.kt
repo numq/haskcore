@@ -7,7 +7,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 
 internal class LocalProjectDataSource(
-    private val scope: CoroutineScope, private val dataStore: DataStore<ProjectData>
+    private val scope: CoroutineScope, private val dataStore: DataStore<ProjectData>,
 ) : ProjectDataSource {
     override val projectData = dataStore.data
 

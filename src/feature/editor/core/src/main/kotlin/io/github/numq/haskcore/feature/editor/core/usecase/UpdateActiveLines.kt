@@ -1,7 +1,7 @@
 package io.github.numq.haskcore.feature.editor.core.usecase
 
 import arrow.core.raise.Raise
-import io.github.numq.haskcore.core.usecase.UseCase
+import io.github.numq.haskcore.common.core.usecase.UseCase
 import io.github.numq.haskcore.feature.editor.core.EditorService
 
 class UpdateActiveLines(private val editorService: EditorService) : UseCase<UpdateActiveLines.Input, Unit> {

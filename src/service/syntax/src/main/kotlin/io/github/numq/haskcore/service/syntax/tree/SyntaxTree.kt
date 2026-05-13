@@ -1,7 +1,7 @@
 package io.github.numq.haskcore.service.syntax.tree
 
-import io.github.numq.haskcore.core.text.TextRevision
 import io.github.numq.haskcore.service.syntax.Syntax
+import io.github.numq.haskcore.common.core.text.TextRevision
 import kotlinx.atomicfu.atomic
 import org.treesitter.TSTree
 

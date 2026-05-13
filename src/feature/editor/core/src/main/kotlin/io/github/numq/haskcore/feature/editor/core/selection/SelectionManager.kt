@@ -1,9 +1,9 @@
 package io.github.numq.haskcore.feature.editor.core.selection
 
 import arrow.core.Either
-import io.github.numq.haskcore.core.text.TextPosition
-import io.github.numq.haskcore.core.text.TextRange
-import io.github.numq.haskcore.core.text.TextSnapshot
+import io.github.numq.haskcore.common.core.text.TextPosition
+import io.github.numq.haskcore.common.core.text.TextRange
+import io.github.numq.haskcore.common.core.text.TextSnapshot
 import kotlinx.coroutines.flow.StateFlow
 
 internal interface SelectionManager : AutoCloseable {

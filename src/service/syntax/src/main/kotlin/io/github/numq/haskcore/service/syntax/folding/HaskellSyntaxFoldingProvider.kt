@@ -1,9 +1,9 @@
 package io.github.numq.haskcore.service.syntax.folding
 
 import arrow.core.Either
-import io.github.numq.haskcore.core.text.TextRange
 import io.github.numq.haskcore.service.syntax.toTSPoint
 import io.github.numq.haskcore.service.syntax.toTextPosition
+import io.github.numq.haskcore.common.core.text.TextRange
 import org.treesitter.TSQuery
 import org.treesitter.TSQueryCursor
 import org.treesitter.TSTree

@@ -1,6 +1,6 @@
 package io.github.numq.haskcore.service.syntax.token
 
-import io.github.numq.haskcore.core.text.TextRange
+import io.github.numq.haskcore.common.core.text.TextRange
 
 internal data class HaskellSyntaxToken(val range: TextRange, val type: Type) {
     enum class Type {

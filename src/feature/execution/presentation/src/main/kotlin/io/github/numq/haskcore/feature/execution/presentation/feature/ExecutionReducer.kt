@@ -1,19 +1,23 @@
 package io.github.numq.haskcore.feature.execution.presentation.feature
 
-import io.github.numq.haskcore.core.feature.*
+import io.github.numq.haskcore.common.presentation.feature.*
 import io.github.numq.haskcore.feature.execution.core.Execution
-import io.github.numq.haskcore.feature.execution.core.usecase.ObserveExecution
-import io.github.numq.haskcore.feature.execution.core.usecase.SelectArtifact
-import io.github.numq.haskcore.feature.execution.core.usecase.StartExecution
+import io.github.numq.haskcore.feature.execution.core.usecase.*
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 
 internal class ExecutionReducer(
+    private val buildConfiguration: BuildConfiguration,
+    private val deleteConfiguration: DeleteConfiguration,
+    private val editConfiguration: EditConfiguration,
     private val observeExecution: ObserveExecution,
-    private val startExecution: StartExecution,
-    private val selectArtifact: SelectArtifact,
+    private val runConfiguration: RunConfiguration,
+    private val setCurrentConfiguration: SetCurrentConfiguration,
+    private val stopConfiguration: StopConfiguration,
 ) : Reducer<ExecutionState, ExecutionCommand, ExecutionEvent> {
-    override fun reduce(state: ExecutionState, command: ExecutionCommand) = when (command) {
+    override fun reduce(
+        state: ExecutionState, command: ExecutionCommand,
+    ): Transition<ExecutionState, ExecutionEvent> = when (command) {
         is ExecutionCommand.HandleFailure -> transition(state).event(ExecutionEvent.HandleFailure(throwable = command.throwable))
 
         is ExecutionCommand.ObserveExecution -> transition(state).effect(
@@ -35,34 +39,87 @@ internal class ExecutionReducer(
 
         is ExecutionCommand.UpdateExecution -> transition(state.copy(execution = command.execution))
 
-        is ExecutionCommand.Run -> when (val execution = state.execution) {
+        is ExecutionCommand.BuildConfiguration -> when (state.execution) {
             is Execution.Synced.Found.Stopped -> transition(state).effect(
                 stream(key = command.key, flow = flow {
-                    startExecution(input = StartExecution.Input(artifact = execution.selectedArtifact)).fold(
-                        ifLeft = ExecutionCommand::HandleFailure, ifRight = { ExecutionCommand.RunSuccess })
+                    buildConfiguration(input = BuildConfiguration.Input(configuration = command.configuration)).fold(
+                        ifLeft = ExecutionCommand::HandleFailure,
+                        ifRight = { ExecutionCommand.BuildConfigurationSuccess })
                 }, fallback = ExecutionCommand::HandleFailure)
             )
 
             else -> transition(state)
         }
 
-        is ExecutionCommand.RunSuccess -> transition(state)
+        is ExecutionCommand.BuildConfigurationSuccess -> transition(state)
 
-        is ExecutionCommand.Stop -> when (state.execution) {
-            is Execution.Synced.Found.Running -> transition(state).effect(cancel(command.key))
+        is ExecutionCommand.RunConfiguration -> when (state.execution) {
+            is Execution.Synced.Found.Stopped -> transition(state).effect(
+                stream(key = command.key, flow = flow {
+                    runConfiguration(input = RunConfiguration.Input(configuration = command.configuration)).fold(
+                        ifLeft = ExecutionCommand::HandleFailure,
+                        ifRight = { ExecutionCommand.RunConfigurationSuccess })
+                }, fallback = ExecutionCommand::HandleFailure)
+            )
 
             else -> transition(state)
         }
 
-        is ExecutionCommand.StopSuccess -> transition(state)
+        is ExecutionCommand.RunConfigurationSuccess -> transition(state)
 
-        is ExecutionCommand.SelectArtifact -> transition(state).effect(
+        is ExecutionCommand.StopConfiguration -> when (state.execution) {
+            is Execution.Synced.Found.Running -> transition(state).effects(
+                cancel(command.key), stream(key = command.key, flow = flow {
+                    stopConfiguration(input = StopConfiguration.Input(configuration = command.configuration)).fold(
+                        ifLeft = ExecutionCommand::HandleFailure,
+                        ifRight = { ExecutionCommand.StopConfigurationSuccess })
+                }, fallback = ExecutionCommand::HandleFailure)
+            )
+
+            else -> transition(state)
+        }
+
+        is ExecutionCommand.StopConfigurationSuccess -> transition(state)
+
+        is ExecutionCommand.RunCurrentConfiguration -> when (val execution = state.execution) {
+            is Execution.Synced.Found.Stopped -> reduce(
+                state = state,
+                command = ExecutionCommand.RunConfiguration(configuration = execution.currentConfiguration)
+            )
+
+            else -> transition(state)
+        }
+
+        is ExecutionCommand.StopCurrentConfiguration -> when (val execution = state.execution) {
+            is Execution.Synced.Found.Running -> reduce(
+                state = state,
+                command = ExecutionCommand.StopConfiguration(configuration = execution.currentConfiguration)
+            )
+
+            else -> transition(state)
+        }
+
+        is ExecutionCommand.RerunConfiguration -> when (state.execution) {
+            is Execution.Synced.Found.Running -> with(command) {
+                val (state, events) = reduce(
+                    state = state, command = ExecutionCommand.StopConfiguration(configuration = configuration)
+                )
+
+                reduce(
+                    state = state, command = ExecutionCommand.RunConfiguration(configuration = configuration)
+                ).events(*events.toTypedArray())
+            }
+
+            else -> transition(state)
+        }
+
+        is ExecutionCommand.SelectConfiguration -> transition(state).effect(
             action(key = command.key, fallback = ExecutionCommand::HandleFailure, block = {
-                selectArtifact(input = SelectArtifact.Input(artifact = command.artifact)).fold(
-                    ifLeft = ExecutionCommand::HandleFailure, ifRight = { ExecutionCommand.SelectArtifactSuccess })
+                setCurrentConfiguration(input = SetCurrentConfiguration.Input(configuration = command.configuration)).fold(
+                    ifLeft = ExecutionCommand::HandleFailure, ifRight = { ExecutionCommand.SelectConfigurationSuccess })
             })
         )
 
-        is ExecutionCommand.SelectArtifactSuccess -> transition(state)
+        is ExecutionCommand.SelectConfigurationSuccess -> transition(state)
     }
 }

@@ -1,6 +1,6 @@
 package io.github.numq.haskcore.feature.editor.core
 
-import io.github.numq.haskcore.core.text.TextSnapshot
+import io.github.numq.haskcore.common.core.text.TextSnapshot
 import io.github.numq.haskcore.feature.editor.core.analysis.Analysis
 import io.github.numq.haskcore.feature.editor.core.caret.Caret
 import io.github.numq.haskcore.feature.editor.core.guideline.Guideline

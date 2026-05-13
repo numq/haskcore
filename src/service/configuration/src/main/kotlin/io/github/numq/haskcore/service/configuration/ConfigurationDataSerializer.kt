@@ -1,6 +1,8 @@
 package io.github.numq.haskcore.service.configuration
 
 import androidx.datastore.core.Serializer
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.encodeToByteArray
@@ -13,7 +15,9 @@ internal object ConfigurationDataSerializer : Serializer<ConfigurationData> {
     override val defaultValue = ConfigurationData()
 
     override suspend fun readFrom(input: InputStream): ConfigurationData {
-        val bytes = input.readAllBytes()
+        val bytes = withContext(Dispatchers.IO) {
+            input.readAllBytes()
+        }
 
         return when {
             bytes.isEmpty() -> defaultValue
@@ -22,6 +26,7 @@ internal object ConfigurationDataSerializer : Serializer<ConfigurationData> {
         }
     }
 
-    override suspend fun writeTo(t: ConfigurationData, output: OutputStream) =
+    override suspend fun writeTo(t: ConfigurationData, output: OutputStream) = withContext(Dispatchers.IO) {
         output.write(ProtoBuf.encodeToByteArray(t))
+    }
 }

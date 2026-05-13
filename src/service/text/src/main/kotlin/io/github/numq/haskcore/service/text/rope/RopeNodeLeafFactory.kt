@@ -7,7 +7,7 @@ import kotlin.math.max
 import kotlin.math.min
 
 internal class RopeNodeLeafFactory(
-    enablePooling: Boolean, private val charset: Charset, private val maxLeafSize: Int = 8192
+    enablePooling: Boolean, private val charset: Charset, private val maxLeafSize: Int = 8192,
 ) {
     private companion object {
         const val DEFAULT_LEAF_CACHE_SIZE = 2048
@@ -30,14 +30,14 @@ internal class RopeNodeLeafFactory(
         private val smallStringsPool =
             Collections.synchronizedMap(object : LinkedHashMap<String, String>(maxEntries / 3, .75f, true) {
                 override fun removeEldestEntry(
-                    eldest: MutableMap.MutableEntry<String, String>
+                    eldest: MutableMap.MutableEntry<String, String>,
                 ) = size > maxEntries / 3
             })
 
         private val largeStringsPool =
             Collections.synchronizedMap(object : LinkedHashMap<String, String>(maxEntries / 3, .75f, true) {
                 override fun removeEldestEntry(
-                    eldest: MutableMap.MutableEntry<String, String>
+                    eldest: MutableMap.MutableEntry<String, String>,
                 ) = size > maxEntries / 3
             })
 
@@ -61,14 +61,14 @@ internal class RopeNodeLeafFactory(
     }
 
     private data class StringStats(
-        val bytes: Int, val newlineCount: Int, val maxLineLen: Int, val prefixLen: Int, val suffixLen: Int
+        val bytes: Int, val newlineCount: Int, val maxLineLen: Int, val prefixLen: Int, val suffixLen: Int,
     )
 
     private val leafCache = object : LinkedHashMap<String, RopeNode>(
         DEFAULT_LEAF_CACHE_SIZE / 2, .75f, true
     ) {
         override fun removeEldestEntry(
-            eldest: MutableMap.MutableEntry<String, RopeNode>
+            eldest: MutableMap.MutableEntry<String, RopeNode>,
         ) = size > DEFAULT_LEAF_CACHE_SIZE
     }
 

@@ -7,5 +7,5 @@ data class ViewportLine(
     val width: Float,
     val height: Float,
     val text: String,
-    val textBaselineY: Float
+    val textBaselineY: Float,
 )

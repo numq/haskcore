@@ -1,6 +1,6 @@
 package io.github.numq.haskcore.service.syntax.symbol
 
-import io.github.numq.haskcore.core.text.TextRange
+import io.github.numq.haskcore.common.core.text.TextRange
 
 internal sealed interface Symbol {
     val name: String

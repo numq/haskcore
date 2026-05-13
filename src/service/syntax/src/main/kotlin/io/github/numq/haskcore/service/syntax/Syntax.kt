@@ -1,6 +1,6 @@
 package io.github.numq.haskcore.service.syntax
 
-import io.github.numq.haskcore.core.text.TextRevision
+import io.github.numq.haskcore.common.core.text.TextRevision
 import io.github.numq.haskcore.service.syntax.folding.SyntaxFoldingRegion
 import io.github.numq.haskcore.service.syntax.occurrence.SyntaxOccurrence
 import io.github.numq.haskcore.service.syntax.token.SyntaxToken

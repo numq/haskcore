@@ -1,8 +1,8 @@
 package io.github.numq.haskcore.service.journal
 
 import arrow.core.raise.either
-import io.github.numq.haskcore.core.text.TextEdit
-import io.github.numq.haskcore.core.text.TextRevision
+import io.github.numq.haskcore.common.core.text.TextEdit
+import io.github.numq.haskcore.common.core.text.TextRevision
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.SharingStarted
@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
 internal class LocalJournalService(
-    private val scope: CoroutineScope, private val journalDataSource: JournalDataSource
+    private val scope: CoroutineScope, private val journalDataSource: JournalDataSource,
 ) : JournalService {
     private companion object {
         const val JOURNAL_LIMIT = 1_000
@@ -46,7 +46,7 @@ internal class LocalJournalService(
                 journalData.currentIndex >= 0 -> {
                     val record = journalData.records[journalData.currentIndex]
 
-                    edit = record.toData().invert()
+                    edit = record.toTextEdit().invert()
 
                     journalData.copy(currentIndex = journalData.currentIndex - 1)
                 }
@@ -68,7 +68,7 @@ internal class LocalJournalService(
 
                     val recordToRedo = journalData.records[nextIndex]
 
-                    edit = recordToRedo.toData()
+                    edit = recordToRedo.toTextEdit()
 
                     journalData.copy(currentIndex = nextIndex)
                 }

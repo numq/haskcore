@@ -4,12 +4,9 @@ plugins {
 }
 
 dependencies {
-    implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.serialization.protobuf)
-    implementation(libs.arrow.core)
-    implementation(libs.koin.core)
-    implementation(projects.core)
     implementation(libs.datastore)
+    implementation(projects.common.core)
     implementation(projects.service.configuration)
     implementation(projects.service.document)
     implementation(projects.service.runtime)

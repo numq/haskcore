@@ -38,9 +38,9 @@ val outputFeatureCoreModule = module {
 
         scopedOwner { CloseOutputSession(outputService = get()) }
 
-        scopedOwner { CopySessionText(clipboardApi = get()) }
+        scopedOwner { CopySessionText(clipboardService = get()) }
 
-        scopedOwner { ObserveOutput(outputService = get(), runtimeApi = get()) }
+        scopedOwner { ObserveOutput(outputService = get(), runtimeService = get()) }
 
         scopedOwner { OpenOutputSession(outputService = get()) }
     }

@@ -1,12 +1,12 @@
 package io.github.numq.haskcore.feature.execution.presentation.feature
 
 import io.github.numq.haskcore.feature.execution.core.Execution
-import io.github.numq.haskcore.feature.execution.core.ExecutionArtifact
+import io.github.numq.haskcore.feature.execution.core.ExecutionConfiguration
 import kotlinx.coroutines.flow.Flow
 
 internal sealed interface ExecutionCommand {
     enum class Key {
-        OBSERVE_EXECUTION, OBSERVE_EXECUTION_SUCCESS, RUN_ARTIFACT, SELECT_ARTIFACT
+        OBSERVE_EXECUTION, OBSERVE_EXECUTION_SUCCESS, BUILD_CONFIGURATION, RUN_CONFIGURATION, STOP_CONFIGURATION, SELECT_CONFIGURATION, EDIT_CONFIGURATION, DELETE_CONFIGURATION
     }
 
     data class HandleFailure(val throwable: Throwable) : ExecutionCommand
@@ -21,21 +21,33 @@ internal sealed interface ExecutionCommand {
 
     data class UpdateExecution(val execution: Execution) : ExecutionCommand
 
-    data object Run : ExecutionCommand {
-        val key = Key.RUN_ARTIFACT
+    data class BuildConfiguration(val configuration: ExecutionConfiguration) : ExecutionCommand {
+        val key = Key.BUILD_CONFIGURATION
     }
 
-    data object RunSuccess : ExecutionCommand
+    data object BuildConfigurationSuccess : ExecutionCommand
 
-    data object Stop : ExecutionCommand {
-        val key = Key.RUN_ARTIFACT
+    data class RunConfiguration(val configuration: ExecutionConfiguration) : ExecutionCommand {
+        val key = Key.RUN_CONFIGURATION
     }
 
-    data object StopSuccess : ExecutionCommand
+    data object RunConfigurationSuccess : ExecutionCommand
 
-    data class SelectArtifact(val artifact: ExecutionArtifact) : ExecutionCommand {
-        val key = Key.SELECT_ARTIFACT
+    data class StopConfiguration(val configuration: ExecutionConfiguration) : ExecutionCommand {
+        val key = Key.STOP_CONFIGURATION
     }
 
-    data object SelectArtifactSuccess : ExecutionCommand
+    data object StopConfigurationSuccess : ExecutionCommand
+
+    data object RunCurrentConfiguration : ExecutionCommand
+
+    data object StopCurrentConfiguration : ExecutionCommand
+
+    data class RerunConfiguration(val configuration: ExecutionConfiguration) : ExecutionCommand
+
+    data class SelectConfiguration(val configuration: ExecutionConfiguration) : ExecutionCommand {
+        val key = Key.SELECT_CONFIGURATION
+    }
+
+    data object SelectConfigurationSuccess : ExecutionCommand
 }

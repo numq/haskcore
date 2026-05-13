@@ -8,5 +8,5 @@ data class ToolchainData(
     @ProtoNumber(1) val ghcPath: String? = null,
     @ProtoNumber(2) val stackPath: String? = null,
     @ProtoNumber(3) val cabalPath: String? = null,
-    @ProtoNumber(4) val hlsPath: String? = null
+    @ProtoNumber(4) val hlsPath: String? = null,
 )

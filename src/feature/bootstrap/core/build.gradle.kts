@@ -3,13 +3,10 @@ plugins {
 }
 
 dependencies {
-    implementation(libs.kotlinx.coroutines.core)
-    implementation(libs.arrow.core)
-    implementation(libs.koin.core)
     implementation(projects.common.core)
-    implementation(projects.api.lsp)
-    implementation(projects.api.session)
-    implementation(projects.api.syntax)
+    implementation(projects.service.lsp)
+    implementation(projects.service.session)
+    implementation(projects.service.syntax)
 }
 
 tasks.withType<Test>().configureEach {

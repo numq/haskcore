@@ -22,6 +22,8 @@ import org.koin.core.scope.Scope
 
 @Composable
 fun ExecutionView(projectScope: Scope, handleError: (Throwable) -> Unit) {
+    val scope = rememberCoroutineScope()
+
     val feature = koinInject<ExecutionFeature>(scope = projectScope)
 
     val state by feature.state.collectAsState()
@@ -34,18 +36,14 @@ fun ExecutionView(projectScope: Scope, handleError: (Throwable) -> Unit) {
         }
     }
 
-    val scope = rememberCoroutineScope()
-
     var expanded by remember { mutableStateOf(false) }
 
-    val currentTarget = when (val execution = state.execution) {
-        is Execution.OutOfSync -> "Out of sync"
-
+    val currentConfiguration = when (val execution = state.execution) {
         is Execution.Syncing -> "Syncing"
 
         is Execution.Synced.NotFound -> "Not found"
 
-        is Execution.Synced.Found -> execution.selectedArtifact.target.name
+        is Execution.Synced.Found -> execution.currentConfiguration.name
 
         is Execution.Error -> "Error"
     }
@@ -67,7 +65,7 @@ fun ExecutionView(projectScope: Scope, handleError: (Throwable) -> Unit) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = currentTarget,
+                        text = currentConfiguration,
                         color = MaterialTheme.colorScheme.onSurface,
                         style = MaterialTheme.typography.labelLarge
                     )
@@ -82,12 +80,12 @@ fun ExecutionView(projectScope: Scope, handleError: (Throwable) -> Unit) {
                     is Execution.Synced -> DropdownMenu(expanded = expanded, onDismissRequest = {
                         expanded = false
                     }) {
-                        (state.execution as? Execution.Synced.Found)?.artifacts?.forEach { artifact ->
+                        (state.execution as? Execution.Synced.Found)?.configurations?.forEach { configuration ->
                             DropdownMenuItem(text = {
-                                Text(artifact.target.name)
+                                Text(configuration.name)
                             }, onClick = {
                                 scope.launch {
-                                    feature.execute(ExecutionCommand.SelectArtifact(artifact = artifact))
+                                    feature.execute(ExecutionCommand.SelectConfiguration(configuration = configuration))
 
                                     expanded = false
                                 }
@@ -106,7 +104,7 @@ fun ExecutionView(projectScope: Scope, handleError: (Throwable) -> Unit) {
                     else -> Color(0xFF4CAF50)
                 }, enabled = state.execution is Execution.Synced.Found.Stopped, onClick = {
                     scope.launch {
-                        feature.execute(ExecutionCommand.Run)
+                        feature.execute(ExecutionCommand.RunCurrentConfiguration)
                     }
                 })
 
@@ -117,7 +115,7 @@ fun ExecutionView(projectScope: Scope, handleError: (Throwable) -> Unit) {
                     else -> MaterialTheme.colorScheme.onSurface.copy(alpha = .38f)
                 }, enabled = isRunning, onClick = {
                     scope.launch {
-                        feature.execute(ExecutionCommand.Stop)
+                        feature.execute(ExecutionCommand.StopCurrentConfiguration)
                     }
                 })
         }

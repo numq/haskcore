@@ -3,8 +3,6 @@ package io.github.numq.haskcore.feature.editor.presentation.measurements
 internal object Measurements {
     const val CARET_WIDTH = 2f
 
-    const val GUTTER_ACTION_WIDTH = 48f
-
     const val GUTTER_PADDING_START = 8f
 
     const val GUTTER_PADDING_END = 4f

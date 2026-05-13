@@ -1,9 +1,9 @@
 package io.github.numq.haskcore.service.text
 
 import arrow.core.left
-import io.github.numq.haskcore.core.text.TextEdit
-import io.github.numq.haskcore.core.text.TextOperation
-import io.github.numq.haskcore.core.text.TextSnapshot
+import io.github.numq.haskcore.common.core.text.TextEdit
+import io.github.numq.haskcore.common.core.text.TextOperation
+import io.github.numq.haskcore.common.core.text.TextSnapshot
 import io.github.numq.haskcore.service.text.buffer.RopeTextBufferFactory
 import io.github.numq.haskcore.service.text.buffer.TextBuffer
 import kotlinx.coroutines.CoroutineScope
@@ -13,7 +13,7 @@ import kotlinx.coroutines.flow.*
 
 @OptIn(ExperimentalCoroutinesApi::class)
 internal class LocalTextService(
-    private val scope: CoroutineScope, private val bufferFactory: RopeTextBufferFactory
+    private val scope: CoroutineScope, private val bufferFactory: RopeTextBufferFactory,
 ) : TextService {
     private companion object {
         const val EDITS_BUFFER_CAPACITY = 64

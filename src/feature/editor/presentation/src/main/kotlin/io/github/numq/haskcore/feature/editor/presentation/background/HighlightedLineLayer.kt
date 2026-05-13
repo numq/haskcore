@@ -6,7 +6,7 @@ import org.jetbrains.skia.Paint
 import org.jetbrains.skia.Rect
 
 data class HighlightedLineLayer(
-    val x: Float, val y: Float, val width: Float, val height: Float, val paint: Paint
+    val x: Float, val y: Float, val width: Float, val height: Float, val paint: Paint,
 ) : Layer {
     override fun render(canvas: Canvas) {
         if (!paint.isClosed) {

@@ -2,18 +2,17 @@ package io.github.numq.haskcore.feature.editor.core.usecase
 
 import arrow.core.getOrElse
 import arrow.core.right
-import io.github.numq.haskcore.core.text.TextEdit
-import io.github.numq.haskcore.core.text.TextPosition
-import io.github.numq.haskcore.core.text.TextRange
-import io.github.numq.haskcore.core.text.TextSnapshot
-import io.github.numq.haskcore.feature.editor.core.EditorService
-import io.github.numq.haskcore.service.syntax.token.HighlightingToken
+import io.github.numq.haskcore.api.syntax.token.HighlightingToken
 import io.github.numq.haskcore.service.text.TextService
-import io.github.numq.haskcore.service.text.syntax.SyntaxScope
-import io.github.numq.haskcore.service.text.syntax.SyntaxToken
-import io.github.numq.haskcore.service.text.syntax.SyntaxTokenType
+import io.github.numq.haskcore.api.text.syntax.SyntaxScope
+import io.github.numq.haskcore.api.text.syntax.SyntaxToken
+import io.github.numq.haskcore.api.text.syntax.SyntaxTokenType
+import io.github.numq.haskcore.common.core.text.TextEdit
+import io.github.numq.haskcore.common.core.text.TextPosition
+import io.github.numq.haskcore.common.core.text.TextRange
+import io.github.numq.haskcore.common.core.text.TextSnapshot
+import io.github.numq.haskcore.feature.editor.core.EditorService
 import io.mockk.*
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
@@ -21,7 +20,6 @@ import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
-@OptIn(ExperimentalCoroutinesApi::class)
 internal class ObserveHighlightingTest {
     private val editorService = mockk<EditorService>()
     private val textService = mockk<TextService>()
@@ -56,7 +54,7 @@ internal class ObserveHighlightingTest {
         snapshotFlow.value = snapshot
         highlightingRangeFlow.value = 0..0
 
-        coEvery { textService.getScopes(any()) } returns emptyList<io.github.numq.haskcore.service.text.syntax.SyntaxScope>().right()
+        coEvery { textService.getScopes(any()) } returns emptyList<SyntaxScope>().right()
         coEvery { textService.getSyntaxTokens(any()) } returns listOf(syntaxToken).right()
 
         val highlighting = useCase(Unit).getOrElse { throw it }.first()

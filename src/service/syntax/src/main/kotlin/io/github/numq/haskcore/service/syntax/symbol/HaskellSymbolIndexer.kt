@@ -2,9 +2,9 @@ package io.github.numq.haskcore.service.syntax.symbol
 
 import arrow.core.Either
 import arrow.core.getOrElse
-import io.github.numq.haskcore.core.text.TextPosition
-import io.github.numq.haskcore.core.text.TextRange
-import io.github.numq.haskcore.core.text.TextSnapshot
+import io.github.numq.haskcore.common.core.text.TextPosition
+import io.github.numq.haskcore.common.core.text.TextRange
+import io.github.numq.haskcore.common.core.text.TextSnapshot
 import org.treesitter.TSNode
 import org.treesitter.TSQuery
 import org.treesitter.TSQueryCursor
@@ -56,7 +56,7 @@ internal class HaskellSymbolIndexer(private val symbolTable: SymbolTable) : Symb
     }
 
     override suspend fun reindex(
-        tree: TSTree, query: TSQuery, snapshot: TextSnapshot, dirtyRange: TextRange?
+        tree: TSTree, query: TSQuery, snapshot: TextSnapshot, dirtyRange: TextRange?,
     ) = Either.catch {
         val cursor = TSQueryCursor()
 

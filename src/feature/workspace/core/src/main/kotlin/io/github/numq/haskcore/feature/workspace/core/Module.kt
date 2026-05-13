@@ -1,9 +1,8 @@
 package io.github.numq.haskcore.feature.workspace.core
 
 import androidx.datastore.core.DataStoreFactory
-import io.github.numq.haskcore.core.di.ScopeQualifier
-import io.github.numq.haskcore.core.di.ScopeQualifierType
-import io.github.numq.haskcore.core.di.scopedOwner
+import io.github.numq.haskcore.common.core.di.ScopeQualifier
+import io.github.numq.haskcore.common.core.di.scopedOwner
 import io.github.numq.haskcore.feature.workspace.core.usecase.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -13,8 +12,8 @@ import org.koin.dsl.module
 import java.nio.file.Files
 import java.nio.file.Path
 
-val workspaceCoreModule = module {
-    scope<ScopeQualifierType.Project> {
+val workspaceFeatureCoreModule = module {
+    scope<ScopeQualifier.Type.Project> {
         scopedOwner {
             val projectPath = get<String>(qualifier = ScopeQualifier.Project)
 
@@ -34,13 +33,13 @@ val workspaceCoreModule = module {
             LocalWorkspaceService(scope = scope, workspaceDataSource = get())
         } bind WorkspaceService::class
 
-        scopedOwner { CloseWorkspaceDocument(projectService = get()) }
-
         scopedOwner {
             val projectPath = get<String>(qualifier = ScopeQualifier.Project)
 
             CloseWorkspace(path = projectPath, sessionService = get())
         }
+
+        scopedOwner { CloseWorkspaceDocument(projectService = get()) }
 
         scopedOwner { ObserveWorkspace(workspaceService = get(), projectService = get()) }
 
@@ -48,6 +47,12 @@ val workspaceCoreModule = module {
 
         scopedOwner { SaveDimensions(workspaceService = get()) }
 
-        scopedOwner { SaveRatio(workspaceService = get()) }
+        scopedOwner { SelectShelfTool(workspaceService = get()) }
+
+        scopedOwner { SaveLeftShelfPanelRatio(workspaceService = get()) }
+
+        scopedOwner { SaveRightShelfPanelRatio(workspaceService = get()) }
+
+        scopedOwner { SaveVerticalRatio(workspaceService = get()) }
     }
 }

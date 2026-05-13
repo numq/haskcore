@@ -4,4 +4,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.protobuf.ProtoNumber
 
 @Serializable
-internal data class ExecutionData(@ProtoNumber(1) val selectedArtifactPath: String? = null)
+internal data class ExecutionData(
+    @ProtoNumber(1) val configurations: List<ExecutionConfigurationData> = emptyList(),
+    @ProtoNumber(2) val selectedConfigurationId: String? = null,
+)

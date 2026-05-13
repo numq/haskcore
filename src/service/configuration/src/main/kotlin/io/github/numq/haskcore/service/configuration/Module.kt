@@ -1,9 +1,8 @@
 package io.github.numq.haskcore.service.configuration
 
 import androidx.datastore.core.DataStoreFactory
-import io.github.numq.haskcore.core.di.ScopeQualifier
-import io.github.numq.haskcore.core.di.ScopeQualifierType
-import io.github.numq.haskcore.core.di.scopedOwner
+import io.github.numq.haskcore.common.core.di.ScopeQualifier
+import io.github.numq.haskcore.common.core.di.scopedOwner
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -12,8 +11,8 @@ import org.koin.dsl.module
 import java.nio.file.Files
 import java.nio.file.Path
 
-val configurationModule = module {
-    scope<ScopeQualifierType.Application> {
+val configurationServiceModule = module {
+    scope<ScopeQualifier.Type.Application> {
         scopedOwner {
             val applicationPath = get<String>(qualifier = ScopeQualifier.Application)
 
@@ -21,7 +20,8 @@ val configurationModule = module {
 
             val dataStore = DataStoreFactory.create(
                 serializer = ConfigurationDataSerializer, scope = scope, produceFile = {
-                    Path.of(applicationPath, ".haskcore").also(Files::createDirectories).resolve("configuration.pb").toFile()
+                    Path.of(applicationPath, ".haskcore").also(Files::createDirectories).resolve("configuration.pb")
+                        .toFile()
                 })
 
             LocalConfigurationDataSource(scope = scope, dataStore = dataStore)

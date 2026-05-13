@@ -4,13 +4,10 @@ plugins {
 }
 
 dependencies {
-    implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.serialization.protobuf)
-    implementation(libs.arrow.core)
-    implementation(libs.koin.core)
     implementation(libs.datastore)
     implementation(projects.common.core)
-    implementation(projects.api.logger)
+    implementation(projects.service.logger)
 }
 
 tasks.withType<Test>().configureEach {

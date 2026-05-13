@@ -11,8 +11,8 @@ import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
-import io.github.numq.haskcore.platform.font.LogoFont
-import io.github.numq.haskcore.platform.font.MonoFont
+import io.github.numq.haskcore.common.presentation.font.LogoFont
+import io.github.numq.haskcore.common.presentation.font.MonoFont
 import kotlinx.coroutines.delay
 import org.jetbrains.skia.ClipMode
 import org.jetbrains.skia.Paint

@@ -5,7 +5,7 @@ import org.treesitter.TSQuery
 import java.net.URL
 
 internal class HaskellSyntaxQueryProvider(
-    override val language: TSLanguage, highlightsURL: URL?, localsURL: URL?, injectionsURL: URL?
+    override val language: TSLanguage, highlightsURL: URL?, localsURL: URL?, injectionsURL: URL?,
 ) : SyntaxQueryProvider {
     override val highlightsQuery by lazy {
         val query = highlightsURL?.readText() ?: error("highlights.scm not found")

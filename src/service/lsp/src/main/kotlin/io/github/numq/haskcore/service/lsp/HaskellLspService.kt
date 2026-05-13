@@ -6,10 +6,10 @@ import arrow.core.identity
 import arrow.core.raise.either
 import arrow.core.raise.ensure
 import arrow.core.right
-import io.github.numq.haskcore.core.text.TextPosition
-import io.github.numq.haskcore.core.text.TextRange
-import io.github.numq.haskcore.core.text.TextRevision
-import io.github.numq.haskcore.core.text.TextSnapshot
+import io.github.numq.haskcore.common.core.text.TextPosition
+import io.github.numq.haskcore.common.core.text.TextRange
+import io.github.numq.haskcore.common.core.text.TextRevision
+import io.github.numq.haskcore.common.core.text.TextSnapshot
 import io.github.numq.haskcore.service.lsp.completion.LspCompletion
 import io.github.numq.haskcore.service.lsp.connection.LspConnectionInternal
 import io.github.numq.haskcore.service.lsp.diagnostic.LspDiagnostic
@@ -28,10 +28,10 @@ import org.eclipse.lsp4j.services.LanguageServer
 import java.io.File
 import java.net.URI
 import java.util.concurrent.CompletableFuture
-import io.github.numq.haskcore.core.text.TextEdit as Edit
+import io.github.numq.haskcore.common.core.text.TextEdit as Edit
 
 internal class HaskellLspService(
-    private val projectPath: String, private val scope: CoroutineScope
+    private val projectPath: String, private val scope: CoroutineScope,
 ) : LspService, LanguageClient {
     private companion object {
         const val BUFFER_CAPACITY = 64
@@ -127,7 +127,7 @@ internal class HaskellLspService(
             redirectOutput(ProcessBuilder.Redirect.DISCARD)
         }
 
-        val process = processBuilder.start()
+        val process = withContext(Dispatchers.IO) { processBuilder.start() }
 
         val launcher = Launcher.createLauncher(
             this, LanguageServer::class.java, process.inputStream, process.outputStream
@@ -210,7 +210,7 @@ internal class HaskellLspService(
     override fun telemetryEvent(obj: Any) = Unit
 
     override fun showMessageRequest(
-        showMessageRequestParams: ShowMessageRequestParams
+        showMessageRequestParams: ShowMessageRequestParams,
     ): CompletableFuture<MessageActionItem?>? = CompletableFuture.completedFuture(null)
 
     override suspend fun start(hlsPath: String) = Either.catch {
@@ -257,7 +257,7 @@ internal class HaskellLspService(
     }
 
     override suspend fun applyEdit(
-        path: String, revision: TextRevision, edit: Edit
+        path: String, revision: TextRevision, edit: Edit,
     ) = when (val currentConnection = _connection.value) {
         is LspConnectionInternal.Connected -> Either.catch {
             val uri = buildUri(path = path)
@@ -298,7 +298,7 @@ internal class HaskellLspService(
     }
 
     override suspend fun requestReferences(
-        path: String, position: TextPosition
+        path: String, position: TextPosition,
     ) = Either.catch {
         _references.value = when (val currentConnection = _connection.value) {
             is LspConnectionInternal.Connected -> {

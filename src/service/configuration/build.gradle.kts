@@ -9,7 +9,7 @@ dependencies {
     implementation(libs.arrow.core)
     implementation(libs.koin.core)
     implementation(libs.datastore)
-    implementation(projects.core)
+    implementation(projects.common.core)
     testImplementation(libs.junit)
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlinx.coroutines.test)

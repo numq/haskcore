@@ -1,10 +1,10 @@
 package io.github.numq.haskcore.service.text.buffer
 
 import arrow.core.getOrElse
-import io.github.numq.haskcore.core.text.TextLineEnding
-import io.github.numq.haskcore.core.text.TextEdit
-import io.github.numq.haskcore.core.text.TextPosition
-import io.github.numq.haskcore.core.text.TextRange
+import io.github.numq.haskcore.common.core.text.TextEdit
+import io.github.numq.haskcore.common.core.text.TextLineEnding
+import io.github.numq.haskcore.common.core.text.TextPosition
+import io.github.numq.haskcore.common.core.text.TextRange
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
@@ -16,7 +16,9 @@ import java.nio.charset.StandardCharsets
 
 internal class TextBufferTest {
     private fun createBuffer(
-        initialText: String = "", textLineEnding: TextLineEnding = TextLineEnding.LF, charset: Charset = StandardCharsets.UTF_8
+        initialText: String = "",
+        textLineEnding: TextLineEnding = TextLineEnding.LF,
+        charset: Charset = StandardCharsets.UTF_8,
     ) = RopeTextBuffer(initialText = initialText, initialTextLineEnding = textLineEnding, initialCharset = charset)
 
     @Test

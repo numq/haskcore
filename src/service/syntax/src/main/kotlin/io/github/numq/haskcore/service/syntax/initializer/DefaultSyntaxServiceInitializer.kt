@@ -8,7 +8,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.withContext
 
 internal class DefaultSyntaxServiceInitializer(
-    private val queryProvider: SyntaxQueryProvider
+    private val queryProvider: SyntaxQueryProvider,
 ) : SyntaxServiceInitializer {
     override suspend fun initialize(): Either<Throwable, Unit> = Either.catch {
         withContext(Dispatchers.IO) {

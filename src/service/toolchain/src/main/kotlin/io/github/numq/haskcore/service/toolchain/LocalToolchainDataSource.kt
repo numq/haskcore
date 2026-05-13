@@ -7,7 +7,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 
 internal class LocalToolchainDataSource(
-    private val scope: CoroutineScope, private val dataStore: DataStore<ToolchainData>
+    private val scope: CoroutineScope, private val dataStore: DataStore<ToolchainData>,
 ) : ToolchainDataSource {
     override val toolchainData = dataStore.data
 

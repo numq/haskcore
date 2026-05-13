@@ -1,8 +1,9 @@
 package io.github.numq.haskcore.service.journal
 
 import arrow.core.Either
-import io.github.numq.haskcore.core.text.TextEdit
-import io.github.numq.haskcore.core.text.TextPosition
+import io.github.numq.haskcore.common.core.text.TextEdit
+import io.github.numq.haskcore.common.core.text.TextPosition
+import io.github.numq.haskcore.common.core.text.TextRevision
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
@@ -36,7 +37,7 @@ internal class LocalJournalServiceTest {
                 insertedText = "hello",
                 startByte = 0,
                 newEndByte = 5
-            ), revision = 1L
+            ), revision = TextRevision.ZERO
         )
 
         coEvery { journalDataSource.update(any()) } answers {

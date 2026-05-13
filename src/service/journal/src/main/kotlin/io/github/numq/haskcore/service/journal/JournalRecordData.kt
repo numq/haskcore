@@ -39,7 +39,7 @@ internal sealed interface JournalRecordData {
         @ProtoNumber(6) override val newEndLine: Int,
         @ProtoNumber(7) override val newEndColumn: Int,
         @ProtoNumber(8) override val timestampNanos: Long,
-        @ProtoNumber(9) val text: String
+        @ProtoNumber(9) val text: String,
     ) : JournalRecordData {
         override val oldEndByte get() = startByte
 
@@ -63,7 +63,7 @@ internal sealed interface JournalRecordData {
         @ProtoNumber(10) override val newEndColumn: Int,
         @ProtoNumber(11) override val timestampNanos: Long,
         @ProtoNumber(12) val oldText: String,
-        @ProtoNumber(13) val newText: String
+        @ProtoNumber(13) val newText: String,
     ) : JournalRecordData
 
     @Serializable
@@ -77,7 +77,7 @@ internal sealed interface JournalRecordData {
         @ProtoNumber(6) override val oldEndLine: Int,
         @ProtoNumber(7) override val oldEndColumn: Int,
         @ProtoNumber(8) override val timestampNanos: Long,
-        @ProtoNumber(9) val text: String
+        @ProtoNumber(9) val text: String,
     ) : JournalRecordData {
         override val newEndByte get() = startByte
 
@@ -91,7 +91,7 @@ internal sealed interface JournalRecordData {
     data class Batch(
         @ProtoNumber(1) override val revision: Long,
         @ProtoNumber(2) override val timestampNanos: Long,
-        @ProtoNumber(3) val records: List<JournalRecordData>
+        @ProtoNumber(3) val records: List<JournalRecordData>,
     ) : JournalRecordData {
         override val startByte get() = records.first().startByte
 

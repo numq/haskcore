@@ -1,0 +1,42 @@
+package io.github.numq.haskcore.feature.execution.core.usecase
+
+import arrow.core.raise.Raise
+import io.github.numq.haskcore.service.runtime.RuntimeService
+import io.github.numq.haskcore.service.runtime.RuntimeRequest
+import io.github.numq.haskcore.common.core.usecase.UseCase
+import io.github.numq.haskcore.feature.execution.core.ExecutionConfiguration
+import io.github.numq.haskcore.feature.execution.core.LaunchTarget
+
+class RunConfiguration(private val runtimeService: RuntimeService) : UseCase<RunConfiguration.Input, Unit> {
+    data class Input(val configuration: ExecutionConfiguration)
+
+    override suspend fun Raise<Throwable>.execute(input: Input) = with(input.configuration) {
+        val request = when (val launchTarget = target) {
+            is LaunchTarget.Stack -> RuntimeRequest.Stack(
+                id = id,
+                name = name,
+                arguments = listOf("run", launchTarget.componentName, "--") + programArguments,
+                workingDir = launchTarget.workingDir,
+                env = env
+            )
+
+            is LaunchTarget.Cabal -> RuntimeRequest.Cabal(
+                id = id,
+                name = name,
+                arguments = listOf("run", launchTarget.componentName, "--") + programArguments,
+                workingDir = launchTarget.workingDir,
+                env = env
+            )
+
+            is LaunchTarget.File -> RuntimeRequest.Ghc(
+                id = id,
+                name = name,
+                arguments = listOf(launchTarget.filePath) + programArguments,
+                workingDir = launchTarget.workingDir,
+                env = env
+            )
+        }
+
+        runtimeService.start(request = request).bind()
+    }
+}

@@ -2,10 +2,10 @@ package io.github.numq.haskcore.service.syntax.token
 
 import arrow.core.Either
 import arrow.core.right
-import io.github.numq.haskcore.core.text.TextPosition
-import io.github.numq.haskcore.core.text.TextRange
 import io.github.numq.haskcore.service.syntax.toTSPoint
 import io.github.numq.haskcore.service.syntax.toTextPosition
+import io.github.numq.haskcore.common.core.text.TextPosition
+import io.github.numq.haskcore.common.core.text.TextRange
 import io.github.numq.haskcore.service.syntax.token.HaskellSyntaxToken.Type
 import kotlinx.coroutines.async
 import kotlinx.coroutines.supervisorScope
@@ -16,7 +16,7 @@ import org.treesitter.TSTree
 
 internal class HaskellSyntaxTokenProvider : SyntaxTokenProvider {
     private fun fillGapsInLine(
-        lineIndex: Int, lineLength: Int, lineRegions: List<SyntaxToken.Region>
+        lineIndex: Int, lineLength: Int, lineRegions: List<SyntaxToken.Region>,
     ) = when (lineLength) {
         0 -> emptyList()
 
@@ -85,7 +85,7 @@ internal class HaskellSyntaxTokenProvider : SyntaxTokenProvider {
     }
 
     private fun collectHaskellTokensFromQuery(
-        query: TSQuery, rootNode: TSNode, cursor: TSQueryCursor
+        query: TSQuery, rootNode: TSNode, cursor: TSQueryCursor,
     ): List<HaskellSyntaxToken> {
         val result = mutableListOf<HaskellSyntaxToken>()
 
@@ -120,7 +120,7 @@ internal class HaskellSyntaxTokenProvider : SyntaxTokenProvider {
 
 
     override suspend fun getSyntaxTokensPerLine(
-        tree: TSTree, highlightsQuery: TSQuery, localsQuery: TSQuery, lineLengths: Map<Int, Int>, range: TextRange
+        tree: TSTree, highlightsQuery: TSQuery, localsQuery: TSQuery, lineLengths: Map<Int, Int>, range: TextRange,
     ) = when {
         range.isEmpty -> emptyMap<Int, List<SyntaxToken>>().right()
 

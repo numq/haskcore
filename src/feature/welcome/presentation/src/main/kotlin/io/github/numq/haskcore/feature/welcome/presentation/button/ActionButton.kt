@@ -15,7 +15,7 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 internal fun ActionButton(
-    text: String, icon: ImageVector? = null, modifier: Modifier = Modifier, onClick: () -> Unit
+    text: String, icon: ImageVector? = null, modifier: Modifier = Modifier, onClick: () -> Unit,
 ) {
     Surface(
         onClick = onClick,

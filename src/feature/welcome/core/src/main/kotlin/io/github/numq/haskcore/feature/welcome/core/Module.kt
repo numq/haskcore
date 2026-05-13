@@ -8,8 +8,8 @@ import org.koin.dsl.module
 
 val welcomeFeatureCoreModule = module {
     scope<ScopeQualifier.Type.Application> {
-        scopedOwner { ObserveRecentProjects(sessionApi = get()) }
+        scopedOwner { ObserveRecentProjects(sessionService = get()) }
 
-        scopedOwner { RemoveRecentProject(sessionApi = get()) }
+        scopedOwner { RemoveRecentProject(sessionService = get()) }
     }
 }

@@ -1,12 +1,12 @@
 package io.github.numq.haskcore.service.document
 
-import io.github.numq.haskcore.core.di.ScopeQualifierType
-import io.github.numq.haskcore.core.di.scopedOwner
+import io.github.numq.haskcore.common.core.di.ScopeQualifier
+import io.github.numq.haskcore.common.core.di.scopedOwner
 import org.koin.dsl.bind
 import org.koin.dsl.module
 
-val documentModule = module {
-    scope<ScopeQualifierType.Application> {
+val documentServiceModule = module {
+    scope<ScopeQualifier.Type.Application> {
         scopedOwner { LocalDocumentService() } bind DocumentService::class
     }
 }

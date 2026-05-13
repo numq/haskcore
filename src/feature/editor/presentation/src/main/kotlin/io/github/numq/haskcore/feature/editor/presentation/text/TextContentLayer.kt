@@ -8,7 +8,7 @@ import org.jetbrains.skia.paragraph.RectHeightMode
 import org.jetbrains.skia.paragraph.RectWidthMode
 
 data class TextContentLayer(
-    val viewportLine: ViewportLine, val paragraph: Paragraph, val x: Float, val y: Float
+    val viewportLine: ViewportLine, val paragraph: Paragraph, val x: Float, val y: Float,
 ) : Layer {
     fun getCoordinateAtOffset(offset: Int): Float {
         if (paragraph.isClosed || offset <= 0) return 0f
