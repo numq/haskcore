@@ -1,5 +1,6 @@
 package io.github.numq.haskcore.feature.workspace.presentation.feature.view
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -15,14 +16,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.rememberWindowState
-import io.github.numq.haskcore.common.presentation.container.ForegroundContainer
+import io.github.numq.haskcore.common.presentation.container.Container
+import io.github.numq.haskcore.common.presentation.tab.CloseableTabs
 import io.github.numq.haskcore.common.presentation.window.WindowDecoration
+import io.github.numq.haskcore.feature.workspace.core.WorkspaceDocument
 import io.github.numq.haskcore.feature.workspace.presentation.feature.WorkspaceCommand
 import io.github.numq.haskcore.feature.workspace.presentation.feature.WorkspaceState
 import io.github.numq.haskcore.feature.workspace.presentation.shelf.ShelfPanelContent
 import io.github.numq.haskcore.feature.workspace.presentation.shelf.ShelfPanelContentHandle
 import io.github.numq.haskcore.feature.workspace.presentation.shelf.ShelfToolContent
-import io.github.numq.haskcore.feature.workspace.presentation.tab.WorkspaceTabs
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.Channel
@@ -40,11 +42,10 @@ internal fun WorkspaceViewReady(
     state: WorkspaceState.Ready,
     execute: suspend (WorkspaceCommand) -> Unit,
     icon: Painter,
-    background: @Composable (content: @Composable () -> Unit) -> Unit,
     execution: @Composable () -> Unit,
     explorer: @Composable (path: String?) -> Unit,
     log: @Composable () -> Unit,
-    editor: @Composable (path: String?, tabs: @Composable (content: @Composable () -> Unit) -> Unit) -> Unit,
+    editor: @Composable (path: String?) -> Unit,
     output: @Composable () -> Unit,
     status: @Composable () -> Unit,
 ) {
@@ -52,18 +53,18 @@ internal fun WorkspaceViewReady(
 
     val windowState = rememberWindowState(
         placement = when {
-            state.workspace.isFullscreen == true -> WindowPlacement.Fullscreen
+        state.workspace.isFullscreen == true -> WindowPlacement.Fullscreen
 
-            else -> WindowPlacement.Floating
-        }, position = state.workspace.x?.let { x ->
-            state.workspace.y?.let { y ->
-                WindowPosition(x = x.dp, y = y.dp)
-            }
-        } ?: WindowPosition.PlatformDefault, size = state.workspace.width?.dp?.let { width ->
-            state.workspace.height?.dp?.let { height ->
-                DpSize(width = width, height = height)
-            }
-        } ?: DpSize(800.dp, 600.dp))
+        else -> WindowPlacement.Floating
+    }, position = state.workspace.x?.let { x ->
+        state.workspace.y?.let { y ->
+            WindowPosition(x = x.dp, y = y.dp)
+        }
+    } ?: WindowPosition.PlatformDefault, size = state.workspace.width?.dp?.let { width ->
+        state.workspace.height?.dp?.let { height ->
+            DpSize(width = width, height = height)
+        }
+    } ?: DpSize(800.dp, 600.dp))
 
     DisposableEffect(windowState) {
         onDispose {
@@ -255,157 +256,155 @@ internal fun WorkspaceViewReady(
                 }
             }
 
-            background {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.SpaceBetween
+            Column(
+                modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        modifier = Modifier.weight(1f),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        ShelfPanelContent(panel = state.workspace.shelf.leftPanel, selectTool = { tool ->
-                            scope.launch {
-                                execute(WorkspaceCommand.SelectShelfTool(tool = tool))
-                            }
-                        })
+                    ShelfPanelContent(panel = state.workspace.shelf.leftPanel, selectTool = { tool ->
+                        scope.launch {
+                            execute(WorkspaceCommand.SelectShelfTool(tool = tool))
+                        }
+                    })
 
-                        BoxWithConstraints(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                            val totalWidth = constraints.maxWidth.toFloat()
+                    BoxWithConstraints(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                        val totalWidth = constraints.maxWidth.toFloat()
 
-                            VerticalSplitPane(
-                                modifier = Modifier.fillMaxSize(), splitPaneState = verticalSplitPaneState
-                            ) {
-                                first {
-                                    Row(
-                                        modifier = Modifier.fillMaxSize(),
-                                        horizontalArrangement = Arrangement.Start,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        if (leftWeight > 0f) {
-                                            Box(modifier = Modifier.weight(leftWeight)) {
-                                                state.workspace.shelf.leftPanel.activeTool?.let { tool ->
-                                                    ShelfToolContent(tool = tool, explorer = {
-                                                        explorer(state.workspace.activeDocumentPath)
-                                                    }, log = log)
-                                                }
+                        VerticalSplitPane(
+                            modifier = Modifier.fillMaxSize(), splitPaneState = verticalSplitPaneState
+                        ) {
+                            first {
+                                Row(
+                                    modifier = Modifier.fillMaxSize(),
+                                    horizontalArrangement = Arrangement.Start,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    if (leftWeight > 0f) {
+                                        Box(modifier = Modifier.weight(leftWeight)) {
+                                            state.workspace.shelf.leftPanel.activeTool?.let { tool ->
+                                                ShelfToolContent(tool = tool, explorer = {
+                                                    explorer(state.workspace.activeDocument?.path)
+                                                }, log = log)
                                             }
-
-                                            ShelfPanelContentHandle(
-                                                totalWidth = totalWidth, onPositionChange = { deltaX ->
-                                                    if (totalWidth > 0f) {
-                                                        val currentRatio = localLeftRatio
-
-                                                        val delta = deltaX / totalWidth
-
-                                                        localLeftRatio = (localLeftRatio + delta).coerceIn(.05f, .4f)
-
-                                                        if (localLeftRatio != currentRatio) {
-                                                            scope.launch {
-                                                                leftRatioChannel.send(localLeftRatio)
-                                                            }
-                                                        }
-                                                    }
-                                                })
                                         }
 
-                                        Box(
-                                            modifier = Modifier.weight(centerWeight),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            editor(state.workspace.activeDocumentPath) { content ->
+                                        ShelfPanelContentHandle(
+                                            totalWidth = totalWidth, onPositionChange = { deltaX ->
+                                                if (totalWidth > 0f) {
+                                                    val currentRatio = localLeftRatio
+
+                                                    val delta = deltaX / totalWidth
+
+                                                    localLeftRatio = (localLeftRatio + delta).coerceIn(.05f, .4f)
+
+                                                    if (localLeftRatio != currentRatio) {
+                                                        scope.launch {
+                                                            leftRatioChannel.send(localLeftRatio)
+                                                        }
+                                                    }
+                                                }
+                                            })
+                                    }
+
+                                    Box(modifier = Modifier.weight(centerWeight), contentAlignment = Alignment.Center) {
+                                        state.workspace.activeDocument?.let { activeDocument ->
+                                            Container {
                                                 Column(
                                                     modifier = Modifier.fillMaxSize(),
-                                                    horizontalAlignment = Alignment.Start,
-                                                    verticalArrangement = Arrangement.Top
+                                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                                    verticalArrangement = Arrangement.spacedBy(
+                                                        space = 4.dp, alignment = Alignment.CenterVertically
+                                                    )
                                                 ) {
-                                                    WorkspaceTabs(
-                                                        documents = state.workspace.documents,
-                                                        activeDocumentPath = state.workspace.activeDocumentPath,
-                                                        selectDocument = { document ->
+                                                    CloseableTabs(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        items = state.workspace.documents,
+                                                        activeItem = state.workspace.activeDocument,
+                                                        getItemName = WorkspaceDocument::name,
+                                                        select = { document ->
                                                             scope.launch {
-                                                                execute(WorkspaceCommand.OpenTab(path = document.path))
+                                                                execute(WorkspaceCommand.OpenDocument(document = document))
                                                             }
                                                         },
-                                                        closeDocument = { document ->
+                                                        close = { document ->
                                                             scope.launch {
-                                                                execute(WorkspaceCommand.CloseTab(path = document.path))
+                                                                execute(WorkspaceCommand.CloseDocument(document = document))
                                                             }
                                                         })
                                                     Box(
                                                         modifier = Modifier.weight(1f),
                                                         contentAlignment = Alignment.Center
                                                     ) {
-                                                        content()
+                                                        editor(activeDocument.path)
                                                     }
                                                 }
                                             }
                                         }
+                                    }
 
-                                        if (rightWeight > 0f) {
-                                            ShelfPanelContentHandle(
-                                                totalWidth = totalWidth, onPositionChange = { deltaX ->
-                                                    if (totalWidth > 0f) {
-                                                        val currentRatio = localRightRatio
+                                    if (rightWeight > 0f) {
+                                        ShelfPanelContentHandle(
+                                            totalWidth = totalWidth, onPositionChange = { deltaX ->
+                                                if (totalWidth > 0f) {
+                                                    val currentRatio = localRightRatio
 
-                                                        val delta = -deltaX / totalWidth
+                                                    val delta = -deltaX / totalWidth
 
-                                                        localRightRatio = (localRightRatio + delta).coerceIn(.05f, .4f)
+                                                    localRightRatio = (localRightRatio + delta).coerceIn(.05f, .4f)
 
-                                                        if (localRightRatio != currentRatio) {
-                                                            scope.launch {
-                                                                rightRatioChannel.send(localRightRatio)
-                                                            }
+                                                    if (localRightRatio != currentRatio) {
+                                                        scope.launch {
+                                                            rightRatioChannel.send(localRightRatio)
                                                         }
                                                     }
-                                                })
-
-                                            Box(modifier = Modifier.weight(rightWeight)) {
-                                                state.workspace.shelf.rightPanel.activeTool?.let { tool ->
-                                                    ShelfToolContent(tool = tool, explorer = {
-                                                        explorer(state.workspace.activeDocumentPath)
-                                                    }, log = log)
                                                 }
+                                            })
+
+                                        Box(modifier = Modifier.weight(rightWeight)) {
+                                            state.workspace.shelf.rightPanel.activeTool?.let { tool ->
+                                                ShelfToolContent(tool = tool, explorer = {
+                                                    explorer(state.workspace.activeDocument?.path)
+                                                }, log = log)
                                             }
                                         }
                                     }
                                 }
+                            }
 
-                                splitter {
-                                    handle {
-                                        Box(
-                                            modifier = Modifier.markAsHandle().height(8.dp).fillMaxWidth()
-                                                .pointerHoverIcon(
-                                                    PointerIcon(
-                                                        Cursor.getPredefinedCursor(
-                                                            Cursor.N_RESIZE_CURSOR
-                                                        )
-                                                    )
+                            splitter {
+                                handle {
+                                    Box(
+                                        modifier = Modifier.markAsHandle().height(8.dp).fillMaxWidth().pointerHoverIcon(
+                                            PointerIcon(
+                                                Cursor.getPredefinedCursor(
+                                                    Cursor.N_RESIZE_CURSOR
                                                 )
+                                            )
                                         )
-                                    }
+                                    )
                                 }
+                            }
 
-                                second(minSize = 48.dp) {
-                                    ForegroundContainer {
-                                        output()
-                                    }
-                                }
+                            second(minSize = 48.dp) {
+                                output()
                             }
                         }
-
-                        ShelfPanelContent(panel = state.workspace.shelf.rightPanel, selectTool = { tool ->
-                            scope.launch {
-                                execute(WorkspaceCommand.SelectShelfTool(tool = tool))
-                            }
-                        })
                     }
 
-                    Box(modifier = Modifier.fillMaxWidth().height(32.dp), contentAlignment = Alignment.Center) {
-                        status()
-                    }
+                    ShelfPanelContent(panel = state.workspace.shelf.rightPanel, selectTool = { tool ->
+                        scope.launch {
+                            execute(WorkspaceCommand.SelectShelfTool(tool = tool))
+                        }
+                    })
+                }
+
+                Box(modifier = Modifier.fillMaxWidth().height(32.dp), contentAlignment = Alignment.Center) {
+                    status()
                 }
             }
         })

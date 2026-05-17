@@ -2,16 +2,16 @@ package io.github.numq.haskcore.feature.editor.core.usecase
 
 import arrow.core.flatMap
 import arrow.core.raise.Raise
+import io.github.numq.haskcore.common.core.text.*
+import io.github.numq.haskcore.common.core.usecase.UseCase
+import io.github.numq.haskcore.feature.editor.core.EditorService
 import io.github.numq.haskcore.service.clipboard.ClipboardService
 import io.github.numq.haskcore.service.document.DocumentService
 import io.github.numq.haskcore.service.journal.JournalService
 import io.github.numq.haskcore.service.keymap.KeyStroke
-import io.github.numq.haskcore.service.keymap.KeymapService
 import io.github.numq.haskcore.service.keymap.KeymapContext
+import io.github.numq.haskcore.service.keymap.KeymapService
 import io.github.numq.haskcore.service.text.TextService
-import io.github.numq.haskcore.common.core.text.*
-import io.github.numq.haskcore.common.core.usecase.UseCase
-import io.github.numq.haskcore.feature.editor.core.EditorService
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -23,7 +23,7 @@ class ProcessKey(
     private val journalService: JournalService,
     private val keymapService: KeymapService,
     private val textService: TextService,
-) : UseCase<ProcessKey.Input, Unit> {
+) : UseCase.Command<ProcessKey.Input> {
     data class Input(val keyCode: Int, val modifiers: Int, val utf16CodePoint: Int)
 
     private val mutex = Mutex()
@@ -88,7 +88,7 @@ class ProcessKey(
         revision = revision, data = data.toOperationData(snapshot = snapshot)
     )
 
-    override suspend fun Raise<Throwable>.execute(input: Input) = with(input) {
+    override suspend fun Raise<Throwable>.command(input: Input) = with(input) {
         mutex.withLock {
             val snapshot = textService.snapshot.value ?: return
 

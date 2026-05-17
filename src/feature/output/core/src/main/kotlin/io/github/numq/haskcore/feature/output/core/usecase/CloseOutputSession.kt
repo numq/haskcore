@@ -4,9 +4,9 @@ import arrow.core.raise.Raise
 import io.github.numq.haskcore.common.core.usecase.UseCase
 import io.github.numq.haskcore.feature.output.core.OutputService
 
-class CloseOutputSession(private val outputService: OutputService) : UseCase<CloseOutputSession.Input, Unit> {
+class CloseOutputSession(private val outputService: OutputService) : UseCase.Command<CloseOutputSession.Input> {
     data class Input(val sessionId: String)
 
-    override suspend fun Raise<Throwable>.execute(input: Input) =
+    override suspend fun Raise<Throwable>.command(input: Input) =
         outputService.closeSession(id = input.sessionId).bind()
 }

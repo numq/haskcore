@@ -27,7 +27,7 @@ internal fun EditorViewEmpty() {
             Column(
                 modifier = Modifier.wrapContentWidth(),
                 horizontalAlignment = Alignment.Start,
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 ShortcutHint(label = "Open Project", keys = "Ctrl + O")
 

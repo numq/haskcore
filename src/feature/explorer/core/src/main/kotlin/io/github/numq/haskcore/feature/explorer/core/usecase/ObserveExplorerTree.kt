@@ -2,16 +2,16 @@ package io.github.numq.haskcore.feature.explorer.core.usecase
 
 import arrow.core.getOrElse
 import arrow.core.raise.Raise
-import io.github.numq.haskcore.service.vfs.VfsService
-import io.github.numq.haskcore.service.vfs.VirtualFile
 import io.github.numq.haskcore.common.core.usecase.UseCase
 import io.github.numq.haskcore.feature.explorer.core.*
+import io.github.numq.haskcore.service.vfs.VfsService
+import io.github.numq.haskcore.service.vfs.VirtualFile
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 
 class ObserveExplorerTree(
     private val root: ExplorerRoot, private val explorerService: ExplorerService, private val vfsService: VfsService,
-) : UseCase<Unit, Flow<ExplorerTree>> {
+) : UseCase.Query<Flow<ExplorerTree>> {
     private suspend fun buildTree(cache: Map<String, List<VirtualFile>>, explorer: Explorer): ExplorerTree {
         val rootPath = root.path
 
@@ -23,7 +23,7 @@ class ObserveExplorerTree(
             add(
                 ExplorerNode.Directory(
                     name = explorerService.getName(path = rootPath).getOrElse { "" }
-                        .ifEmpty { rootPath },
+                    .ifEmpty { rootPath },
                     path = rootPath,
                     level = 0,
                     segments = emptyList(),
@@ -88,7 +88,7 @@ class ObserveExplorerTree(
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    override suspend fun Raise<Throwable>.execute(input: Unit) = explorerService.explorer.map { explorer ->
+    override suspend fun Raise<Throwable>.query() = explorerService.explorer.map { explorer ->
         explorer.expandedPaths.toSet() + root.path
     }.distinctUntilChanged().scan(emptyMap<String, Flow<Pair<String, List<VirtualFile>>>>()) { acc, paths ->
         val current = acc.filterKeys(paths::contains)

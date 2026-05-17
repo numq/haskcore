@@ -1,8 +1,9 @@
 package io.github.numq.haskcore.feature.workspace.presentation.shelf
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -12,21 +13,15 @@ import io.github.numq.haskcore.feature.workspace.core.ShelfTool
 
 @Composable
 internal fun ShelfPanelContent(panel: ShelfPanel, selectTool: (ShelfTool) -> Unit) {
-    Surface(
+    Column(
         modifier = Modifier.fillMaxHeight().width(40.dp),
-        color = MaterialTheme.colorScheme.surface,
-        contentColor = MaterialTheme.colorScheme.onSurface
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Top
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Top
-        ) {
-            panel.tools.forEach { tool ->
-                ShelfToolItem(tool = tool, isActive = tool == panel.activeTool, select = {
-                    selectTool(tool)
-                })
-            }
+        panel.tools.forEach { tool ->
+            ShelfToolItem(tool = tool, isActive = tool == panel.activeTool, select = {
+                selectTool(tool)
+            })
         }
     }
 }

@@ -5,9 +5,9 @@ import io.github.numq.haskcore.common.core.usecase.UseCase
 import io.github.numq.haskcore.feature.explorer.core.ExplorerNode
 import io.github.numq.haskcore.feature.explorer.core.ExplorerService
 
-class ExpandDirectory(private val explorerService: ExplorerService) : UseCase<ExpandDirectory.Input, Unit> {
+class ExpandDirectory(private val explorerService: ExplorerService) : UseCase.Command<ExpandDirectory.Input> {
     data class Input(val node: ExplorerNode.Directory)
 
-    override suspend fun Raise<Throwable>.execute(input: Input) =
+    override suspend fun Raise<Throwable>.command(input: Input) =
         explorerService.expandDirectory(node = input.node).bind()
 }

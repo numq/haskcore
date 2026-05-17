@@ -2,11 +2,12 @@ package io.github.numq.haskcore.feature.workspace.presentation.feature
 
 import io.github.numq.haskcore.feature.workspace.core.ShelfTool
 import io.github.numq.haskcore.feature.workspace.core.Workspace
+import io.github.numq.haskcore.feature.workspace.core.WorkspaceDocument
 import kotlinx.coroutines.flow.Flow
 
 internal sealed interface WorkspaceCommand {
     enum class Key {
-        INITIALIZE, INITIALIZE_SUCCESS, CLOSE_WORKSPACE, OPEN_TAB, CLOSE_TAB, SELECT_SHELF_TOOL, SAVE_LEFT_SHELF_PANEL_RATIO, SAVE_RIGHT_SHELF_PANEL_RATIO, SAVE_VERTICAL_RATIO, SAVE_DIMENSIONS
+        INITIALIZE, INITIALIZE_SUCCESS, CLOSE_WORKSPACE, OPEN_DOCUMENT, CLOSE_DOCUMENT, SELECT_SHELF_TOOL, SAVE_LEFT_SHELF_PANEL_RATIO, SAVE_RIGHT_SHELF_PANEL_RATIO, SAVE_VERTICAL_RATIO, SAVE_DIMENSIONS
     }
 
     data class HandleFailure(val throwable: Throwable) : WorkspaceCommand
@@ -27,17 +28,17 @@ internal sealed interface WorkspaceCommand {
 
     data object CloseWorkspaceSuccess : WorkspaceCommand
 
-    data class OpenTab(val path: String) : WorkspaceCommand {
-        val key = Key.OPEN_TAB
+    data class OpenDocument(val document: WorkspaceDocument) : WorkspaceCommand {
+        val key = Key.OPEN_DOCUMENT
     }
 
-    data object OpenTabSuccess : WorkspaceCommand
+    data object OpenDocumentSuccess : WorkspaceCommand
 
-    data class CloseTab(val path: String) : WorkspaceCommand {
-        val key = Key.CLOSE_TAB
+    data class CloseDocument(val document: WorkspaceDocument) : WorkspaceCommand {
+        val key = Key.CLOSE_DOCUMENT
     }
 
-    data object CloseTabSuccess : WorkspaceCommand
+    data object CloseDocumentSuccess : WorkspaceCommand
 
     data class SelectShelfTool(val tool: ShelfTool) : WorkspaceCommand {
         val key = Key.SELECT_SHELF_TOOL

@@ -6,21 +6,6 @@ import arrow.core.raise.Raise
 import arrow.core.raise.either
 import com.github.difflib.DiffUtils
 import com.github.difflib.patch.DeltaType
-import io.github.numq.haskcore.service.document.DocumentService
-import io.github.numq.haskcore.service.document.Document
-import io.github.numq.haskcore.service.journal.JournalService
-import io.github.numq.haskcore.service.logger.LoggerService
-import io.github.numq.haskcore.service.lsp.LspService
-import io.github.numq.haskcore.service.lsp.completion.LspCompletion
-import io.github.numq.haskcore.service.lsp.connection.LspConnection
-import io.github.numq.haskcore.service.lsp.diagnostic.LspDiagnostic
-import io.github.numq.haskcore.service.syntax.SyntaxService
-import io.github.numq.haskcore.service.syntax.occurrence.SyntaxOccurrence
-import io.github.numq.haskcore.service.syntax.token.SyntaxToken
-import io.github.numq.haskcore.service.text.TextService
-import io.github.numq.haskcore.service.toolchain.Toolchain
-import io.github.numq.haskcore.service.toolchain.ToolchainService
-import io.github.numq.haskcore.service.vfs.VfsService
 import io.github.numq.haskcore.common.core.text.*
 import io.github.numq.haskcore.common.core.timestamp.Timestamp
 import io.github.numq.haskcore.common.core.usecase.UseCase
@@ -34,6 +19,21 @@ import io.github.numq.haskcore.feature.editor.core.syntax.FoldingRegion
 import io.github.numq.haskcore.feature.editor.core.syntax.Occurrence
 import io.github.numq.haskcore.feature.editor.core.syntax.Syntax
 import io.github.numq.haskcore.feature.editor.core.syntax.Token
+import io.github.numq.haskcore.service.document.Document
+import io.github.numq.haskcore.service.document.DocumentService
+import io.github.numq.haskcore.service.journal.JournalService
+import io.github.numq.haskcore.service.logger.LoggerService
+import io.github.numq.haskcore.service.lsp.LspService
+import io.github.numq.haskcore.service.lsp.completion.LspCompletion
+import io.github.numq.haskcore.service.lsp.connection.LspConnection
+import io.github.numq.haskcore.service.lsp.diagnostic.LspDiagnostic
+import io.github.numq.haskcore.service.syntax.SyntaxService
+import io.github.numq.haskcore.service.syntax.occurrence.SyntaxOccurrence
+import io.github.numq.haskcore.service.syntax.token.SyntaxToken
+import io.github.numq.haskcore.service.text.TextService
+import io.github.numq.haskcore.service.toolchain.Toolchain
+import io.github.numq.haskcore.service.toolchain.ToolchainService
+import io.github.numq.haskcore.service.vfs.VfsService
 import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -51,7 +51,7 @@ class ObserveEditor(
     private val textService: TextService,
     private val toolchainService: ToolchainService,
     private val vfsService: VfsService,
-) : UseCase<Unit, Flow<Editor>> {
+) : UseCase.Query<Flow<Editor>> {
     private companion object {
         const val AUTO_SAVE_SAMPLE_MILLIS = 2_000L
 
@@ -300,7 +300,7 @@ class ObserveEditor(
         }
     }
 
-    override suspend fun Raise<Throwable>.execute(input: Unit): Flow<Editor> {
+    override suspend fun Raise<Throwable>.query(): Flow<Editor> {
         val document = documentService.readDocument(path = documentPath).getOrElse { throwable ->
             throw throwable // todo
         }

@@ -14,12 +14,11 @@ import org.koin.core.scope.Scope
 fun WorkspaceView(
     projectScope: Scope,
     handleError: (Throwable) -> Unit,
-    icon: Painter,
-    background: @Composable (content: @Composable () -> Unit) -> Unit,
+    logo: Painter,
     execution: @Composable () -> Unit,
     explorer: @Composable (path: String?) -> Unit,
     log: @Composable () -> Unit,
-    editor: @Composable (path: String?, tabs: @Composable (content: @Composable () -> Unit) -> Unit) -> Unit,
+    editor: @Composable (path: String?) -> Unit,
     output: @Composable () -> Unit,
     status: @Composable () -> Unit,
 ) {
@@ -41,8 +40,7 @@ fun WorkspaceView(
         is WorkspaceState.Ready -> WorkspaceViewReady(
             state = currentState,
             execute = feature::execute,
-            icon = icon,
-            background = background,
+            icon = logo,
             execution = execution,
             explorer = explorer,
             log = log,

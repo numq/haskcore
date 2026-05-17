@@ -5,17 +5,15 @@ import androidx.compose.foundation.LocalScrollbarStyle
 import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.v2.ScrollbarAdapter
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.isShiftPressed
 import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.platform.LocalDensity
-import io.github.numq.haskcore.common.presentation.theme.editor.EditorTheme
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalComposeUiApi::class)
@@ -29,7 +27,6 @@ internal fun ScrollbarContainer(
     paddingStart: Float,
     minimalHeight: Float,
     thickness: Float,
-    theme: EditorTheme,
     content: @Composable (viewportWidth: Float, viewportHeight: Float) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -121,9 +118,8 @@ internal fun ScrollbarContainer(
                     style = LocalScrollbarStyle.current.copy(
                         thickness = thicknessDp,
                         minimalHeight = with(density) { minimalHeight.toDp() },
-                        shape = RectangleShape,
-                        unhoverColor = Color(theme.scrollbarColorPalette.backgroundColor).copy(alpha = .5f),
-                        hoverColor = Color(theme.scrollbarColorPalette.hoverColor)
+                        unhoverColor = MaterialTheme.colorScheme.onBackground.copy(alpha = .12f),
+                        hoverColor = MaterialTheme.colorScheme.onBackground.copy(alpha = .5f)
                     )
                 )
             }
@@ -135,9 +131,8 @@ internal fun ScrollbarContainer(
                     style = LocalScrollbarStyle.current.copy(
                         thickness = thicknessDp,
                         minimalHeight = with(density) { minimalHeight.toDp() },
-                        shape = RectangleShape,
-                        unhoverColor = Color(theme.scrollbarColorPalette.backgroundColor).copy(alpha = .5f),
-                        hoverColor = Color(theme.scrollbarColorPalette.hoverColor)
+                        unhoverColor = MaterialTheme.colorScheme.onBackground.copy(alpha = .12f),
+                        hoverColor = MaterialTheme.colorScheme.onBackground.copy(alpha = .5f)
                     )
                 )
             }

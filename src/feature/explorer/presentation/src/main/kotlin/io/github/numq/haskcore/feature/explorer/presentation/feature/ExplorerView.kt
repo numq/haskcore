@@ -2,22 +2,18 @@ package io.github.numq.haskcore.feature.explorer.presentation.feature
 
 import androidx.compose.foundation.LocalScrollbarStyle
 import androidx.compose.foundation.VerticalScrollbar
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.unit.dp
+import io.github.numq.haskcore.common.presentation.container.Container
 import io.github.numq.haskcore.common.presentation.feature.Feature
 import io.github.numq.haskcore.feature.explorer.core.ExplorerNode
 import io.github.numq.haskcore.feature.explorer.core.ExplorerPosition
@@ -51,64 +47,60 @@ fun ExplorerView(
         }
     }
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.surface,
-        contentColor = MaterialTheme.colorScheme.onSurface
-    ) {
-        when (val explorerTree = state.explorerTree) {
-            is ExplorerTree.Loading -> Box(modifier = Modifier.fillMaxSize()) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-            }
+    Container {
+        Box(
+            modifier = Modifier.fillMaxHeight().padding(4.dp), contentAlignment = Alignment.Center
+        ) {
+            when (val explorerTree = state.explorerTree) {
+                is ExplorerTree.Loading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
 
-            is ExplorerTree.Loaded -> {
-                val listState = rememberLazyListState(
-                    initialFirstVisibleItemIndex = explorerTree.position.index,
-                    initialFirstVisibleItemScrollOffset = explorerTree.position.offset
-                )
+                is ExplorerTree.Loaded -> {
+                    val listState = rememberLazyListState(
+                        initialFirstVisibleItemIndex = explorerTree.position.index,
+                        initialFirstVisibleItemScrollOffset = explorerTree.position.offset
+                    )
 
-                val scrollbarAdapter = rememberScrollbarAdapter(listState)
+                    val scrollbarAdapter = rememberScrollbarAdapter(listState)
 
-                DisposableEffect(listState) {
-                    onDispose {
-                        val position = ExplorerPosition(
-                            index = listState.firstVisibleItemIndex, offset = listState.firstVisibleItemScrollOffset
-                        )
+                    DisposableEffect(listState) {
+                        onDispose {
+                            val position = ExplorerPosition(
+                                index = listState.firstVisibleItemIndex, offset = listState.firstVisibleItemScrollOffset
+                            )
 
-                        if (position != explorerTree.position) {
-                            scope.launch(NonCancellable) {
-                                feature.execute(ExplorerCommand.SaveExplorerPosition(position = position))
+                            if (position != explorerTree.position) {
+                                scope.launch(NonCancellable) {
+                                    feature.execute(ExplorerCommand.SaveExplorerPosition(position = position))
+                                }
                             }
                         }
                     }
-                }
 
-                LaunchedEffect(listState) {
-                    snapshotFlow {
-                        ExplorerPosition(
-                            index = listState.firstVisibleItemIndex, offset = listState.firstVisibleItemScrollOffset
-                        )
-                    }.distinctUntilChanged().conflate().debounce(500.milliseconds)
-                        .filterNot(explorerTree.position::equals).collect { position ->
-                            feature.execute(ExplorerCommand.SaveExplorerPosition(position = position))
-                        }
-                }
+                    LaunchedEffect(listState) {
+                        snapshotFlow {
+                            ExplorerPosition(
+                                index = listState.firstVisibleItemIndex, offset = listState.firstVisibleItemScrollOffset
+                            )
+                        }.distinctUntilChanged().conflate().debounce(500.milliseconds)
+                            .filterNot(explorerTree.position::equals).collect { position ->
+                                feature.execute(ExplorerCommand.SaveExplorerPosition(position = position))
+                            }
+                    }
 
-                val nodes = explorerTree.nodes
+                    val nodes = explorerTree.nodes
 
-                LaunchedEffect(selectedPath, nodes) {
-                    if (selectedPath != null) {
-                        val index = nodes.indexOfFirst { node ->
-                            node.path == selectedPath
-                        }
+                    LaunchedEffect(selectedPath, nodes) {
+                        if (selectedPath != null) {
+                            val index = nodes.indexOfFirst { node ->
+                                node.path == selectedPath
+                            }
 
-                        if (index != -1) {
-                            listState.animateScrollToItem(index)
+                            if (index != -1) {
+                                listState.animateScrollToItem(index)
+                            }
                         }
                     }
-                }
 
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         state = listState,
@@ -141,10 +133,9 @@ fun ExplorerView(
                         adapter = scrollbarAdapter,
                         modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
                         style = LocalScrollbarStyle.current.copy(
-                            shape = RectangleShape,
                             thickness = 8.dp,
-                            unhoverColor = MaterialTheme.colorScheme.onSurface.copy(alpha = .12f),
-                            hoverColor = MaterialTheme.colorScheme.onSurface.copy(alpha = .5f)
+                            unhoverColor = MaterialTheme.colorScheme.onBackground.copy(alpha = .12f),
+                            hoverColor = MaterialTheme.colorScheme.onBackground.copy(alpha = .5f)
                         )
                     )
                 }

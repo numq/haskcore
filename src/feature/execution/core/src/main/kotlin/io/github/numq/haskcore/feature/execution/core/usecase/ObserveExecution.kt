@@ -3,15 +3,15 @@ package io.github.numq.haskcore.feature.execution.core.usecase
 import arrow.core.getOrElse
 import arrow.core.raise.Raise
 import arrow.core.toNonEmptyListOrNull
+import io.github.numq.haskcore.common.core.usecase.UseCase
+import io.github.numq.haskcore.feature.execution.core.*
 import io.github.numq.haskcore.service.document.DocumentService
-import io.github.numq.haskcore.service.runtime.RuntimeService
 import io.github.numq.haskcore.service.runtime.RuntimeEvent
 import io.github.numq.haskcore.service.runtime.RuntimeRequest
+import io.github.numq.haskcore.service.runtime.RuntimeService
 import io.github.numq.haskcore.service.toolchain.ToolchainService
 import io.github.numq.haskcore.service.vfs.VfsService
 import io.github.numq.haskcore.service.vfs.VirtualFile
-import io.github.numq.haskcore.common.core.usecase.UseCase
-import io.github.numq.haskcore.feature.execution.core.*
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.*
@@ -23,7 +23,7 @@ class ObserveExecution(
     private val runtimeService: RuntimeService,
     private val toolchainService: ToolchainService,
     private val vfsService: VfsService,
-) : UseCase<Unit, Flow<Execution>> {
+) : UseCase.Query<Flow<Execution>> {
     private companion object {
         const val DEBOUNCE_MILLIS = 300L
     }
@@ -84,7 +84,7 @@ class ObserveExecution(
     }
 
     @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
-    override suspend fun Raise<Throwable>.execute(input: Unit): Flow<Execution> {
+    override suspend fun Raise<Throwable>.query(): Flow<Execution> {
         val configsFlow = vfsService.observeFiles(path = rootPath).bind().map { files ->
             files.filter { file ->
                 val path = file.path.lowercase()

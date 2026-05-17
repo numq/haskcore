@@ -6,8 +6,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.res.painterResource
 import io.github.numq.haskcore.common.core.di.ScopeQualifier
-import io.github.numq.haskcore.common.presentation.container.BackgroundContainer
-import io.github.numq.haskcore.common.presentation.container.ForegroundContainer
 import io.github.numq.haskcore.common.presentation.feature.Feature
 import io.github.numq.haskcore.common.presentation.font.DefaultFontParameters
 import io.github.numq.haskcore.common.presentation.font.EditorFont
@@ -90,7 +88,7 @@ object Entrypoint {
             )
         }
 
-        val icon = painterResource("drawable/icon.svg")
+        val logo = painterResource("drawable/logo.svg")
 
         val isDark = isSystemInDarkTheme()
 
@@ -103,7 +101,7 @@ object Entrypoint {
                 applicationScope = applicationScope,
                 handleError = Throwable::printStackTrace,
                 title = APPLICATION_NAME,
-                icon = icon,
+                logo = logo,
                 exitApplication = exitApplication,
                 content = { bootstrap ->
                     NavigationView(
@@ -117,7 +115,7 @@ object Entrypoint {
                                 applicationScope = applicationScope,
                                 handleError = Throwable::printStackTrace,
                                 title = APPLICATION_NAME,
-                                icon = icon,
+                                logo = logo,
                                 logoFont = welcomeLogoFont,
                                 monoFont = welcomeMonoFont,
                                 openProject = openProject,
@@ -152,53 +150,34 @@ object Entrypoint {
                             WorkspaceView(
                                 projectScope = projectScope,
                                 handleError = Throwable::printStackTrace,
-                                icon = icon,
-                                background = { content ->
-                                    BackgroundContainer {
-                                        content()
-                                    }
-                                },
+                                logo = logo,
                                 execution = {
-                                    ExecutionView(
-                                        projectScope = projectScope, handleError = Throwable::printStackTrace
-                                    )
+                                    ExecutionView(projectScope = projectScope, handleError = Throwable::printStackTrace)
                                 },
                                 explorer = { path ->
-                                    ForegroundContainer {
-                                        ExplorerView(
-                                            feature = explorerFeature,
-                                            handleError = Throwable::printStackTrace,
-                                            selectedPath = path
-                                        )
-                                    }
+                                    ExplorerView(
+                                        feature = explorerFeature,
+                                        handleError = Throwable::printStackTrace,
+                                        selectedPath = path
+                                    )
                                 },
                                 log = {
-                                    ForegroundContainer {
-                                        LogView(
-                                            projectScope = projectScope, handleError = Throwable::printStackTrace
-                                        )
-                                    }
+                                    LogView(projectScope = projectScope, handleError = Throwable::printStackTrace)
                                 },
-                                editor = { path, tabs ->
-                                    ForegroundContainer {
-                                        tabs {
-                                            EditorView(
-                                                projectScope = projectScope,
-                                                handleError = Throwable::printStackTrace,
-                                                path = path,
-                                                font = editorFont,
-                                                theme = editorTheme,
-                                                layerFactory = layerFactory,
-                                            )
-                                        }
-                                    }
+                                editor = { path ->
+                                    EditorView(
+                                        projectScope = projectScope,
+                                        handleError = Throwable::printStackTrace,
+                                        path = path,
+                                        font = editorFont,
+                                        theme = editorTheme,
+                                        layerFactory = layerFactory,
+                                    )
                                 },
                                 output = {
-                                    ForegroundContainer {
-                                        OutputView(
-                                            projectScope = projectScope, handleError = Throwable::printStackTrace
-                                        )
-                                    }
+                                    OutputView(
+                                        projectScope = projectScope, handleError = Throwable::printStackTrace
+                                    )
                                 },
                                 status = {
                                     StatusView(

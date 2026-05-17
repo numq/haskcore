@@ -3,11 +3,16 @@ package io.github.numq.haskcore.feature.output.presentation.feature
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import io.github.numq.haskcore.common.presentation.container.Container
+import io.github.numq.haskcore.common.presentation.tab.CloseableTabs
+import io.github.numq.haskcore.feature.output.core.OutputSession
 import io.github.numq.haskcore.feature.output.presentation.session.OutputSessionItem
-import io.github.numq.haskcore.feature.output.presentation.tab.OutputTabs
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import org.koin.core.scope.Scope
@@ -28,35 +33,51 @@ fun OutputView(projectScope: Scope, handleError: (Throwable) -> Unit) {
         }
     }
 
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Top
-    ) {
-        OutputTabs(sessions = state.output.sessions, activeSession = state.output.activeSession, select = { session ->
-            scope.launch {
-                feature.execute(OutputCommand.SelectSession(sessionId = session.id))
-            }
-        }, close = { session ->
-            scope.launch {
-                feature.execute(OutputCommand.CloseSession(sessionId = session.id))
-            }
-        })
+    state.output.activeSession?.let { activeSession ->
+        Container {
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Top
+            ) {
+                CloseableTabs(
+                    modifier = Modifier.fillMaxWidth(),
+                    items = state.output.sessions,
+                    activeItem = activeSession,
+                    getItemName = OutputSession::name,
+                    select = { session ->
+                        scope.launch {
+                            feature.execute(OutputCommand.SelectSession(sessionId = session.id))
+                        }
+                    },
+                    close = { session ->
+                        scope.launch {
+                            feature.execute(OutputCommand.CloseSession(sessionId = session.id))
+                        }
+                    })
 
-        state.output.activeSession?.let { selectedSession ->
-            OutputSessionItem(session = selectedSession, menu = state.menu, openMenu = { (x, y) ->
-                scope.launch {
-                    feature.execute(OutputCommand.OpenMenu(x = x, y = y))
-                }
-            }, closeMenu = {
-                scope.launch {
-                    feature.execute(OutputCommand.CloseMenu)
-                }
-            }, copyText = {
-                scope.launch {
-                    feature.execute(OutputCommand.CopyText(session = selectedSession))
-                }
-            })
+                HorizontalDivider(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.onBackground)
+
+                OutputSessionItem(
+                    modifier = Modifier.weight(1f),
+                    session = activeSession,
+                    menu = state.menu,
+                    openMenu = { (x, y) ->
+                        scope.launch {
+                            feature.execute(OutputCommand.OpenMenu(x = x, y = y))
+                        }
+                    },
+                    closeMenu = {
+                        scope.launch {
+                            feature.execute(OutputCommand.CloseMenu)
+                        }
+                    },
+                    copyText = {
+                        scope.launch {
+                            feature.execute(OutputCommand.CopyText(session = activeSession))
+                        }
+                    })
+            }
         }
     }
 }

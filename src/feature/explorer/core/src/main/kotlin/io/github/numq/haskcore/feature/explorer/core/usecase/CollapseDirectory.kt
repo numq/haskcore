@@ -5,9 +5,9 @@ import io.github.numq.haskcore.common.core.usecase.UseCase
 import io.github.numq.haskcore.feature.explorer.core.ExplorerNode
 import io.github.numq.haskcore.feature.explorer.core.ExplorerService
 
-class CollapseDirectory(private val explorerService: ExplorerService) : UseCase<CollapseDirectory.Input, Unit> {
+class CollapseDirectory(private val explorerService: ExplorerService) : UseCase.Command<CollapseDirectory.Input> {
     data class Input(val node: ExplorerNode.Directory)
 
-    override suspend fun Raise<Throwable>.execute(input: Input) =
+    override suspend fun Raise<Throwable>.command(input: Input) =
         explorerService.collapseDirectory(node = input.node).bind()
 }

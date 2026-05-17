@@ -15,7 +15,7 @@ internal object Measurements {
 
     const val CONTENT_PADDING_BOTTOM = 128f
 
-    const val SCROLLBAR_THICKNESS = 12f
+    const val SCROLLBAR_THICKNESS = 8f
 
     const val SCROLLBAR_MINIMAL_SIZE = 24f
 }

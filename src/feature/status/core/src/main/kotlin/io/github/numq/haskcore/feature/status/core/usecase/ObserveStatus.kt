@@ -2,14 +2,14 @@ package io.github.numq.haskcore.feature.status.core.usecase
 
 import arrow.core.Either
 import arrow.core.raise.Raise
-import io.github.numq.haskcore.service.project.ProjectService
-import io.github.numq.haskcore.service.toolchain.Tool
-import io.github.numq.haskcore.service.toolchain.Toolchain
-import io.github.numq.haskcore.service.toolchain.ToolchainService
 import io.github.numq.haskcore.common.core.usecase.UseCase
 import io.github.numq.haskcore.feature.status.core.Status
 import io.github.numq.haskcore.feature.status.core.StatusService
 import io.github.numq.haskcore.feature.status.core.StatusTool
+import io.github.numq.haskcore.service.project.ProjectService
+import io.github.numq.haskcore.service.toolchain.Tool
+import io.github.numq.haskcore.service.toolchain.Toolchain
+import io.github.numq.haskcore.service.toolchain.ToolchainService
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -19,7 +19,7 @@ class ObserveStatus(
     private val statusService: StatusService,
     private val projectService: ProjectService,
     private val toolchainService: ToolchainService,
-) : UseCase<Unit, Flow<Status>> {
+) : UseCase.Query<Flow<Status>> {
     private fun Either<Throwable, Tool>.toStatus(): StatusTool = fold(ifLeft = { throwable ->
         when (throwable) {
             is NoSuchElementException -> StatusTool.NotFound
@@ -30,7 +30,7 @@ class ObserveStatus(
         StatusTool.Ready(path = tool.path, version = tool.version)
     })
 
-    override suspend fun Raise<Throwable>.execute(input: Unit) = toolchainService.toolchain.map { toolchain ->
+    override suspend fun Raise<Throwable>.query() = toolchainService.toolchain.map { toolchain ->
         when (toolchain) {
             is Toolchain.Scanning -> Status(
                 ghc = StatusTool.Scanning,

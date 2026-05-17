@@ -54,7 +54,7 @@ fun Menu(state: MenuState, onState: (MenuState) -> Unit, items: () -> List<MenuI
                 ) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(space = 8.dp, alignment = Alignment.CenterVertically)
+                        verticalArrangement = Arrangement.spacedBy(space = 4.dp, alignment = Alignment.CenterVertically)
                     ) {
                         items().forEach { item ->
                             Row(

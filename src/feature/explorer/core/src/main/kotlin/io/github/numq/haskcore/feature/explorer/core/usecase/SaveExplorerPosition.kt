@@ -7,9 +7,9 @@ import io.github.numq.haskcore.feature.explorer.core.ExplorerService
 
 class SaveExplorerPosition(
     private val explorerService: ExplorerService,
-) : UseCase<SaveExplorerPosition.Input, Unit> {
+) : UseCase.Command<SaveExplorerPosition.Input> {
     data class Input(val position: ExplorerPosition)
 
-    override suspend fun Raise<Throwable>.execute(input: Input) =
+    override suspend fun Raise<Throwable>.command(input: Input) =
         explorerService.saveExplorerPosition(position = input.position).bind()
 }

@@ -1,17 +1,17 @@
 package io.github.numq.haskcore.feature.editor.core.usecase
 
 import arrow.core.raise.Raise
-import io.github.numq.haskcore.service.text.TextService
 import io.github.numq.haskcore.common.core.text.TextPosition
 import io.github.numq.haskcore.common.core.usecase.UseCase
 import io.github.numq.haskcore.feature.editor.core.EditorService
+import io.github.numq.haskcore.service.text.TextService
 
 class MoveCaret(
     private val editorService: EditorService, private val textService: TextService,
-) : UseCase<MoveCaret.Input, Unit> {
+) : UseCase.Command<MoveCaret.Input> {
     data class Input(val position: TextPosition)
 
-    override suspend fun Raise<Throwable>.execute(input: Input) = with(input) {
+    override suspend fun Raise<Throwable>.command(input: Input) = with(input) {
         val snapshot = textService.snapshot.value ?: return
 
         editorService.moveCaret(snapshot = snapshot, position = position).bind()

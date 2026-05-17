@@ -126,7 +126,6 @@ internal fun EditorViewReady(
         paddingStart = gutterWidth,
         minimalHeight = Measurements.SCROLLBAR_MINIMAL_SIZE,
         thickness = Measurements.SCROLLBAR_THICKNESS,
-        theme = theme,
         content = { viewportWidth, viewportHeight ->
             var caretVisible by remember { mutableStateOf(true) }
 
@@ -445,94 +444,94 @@ internal fun EditorViewReady(
                 }, content = {
                     Box(
                         modifier = Modifier.fillMaxSize().focusRequester(focusRequester).onFocusChanged { focusState ->
-                            isFocused = focusState.isFocused
-                        }.focusable().onKeyEvent { keyEvent ->
-                            when (keyEvent.type) {
-                                KeyEventType.KeyDown -> {
-                                    keyEvent.awtEventOrNull?.let { awtEvent ->
-                                        scope.launch {
-                                            execute(
-                                                EditorCommand.ProcessKey(
-                                                    keyCode = awtEvent.keyCode,
-                                                    modifiers = awtEvent.modifiersEx,
-                                                    utf16CodePoint = keyEvent.utf16CodePoint
-                                                )
-                                            )
-                                        }
-                                    }
-
-                                    true
-                                }
-
-                                else -> false
-                            }
-                        }.then(mouseModifier).drawWithCache {
-                            val bounds = Rect.makeWH(w = size.width, h = size.height)
-
-                            onDrawBehind {
-                                if (!bounds.isEmpty) {
-                                    drawIntoCanvas { canvas ->
-                                        val nativeCanvas = canvas.nativeCanvas
-
-                                        nativeCanvas.save()
-
-                                        nativeCanvas.clipRect(
-                                            r = Rect.makeWH(
-                                                w = bounds.width, h = bounds.height
+                        isFocused = focusState.isFocused
+                    }.focusable().onKeyEvent { keyEvent ->
+                        when (keyEvent.type) {
+                            KeyEventType.KeyDown -> {
+                                keyEvent.awtEventOrNull?.let { awtEvent ->
+                                    scope.launch {
+                                        execute(
+                                            EditorCommand.ProcessKey(
+                                                keyCode = awtEvent.keyCode,
+                                                modifiers = awtEvent.modifiersEx,
+                                                utf16CodePoint = keyEvent.utf16CodePoint
                                             )
                                         )
-
-                                        nativeCanvas.clear(color = theme.backgroundColorPalette.backgroundColor)
-
-                                        currentBackgroundLayer.render(canvas = nativeCanvas)
-
-                                        currentHighlightedLineLayer?.render(canvas = nativeCanvas)
-
-                                        currentGutterLineLayers.forEach { lineLayer ->
-                                            lineLayer.render(canvas = nativeCanvas)
-                                        }
-
-                                        currentGutterActionLayers.forEach { actionLayer ->
-                                            actionLayer.render(canvas = nativeCanvas)
-                                        }
-
-                                        currentGutterSeparatorLayer.render(canvas = nativeCanvas)
-
-                                        nativeCanvas.save()
-
-                                        nativeCanvas.translate(dx = gutterWidth, dy = 0f)
-
-                                        nativeCanvas.clipRect(
-                                            r = Rect.makeWH(w = bounds.width - gutterWidth, h = bounds.height)
-                                        )
-
-                                        currentIssueLayers.forEach { issueLayer ->
-                                            issueLayer.render(canvas = nativeCanvas)
-                                        }
-
-                                        currentGuidelineLayer?.render(canvas = nativeCanvas)
-
-                                        currentOccurrenceLayers.forEach { occurrenceLayer ->
-                                            occurrenceLayer.render(canvas = nativeCanvas)
-                                        }
-
-                                        currentSelectionLayer.render(canvas = nativeCanvas)
-
-                                        currentContentLayers.forEach { contentLayer ->
-                                            contentLayer.render(canvas = nativeCanvas)
-                                        }
-
-                                        if (caretVisible) {
-                                            currentCaretLayer?.render(canvas = nativeCanvas)
-                                        }
-
-                                        nativeCanvas.restore()
-
-                                        nativeCanvas.restore()
                                     }
                                 }
+
+                                true
                             }
-                        }.pointerHoverIcon(PointerIcon(Cursor(Cursor.TEXT_CURSOR)))
+
+                            else -> false
+                        }
+                    }.then(mouseModifier).drawWithCache {
+                        val bounds = Rect.makeWH(w = size.width, h = size.height)
+
+                        onDrawBehind {
+                            if (!bounds.isEmpty) {
+                                drawIntoCanvas { canvas ->
+                                    val nativeCanvas = canvas.nativeCanvas
+
+                                    nativeCanvas.save()
+
+                                    nativeCanvas.clipRect(
+                                        r = Rect.makeWH(
+                                            w = bounds.width, h = bounds.height
+                                        )
+                                    )
+
+                                    nativeCanvas.clear(color = theme.backgroundColorPalette.backgroundColor)
+
+                                    currentBackgroundLayer.render(canvas = nativeCanvas)
+
+                                    currentHighlightedLineLayer?.render(canvas = nativeCanvas)
+
+                                    currentGutterLineLayers.forEach { lineLayer ->
+                                        lineLayer.render(canvas = nativeCanvas)
+                                    }
+
+                                    currentGutterActionLayers.forEach { actionLayer ->
+                                        actionLayer.render(canvas = nativeCanvas)
+                                    }
+
+                                    currentGutterSeparatorLayer.render(canvas = nativeCanvas)
+
+                                    nativeCanvas.save()
+
+                                    nativeCanvas.translate(dx = gutterWidth, dy = 0f)
+
+                                    nativeCanvas.clipRect(
+                                        r = Rect.makeWH(w = bounds.width - gutterWidth, h = bounds.height)
+                                    )
+
+                                    currentIssueLayers.forEach { issueLayer ->
+                                        issueLayer.render(canvas = nativeCanvas)
+                                    }
+
+                                    currentGuidelineLayer?.render(canvas = nativeCanvas)
+
+                                    currentOccurrenceLayers.forEach { occurrenceLayer ->
+                                        occurrenceLayer.render(canvas = nativeCanvas)
+                                    }
+
+                                    currentSelectionLayer.render(canvas = nativeCanvas)
+
+                                    currentContentLayers.forEach { contentLayer ->
+                                        contentLayer.render(canvas = nativeCanvas)
+                                    }
+
+                                    if (caretVisible) {
+                                        currentCaretLayer?.render(canvas = nativeCanvas)
+                                    }
+
+                                    nativeCanvas.restore()
+
+                                    nativeCanvas.restore()
+                                }
+                            }
+                        }
+                    }.pointerHoverIcon(PointerIcon(Cursor(Cursor.TEXT_CURSOR)))
                     )
                 })
             }

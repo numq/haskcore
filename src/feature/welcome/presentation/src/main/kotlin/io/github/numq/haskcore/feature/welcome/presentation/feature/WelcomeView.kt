@@ -37,7 +37,7 @@ fun WelcomeView(
     applicationScope: Scope,
     handleError: (Throwable) -> Unit,
     title: String,
-    icon: Painter,
+    logo: Painter,
     logoFont: LogoFont,
     monoFont: MonoFont,
     openProject: (path: String, name: String?) -> Unit,
@@ -72,7 +72,7 @@ fun WelcomeView(
             scope.launch {
                 feature.execute(WelcomeCommand.ExitApplication)
             }
-        }, state = windowState, title = title, icon = icon, undecorated = true, transparent = true, resizable = false
+        }, state = windowState, title = title, icon = logo, undecorated = true, transparent = true, resizable = false
     ) {
         WindowDraggableArea(modifier = Modifier.fillMaxSize()) {
             Surface(modifier = Modifier.fillMaxSize()) {

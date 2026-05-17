@@ -41,6 +41,8 @@ val featureModules = listOf(
     "workspace"
 )
 
+val featureSubmodules = listOf("core", "presentation")
+
 val serviceModules = listOf(
     "clipboard",
     "configuration",
@@ -72,14 +74,12 @@ commonModules.forEach { moduleName ->
 
 featureModules.forEach { moduleName ->
     val featureParent = ":feature:$moduleName"
-    include(featureParent)
-    project(featureParent).projectDir = file("src/feature/$moduleName")
 
-    val core = "$featureParent:core"
-    val pres = "$featureParent:presentation"
-    include(core, pres)
-    project(core).projectDir = file("src/feature/$moduleName/core")
-    project(pres).projectDir = file("src/feature/$moduleName/presentation")
+    featureSubmodules.forEach { submoduleName ->
+        val submodule = "$featureParent:$submoduleName"
+        include(submodule)
+        project(submodule).projectDir = file("src/feature/$moduleName/$submoduleName")
+    }
 }
 
 serviceModules.forEach { moduleName ->

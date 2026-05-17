@@ -7,10 +7,10 @@ import io.github.numq.haskcore.feature.execution.core.ExecutionService
 
 class SetCurrentConfiguration(
     private val executionService: ExecutionService,
-) : UseCase<SetCurrentConfiguration.Input, Unit> {
+) : UseCase.Command<SetCurrentConfiguration.Input> {
     data class Input(val configuration: ExecutionConfiguration)
 
-    override suspend fun Raise<Throwable>.execute(input: Input) = with(input.configuration) {
+    override suspend fun Raise<Throwable>.command(input: Input) = with(input.configuration) {
         executionService.setCurrentConfiguration(id = id).bind()
     }
 }

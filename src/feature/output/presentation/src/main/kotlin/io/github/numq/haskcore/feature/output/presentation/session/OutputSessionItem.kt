@@ -1,8 +1,5 @@
 package io.github.numq.haskcore.feature.output.presentation.session
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -11,7 +8,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
@@ -27,7 +23,12 @@ import io.github.numq.haskcore.feature.output.presentation.menu.OutputMenu
 
 @Composable
 internal fun OutputSessionItem(
-    session: OutputSession, menu: OutputMenu, openMenu: (Offset) -> Unit, closeMenu: () -> Unit, copyText: () -> Unit,
+    modifier: Modifier,
+    session: OutputSession,
+    menu: OutputMenu,
+    openMenu: (Offset) -> Unit,
+    closeMenu: () -> Unit,
+    copyText: () -> Unit,
 ) {
     val listState = rememberLazyListState()
 
@@ -61,12 +62,7 @@ internal fun OutputSessionItem(
                 )
             )
         }, content = {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)
-                    .padding(horizontal = 4.dp),
-                state = listState,
-                contentPadding = PaddingValues(vertical = 4.dp)
-            ) {
+            LazyColumn(modifier = modifier.padding(4.dp), state = listState) {
                 items(items = session.lines, key = OutputLine::id, contentType = { it::class }) { line ->
                     OutputLineItem(line = line)
                 }

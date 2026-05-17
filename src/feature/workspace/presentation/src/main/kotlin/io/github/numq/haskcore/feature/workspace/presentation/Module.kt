@@ -14,11 +14,11 @@ val workspaceFeaturePresentationModule = module {
                 closeWorkspace = get(),
                 observeWorkspace = get(),
                 openWorkspaceDocument = get(),
+                saveDimensions = get(),
+                saveVerticalRatio = get(),
                 selectShelfTool = get(),
                 saveLeftShelfPanelRatio = get(),
                 saveRightShelfPanelRatio = get(),
-                saveVerticalRatio = get(),
-                saveDimensions = get(),
             )
         }
 

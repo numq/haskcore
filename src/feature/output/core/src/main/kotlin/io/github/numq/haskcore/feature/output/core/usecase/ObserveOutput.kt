@@ -1,12 +1,12 @@
 package io.github.numq.haskcore.feature.output.core.usecase
 
 import arrow.core.raise.Raise
-import io.github.numq.haskcore.service.runtime.RuntimeService
-import io.github.numq.haskcore.service.runtime.RuntimeEvent
 import io.github.numq.haskcore.common.core.usecase.UseCase
 import io.github.numq.haskcore.feature.output.core.Output
 import io.github.numq.haskcore.feature.output.core.OutputLine
 import io.github.numq.haskcore.feature.output.core.OutputService
+import io.github.numq.haskcore.service.runtime.RuntimeEvent
+import io.github.numq.haskcore.service.runtime.RuntimeService
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.launchIn
@@ -15,8 +15,8 @@ import java.util.*
 
 class ObserveOutput(
     private val outputService: OutputService, private val runtimeService: RuntimeService,
-) : UseCase<Unit, Flow<Output>> {
-    override suspend fun Raise<Throwable>.execute(input: Unit) = channelFlow {
+) : UseCase.Query<Flow<Output>> {
+    override suspend fun Raise<Throwable>.query() = channelFlow {
         outputService.output.onEach(::send).launchIn(scope = this)
 
         runtimeService.events.collect { event ->

@@ -3,8 +3,9 @@ package io.github.numq.haskcore.feature.status.presentation.tool
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.TooltipArea
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.CheckCircle
@@ -19,6 +20,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.numq.haskcore.feature.status.core.StatusTool
+import io.github.numq.haskcore.feature.status.presentation.StatusItem
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -66,25 +68,13 @@ internal fun StatusToolItem(name: String, tool: StatusTool, selectPath: () -> Un
             }
         }) {
         Box {
-            Row(
-                modifier = Modifier.fillMaxHeight().clickable(enabled = tool !is StatusTool.Scanning, onClick = {
-                    expanded = true
-                }).padding(start = 8.dp, top = 4.dp, end = 4.dp, bottom = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(space = 4.dp, alignment = Alignment.CenterHorizontally),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = name,
-                    modifier = Modifier.fillMaxHeight(),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.labelLarge
-                )
+            StatusItem(enabled = tool !is StatusTool.Scanning, onClick = { expanded = true }) {
+                Text(text = name, style = MaterialTheme.typography.labelMedium)
 
                 Box(modifier = Modifier.size(14.dp), contentAlignment = Alignment.Center) {
                     when (tool) {
                         is StatusTool.Scanning -> CircularProgressIndicator(
-                            modifier = Modifier.size(12.dp), strokeWidth = 2.dp, color = tint
+                            modifier = Modifier.size(12.dp), strokeWidth = 1.5.dp, color = tint
                         )
 
                         else -> Icon(
@@ -94,32 +84,31 @@ internal fun StatusToolItem(name: String, tool: StatusTool, selectPath: () -> Un
                                 is StatusTool.Ready -> Icons.Default.CheckCircle
 
                                 else -> Icons.Default.AddCircle
-                            }, contentDescription = null, modifier = Modifier.fillMaxSize(), tint = tint
+                            }, contentDescription = null, modifier = Modifier.size(14.dp), tint = tint
                         )
                     }
                 }
             }
-            DropdownMenu(expanded = expanded, onDismissRequest = {
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = {
+            expanded = false
+        }) {
+            DropdownMenuItem(text = {
+                Text(
+                    text = "Select custom path",
+                    style = MaterialTheme.typography.labelMedium,
+                )
+            }, onClick = {
                 expanded = false
-            }) {
-                DropdownMenuItem(text = {
-                    Text(
-                        text = "Select custom path",
-                        style = MaterialTheme.typography.labelMedium,
-                    )
-                }, onClick = {
-                    expanded = false
 
-                    selectPath()
-                }, leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.AddCircle,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                })
-                DropdownMenuItem(
-                    text = {
+                selectPath()
+            }, leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.AddCircle, contentDescription = null, modifier = Modifier.size(18.dp)
+                )
+            })
+            DropdownMenuItem(
+                text = {
                     Text(
                         text = "Reset to default", style = MaterialTheme.typography.labelMedium
                     )
@@ -129,9 +118,7 @@ internal fun StatusToolItem(name: String, tool: StatusTool, selectPath: () -> Un
                     resetPath()
                 }, leadingIcon = {
                     Icon(
-                        imageVector = Icons.Default.Refresh,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
+                        imageVector = Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp)
                     )
                 }, colors = MenuItemColors(
                     textColor = MaterialTheme.colorScheme.onSurface,
@@ -141,8 +128,7 @@ internal fun StatusToolItem(name: String, tool: StatusTool, selectPath: () -> Un
                     disabledLeadingIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = .38f),
                     disabledTrailingIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = .38f)
                 )
-                )
-            }
+            )
         }
     }
 }

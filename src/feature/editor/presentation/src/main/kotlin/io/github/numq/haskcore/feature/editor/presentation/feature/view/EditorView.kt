@@ -1,6 +1,5 @@
 package io.github.numq.haskcore.feature.editor.presentation.feature.view
 
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import io.github.numq.haskcore.common.core.di.ScopeQualifier
 import io.github.numq.haskcore.common.presentation.font.EditorFont
@@ -22,53 +21,51 @@ fun EditorView(
     theme: EditorTheme,
     layerFactory: LayerFactory,
 ) {
-    Surface {
-        when (path) {
-            null -> EditorViewEmpty()
+    when (path) {
+        null -> EditorViewEmpty()
 
-            else -> {
-                val koin = getKoin()
+        else -> {
+            val koin = getKoin()
 
-                val documentScope = remember(projectScope.id, path) {
-                    val qualifier = ScopeQualifier.Document
+            val documentScope = remember(projectScope.id, path) {
+                val qualifier = ScopeQualifier.Document
 
-                    koin.getOrCreateScope(scopeId = path, qualifier = qualifier, source = path).apply {
-                        linkTo(projectScope)
+                koin.getOrCreateScope(scopeId = path, qualifier = qualifier, source = path).apply {
+                    linkTo(projectScope)
 
-                        declare(instance = path, qualifier = qualifier)
-                    }
+                    declare(instance = path, qualifier = qualifier)
                 }
+            }
 
-                DisposableEffect(documentScope.id) {
-                    onDispose {
-                        documentScope.close()
-                    }
+            DisposableEffect(documentScope.id) {
+                onDispose {
+                    documentScope.close()
                 }
+            }
 
-                key(documentScope.id) {
-                    val feature = koinInject<EditorFeature>(scope = documentScope)
+            key(documentScope.id) {
+                val feature = koinInject<EditorFeature>(scope = documentScope)
 
-                    val state by feature.state.collectAsState()
+                val state by feature.state.collectAsState()
 
-                    LaunchedEffect(Unit) {
-                        feature.events.collect { event ->
-                            when (event) {
-                                is EditorEvent.HandleFailure -> handleError(event.throwable)
-                            }
+                LaunchedEffect(Unit) {
+                    feature.events.collect { event ->
+                        when (event) {
+                            is EditorEvent.HandleFailure -> handleError(event.throwable)
                         }
                     }
+                }
 
-                    when (val currentState = state) {
-                        is EditorState.Loading -> EditorViewLoading()
+                when (val currentState = state) {
+                    is EditorState.Loading -> EditorViewLoading()
 
-                        is EditorState.Ready -> EditorViewReady(
-                            state = currentState,
-                            font = font,
-                            theme = theme,
-                            layerFactory = layerFactory,
-                            execute = feature::execute
-                        )
-                    }
+                    is EditorState.Ready -> EditorViewReady(
+                        state = currentState,
+                        font = font,
+                        theme = theme,
+                        layerFactory = layerFactory,
+                        execute = feature::execute
+                    )
                 }
             }
         }

@@ -47,12 +47,12 @@ val workspaceFeatureCoreModule = module {
 
         scopedOwner { SaveDimensions(workspaceService = get()) }
 
+        scopedOwner { SaveVerticalRatio(workspaceService = get()) }
+
         scopedOwner { SelectShelfTool(workspaceService = get()) }
 
         scopedOwner { SaveLeftShelfPanelRatio(workspaceService = get()) }
 
         scopedOwner { SaveRightShelfPanelRatio(workspaceService = get()) }
-
-        scopedOwner { SaveVerticalRatio(workspaceService = get()) }
     }
 }

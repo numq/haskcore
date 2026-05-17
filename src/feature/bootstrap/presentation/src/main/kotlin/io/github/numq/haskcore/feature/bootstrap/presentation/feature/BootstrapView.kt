@@ -33,7 +33,7 @@ fun BootstrapView(
     applicationScope: Scope,
     handleError: (Throwable) -> Unit,
     title: String,
-    icon: Painter,
+    logo: Painter,
     exitApplication: () -> Unit,
     content: @Composable (Bootstrap) -> Unit,
 ) {
@@ -67,7 +67,7 @@ fun BootstrapView(
                 onCloseRequest = exitApplication,
                 state = windowState,
                 title = title,
-                icon = icon,
+                icon = logo,
                 undecorated = true,
                 transparent = true,
                 resizable = false

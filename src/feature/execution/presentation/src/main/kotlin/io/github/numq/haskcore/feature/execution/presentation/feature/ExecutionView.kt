@@ -50,74 +50,72 @@ fun ExecutionView(projectScope: Scope, handleError: (Throwable) -> Unit) {
 
     val isRunning = state.execution is Execution.Synced.Found.Running
 
-    Surface(modifier = Modifier.fillMaxHeight(), color = MaterialTheme.colorScheme.surface) {
-        Row(
-            modifier = Modifier.fillMaxHeight().padding(horizontal = 8.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box {
-                Row(
-                    modifier = Modifier.fillMaxHeight().clip(RoundedCornerShape(4.dp)).clickable {
-                        expanded = true
-                    }.padding(horizontal = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = currentConfiguration,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        style = MaterialTheme.typography.labelLarge
-                    )
-                    Icon(
-                        imageVector = Icons.Default.KeyboardArrowDown,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-
-                when (state.execution) {
-                    is Execution.Synced -> DropdownMenu(expanded = expanded, onDismissRequest = {
-                        expanded = false
-                    }) {
-                        (state.execution as? Execution.Synced.Found)?.configurations?.forEach { configuration ->
-                            DropdownMenuItem(text = {
-                                Text(configuration.name)
-                            }, onClick = {
-                                scope.launch {
-                                    feature.execute(ExecutionCommand.SelectConfiguration(configuration = configuration))
-
-                                    expanded = false
-                                }
-                            })
-                        }
-                    }
-
-                    else -> Unit
-                }
+    Row(
+        modifier = Modifier.fillMaxHeight().padding(4.dp).clip(RoundedCornerShape(8.dp))
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box {
+            Row(
+                modifier = Modifier.fillMaxHeight().clip(RoundedCornerShape(4.dp)).clickable {
+                    expanded = true
+                }.padding(horizontal = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = currentConfiguration,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.labelLarge
+                )
+                Icon(
+                    imageVector = Icons.Default.KeyboardArrowDown,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.onSurface,
+                )
             }
 
-            ExecutionButton(
-                imageVector = Icons.Rounded.PlayArrow, tint = when {
-                    isRunning -> MaterialTheme.colorScheme.onSurface.copy(alpha = .38f)
+            when (state.execution) {
+                is Execution.Synced -> DropdownMenu(expanded = expanded, onDismissRequest = {
+                    expanded = false
+                }) {
+                    (state.execution as? Execution.Synced.Found)?.configurations?.forEach { configuration ->
+                        DropdownMenuItem(text = { Text(configuration.name) }, onClick = {
+                            scope.launch {
+                                feature.execute(ExecutionCommand.SelectConfiguration(configuration = configuration))
 
-                    else -> Color(0xFF4CAF50)
-                }, enabled = state.execution is Execution.Synced.Found.Stopped, onClick = {
-                    scope.launch {
-                        feature.execute(ExecutionCommand.RunCurrentConfiguration)
+                                expanded = false
+                            }
+                        })
                     }
-                })
+                }
 
-            ExecutionButton(
-                imageVector = Icons.Rounded.Stop, tint = when {
-                    isRunning -> MaterialTheme.colorScheme.error
-
-                    else -> MaterialTheme.colorScheme.onSurface.copy(alpha = .38f)
-                }, enabled = isRunning, onClick = {
-                    scope.launch {
-                        feature.execute(ExecutionCommand.StopCurrentConfiguration)
-                    }
-                })
+                else -> Unit
+            }
         }
+
+        ExecutionButton(
+            imageVector = Icons.Rounded.PlayArrow, tint = when {
+                isRunning -> MaterialTheme.colorScheme.onSurface.copy(alpha = .38f)
+
+                else -> Color(0xFF4CAF50)
+            }, enabled = state.execution is Execution.Synced.Found.Stopped, onClick = {
+                scope.launch {
+                    feature.execute(ExecutionCommand.RunCurrentConfiguration)
+                }
+            })
+
+        ExecutionButton(
+            imageVector = Icons.Rounded.Stop, tint = when {
+                isRunning -> MaterialTheme.colorScheme.error
+
+                else -> MaterialTheme.colorScheme.onSurface.copy(alpha = .38f)
+            }, enabled = isRunning, onClick = {
+                scope.launch {
+                    feature.execute(ExecutionCommand.StopCurrentConfiguration)
+                }
+            })
     }
 }
