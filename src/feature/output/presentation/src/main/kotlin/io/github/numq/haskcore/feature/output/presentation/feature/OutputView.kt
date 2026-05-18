@@ -1,14 +1,12 @@
 package io.github.numq.haskcore.feature.output.presentation.feature
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.*
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import io.github.numq.haskcore.common.presentation.container.Container
 import io.github.numq.haskcore.common.presentation.tab.CloseableTabs
 import io.github.numq.haskcore.feature.output.core.OutputSession
@@ -34,49 +32,59 @@ fun OutputView(projectScope: Scope, handleError: (Throwable) -> Unit) {
     }
 
     state.output.activeSession?.let { activeSession ->
-        Container {
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Top
-            ) {
-                CloseableTabs(
-                    modifier = Modifier.fillMaxWidth(),
-                    items = state.output.sessions,
-                    activeItem = activeSession,
-                    getItemName = OutputSession::name,
-                    select = { session ->
-                        scope.launch {
-                            feature.execute(OutputCommand.SelectSession(sessionId = session.id))
-                        }
-                    },
-                    close = { session ->
-                        scope.launch {
-                            feature.execute(OutputCommand.CloseSession(sessionId = session.id))
-                        }
-                    })
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Top
+        ) {
+            Spacer(modifier = Modifier.height(4.dp))
 
-                HorizontalDivider(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.onBackground)
+            Container {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Top
+                ) {
+                    CloseableTabs(
+                        modifier = Modifier.fillMaxWidth(),
+                        items = state.output.sessions,
+                        activeItem = activeSession,
+                        getItemName = OutputSession::name,
+                        select = { session ->
+                            scope.launch {
+                                feature.execute(OutputCommand.SelectSession(sessionId = session.id))
+                            }
+                        },
+                        close = { session ->
+                            scope.launch {
+                                feature.execute(OutputCommand.CloseSession(sessionId = session.id))
+                            }
+                        })
 
-                OutputSessionItem(
-                    modifier = Modifier.weight(1f),
-                    session = activeSession,
-                    menu = state.menu,
-                    openMenu = { (x, y) ->
-                        scope.launch {
-                            feature.execute(OutputCommand.OpenMenu(x = x, y = y))
-                        }
-                    },
-                    closeMenu = {
-                        scope.launch {
-                            feature.execute(OutputCommand.CloseMenu)
-                        }
-                    },
-                    copyText = {
-                        scope.launch {
-                            feature.execute(OutputCommand.CopyText(session = activeSession))
-                        }
-                    })
+                    HorizontalDivider(
+                        modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surface
+                    )
+
+                    OutputSessionItem(
+                        modifier = Modifier.weight(1f),
+                        session = activeSession,
+                        menu = state.menu,
+                        openMenu = { (x, y) ->
+                            scope.launch {
+                                feature.execute(OutputCommand.OpenMenu(x = x, y = y))
+                            }
+                        },
+                        closeMenu = {
+                            scope.launch {
+                                feature.execute(OutputCommand.CloseMenu)
+                            }
+                        },
+                        copyText = {
+                            scope.launch {
+                                feature.execute(OutputCommand.CopyText(session = activeSession))
+                            }
+                        })
+                }
             }
         }
     }

@@ -28,6 +28,8 @@ internal sealed interface WorkspaceCommand {
 
     data object CloseWorkspaceSuccess : WorkspaceCommand
 
+    data object ExitApplication : WorkspaceCommand
+
     data class OpenDocument(val document: WorkspaceDocument) : WorkspaceCommand {
         val key = Key.OPEN_DOCUMENT
     }

@@ -32,7 +32,9 @@ fun NavigationView(
     }
 
     state.destinations.takeIf(List<Destination>::isNotEmpty)?.forEach { destination ->
-        workspace(destination)
+        key(destination.path) {
+            workspace(destination)
+        }
     } ?: welcome { path, name ->
         scope.launch {
             feature.execute(NavigationCommand.OpenProject(path = path, name = name))

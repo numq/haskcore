@@ -11,7 +11,7 @@ internal object AlucardCodeAreaColorPalette : CodeAreaColorPalette {
 
     override val caretInactiveColor = 0xFF6c664b.toInt()
 
-    override val guidelineColor = 0xFF1f1f1f.toInt().withAlpha(alpha = .2f)
+    override val guidelineColor = 0xFFa8a493.toInt()
 
     override val indentGuideColor = 0xFFbcbab3.toInt()
 

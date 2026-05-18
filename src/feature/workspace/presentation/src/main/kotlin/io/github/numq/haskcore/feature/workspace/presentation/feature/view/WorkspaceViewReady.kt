@@ -53,18 +53,18 @@ internal fun WorkspaceViewReady(
 
     val windowState = rememberWindowState(
         placement = when {
-        state.workspace.isFullscreen == true -> WindowPlacement.Fullscreen
+            state.workspace.isFullscreen == true -> WindowPlacement.Fullscreen
 
-        else -> WindowPlacement.Floating
-    }, position = state.workspace.x?.let { x ->
-        state.workspace.y?.let { y ->
-            WindowPosition(x = x.dp, y = y.dp)
-        }
-    } ?: WindowPosition.PlatformDefault, size = state.workspace.width?.dp?.let { width ->
-        state.workspace.height?.dp?.let { height ->
-            DpSize(width = width, height = height)
-        }
-    } ?: DpSize(800.dp, 600.dp))
+            else -> WindowPlacement.Floating
+        }, position = state.workspace.x?.let { x ->
+            state.workspace.y?.let { y ->
+                WindowPosition(x = x.dp, y = y.dp)
+            }
+        } ?: WindowPosition.PlatformDefault, size = state.workspace.width?.dp?.let { width ->
+            state.workspace.height?.dp?.let { height ->
+                DpSize(width = width, height = height)
+            }
+        } ?: DpSize(800.dp, 600.dp))
 
     DisposableEffect(windowState) {
         onDispose {
@@ -130,7 +130,7 @@ internal fun WorkspaceViewReady(
         minimumWindowSize = DpSize(width = 512.dp, height = 48.dp),
         onCloseRequest = {
             scope.launch {
-                execute(WorkspaceCommand.CloseWorkspace)
+                execute(WorkspaceCommand.ExitApplication)
             }
         },
         titleIcon = icon,
@@ -257,9 +257,10 @@ internal fun WorkspaceViewReady(
             }
 
             Column(
-                modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface),
+                modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)
+                    .padding(vertical = 2.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.SpaceBetween
+                verticalArrangement = Arrangement.spacedBy(space = 4.dp, alignment = Alignment.CenterVertically)
             ) {
                 Row(
                     modifier = Modifier.weight(1f),

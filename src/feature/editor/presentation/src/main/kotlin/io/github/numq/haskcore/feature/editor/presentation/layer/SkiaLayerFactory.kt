@@ -3,6 +3,8 @@ package io.github.numq.haskcore.feature.editor.presentation.layer
 import arrow.core.getOrElse
 import io.github.numq.haskcore.common.core.text.TextPosition
 import io.github.numq.haskcore.common.core.text.TextRange
+import io.github.numq.haskcore.common.presentation.font.EditorFont
+import io.github.numq.haskcore.common.presentation.theme.editor.EditorTheme
 import io.github.numq.haskcore.feature.editor.core.analysis.CodeIssue
 import io.github.numq.haskcore.feature.editor.core.caret.Caret
 import io.github.numq.haskcore.feature.editor.core.guideline.Guideline
@@ -10,6 +12,7 @@ import io.github.numq.haskcore.feature.editor.core.selection.Selection
 import io.github.numq.haskcore.feature.editor.core.syntax.Occurrence
 import io.github.numq.haskcore.feature.editor.core.syntax.Token
 import io.github.numq.haskcore.feature.editor.presentation.background.BackgroundLayer
+import io.github.numq.haskcore.feature.editor.presentation.background.BackgroundOutlineLayer
 import io.github.numq.haskcore.feature.editor.presentation.background.HighlightedLineLayer
 import io.github.numq.haskcore.feature.editor.presentation.cache.PaintCache
 import io.github.numq.haskcore.feature.editor.presentation.cache.ParagraphCache
@@ -26,8 +29,6 @@ import io.github.numq.haskcore.feature.editor.presentation.selection.SelectionLa
 import io.github.numq.haskcore.feature.editor.presentation.selection.SelectionRegionLayer
 import io.github.numq.haskcore.feature.editor.presentation.text.TextContentLayer
 import io.github.numq.haskcore.feature.editor.presentation.viewport.ViewportLine
-import io.github.numq.haskcore.common.presentation.font.EditorFont
-import io.github.numq.haskcore.common.presentation.theme.editor.EditorTheme
 import org.jetbrains.skia.Image
 import org.jetbrains.skia.PaintMode
 import org.jetbrains.skia.Rect
@@ -40,6 +41,13 @@ internal class SkiaLayerFactory(
     override fun createBackgroundLayer(width: Float, height: Float, theme: EditorTheme) = BackgroundLayer(
         width = width, height = height, paint = paintCache.getOrCreate(
             key = PaintCache.Key(color = theme.backgroundColorPalette.backgroundColor)
+        ).getOrElse { throwable ->
+            throw throwable
+        })
+
+    override fun createBackgroundOutlineLayer(width: Float, theme: EditorTheme) = BackgroundOutlineLayer(
+        width = width, paint = paintCache.getOrCreate(
+            key = PaintCache.Key(color = theme.backgroundColorPalette.backgroundOutlineColor)
         ).getOrElse { throwable ->
             throw throwable
         })
@@ -105,7 +113,7 @@ internal class SkiaLayerFactory(
 
     override fun createGutterSeparatorLayer(x: Float, height: Float, theme: EditorTheme) = GutterSeparatorLayer(
         x = x, height = height, paint = paintCache.getOrCreate(
-            key = PaintCache.Key(color = theme.gutterColorPalette.textColor)
+            key = PaintCache.Key(color = theme.gutterColorPalette.separatorColor)
         ).getOrElse { throwable ->
             throw throwable
         })

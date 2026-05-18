@@ -5,5 +5,7 @@ import io.github.numq.haskcore.common.presentation.theme.editor.palette.ColorPal
 interface BackgroundColorPalette : ColorPalette {
     val backgroundColor: Int
 
+    val backgroundOutlineColor: Int
+
     val currentLineColor: Int
 }

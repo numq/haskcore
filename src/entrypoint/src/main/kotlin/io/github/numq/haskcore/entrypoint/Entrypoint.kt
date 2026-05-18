@@ -151,6 +151,7 @@ object Entrypoint {
                                 projectScope = projectScope,
                                 handleError = Throwable::printStackTrace,
                                 logo = logo,
+                                exitApplication = exitApplication,
                                 execution = {
                                     ExecutionView(projectScope = projectScope, handleError = Throwable::printStackTrace)
                                 },

@@ -11,7 +11,7 @@ internal object DraculaCodeAreaColorPalette : CodeAreaColorPalette {
 
     override val caretInactiveColor = 0xFF6272a4.toInt()
 
-    override val guidelineColor = 0xFFf8f8f2.toInt().withAlpha(alpha = .2f)
+    override val guidelineColor = 0xFF44475a.toInt()
 
     override val indentGuideColor = 0xFF44475a.toInt().withAlpha(.3f)
 

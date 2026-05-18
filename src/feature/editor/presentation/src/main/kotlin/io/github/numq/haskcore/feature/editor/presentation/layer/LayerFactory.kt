@@ -9,6 +9,7 @@ import io.github.numq.haskcore.feature.editor.core.selection.Selection
 import io.github.numq.haskcore.feature.editor.core.syntax.Occurrence
 import io.github.numq.haskcore.feature.editor.core.syntax.Token
 import io.github.numq.haskcore.feature.editor.presentation.background.BackgroundLayer
+import io.github.numq.haskcore.feature.editor.presentation.background.BackgroundOutlineLayer
 import io.github.numq.haskcore.feature.editor.presentation.background.HighlightedLineLayer
 import io.github.numq.haskcore.feature.editor.presentation.caret.CaretLayer
 import io.github.numq.haskcore.feature.editor.presentation.guideline.GuidelineLayer
@@ -24,6 +25,8 @@ import org.jetbrains.skia.Image
 
 interface LayerFactory {
     fun createBackgroundLayer(width: Float, height: Float, theme: EditorTheme): BackgroundLayer
+
+    fun createBackgroundOutlineLayer(width: Float, theme: EditorTheme): BackgroundOutlineLayer
 
     fun createHighlightedLineLayer(
         viewportLines: List<ViewportLine>, caret: Caret, theme: EditorTheme,

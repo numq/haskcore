@@ -129,20 +129,18 @@ fun WelcomeView(
                             )
 
                             else -> LazyColumn(
-                                modifier = Modifier.fillMaxSize().padding(16.dp),
+                                modifier = Modifier.fillMaxSize(),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.Top
                             ) {
                                 item {
                                     Text(
                                         text = "Recent projects",
-                                        modifier = Modifier.fillMaxWidth().padding(8.dp),
+                                        modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
                                         color = MaterialTheme.colorScheme.onSurface,
                                         textAlign = TextAlign.Center,
                                         style = MaterialTheme.typography.titleMedium
                                     )
-
-                                    Spacer(modifier = Modifier.height(16.dp))
                                 }
 
                                 items(

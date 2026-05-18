@@ -171,6 +171,16 @@ internal fun EditorViewReady(
 
             val currentBackgroundLayer by rememberUpdatedState(backgroundLayer)
 
+            val backgroundOutlineLayer by remember(currentViewport.width, theme) {
+                derivedStateOf {
+                    layerFactory.createBackgroundOutlineLayer(
+                        width = currentViewport.width, theme = theme
+                    )
+                }
+            }
+
+            val currentBackgroundOutlineLayer by rememberUpdatedState(backgroundOutlineLayer)
+
             val highlightedLineLayer by remember(currentViewport.viewportLines, state.editor.caret, theme) {
                 derivedStateOf {
                     layerFactory.createHighlightedLineLayer(
@@ -484,6 +494,8 @@ internal fun EditorViewReady(
                                     nativeCanvas.clear(color = theme.backgroundColorPalette.backgroundColor)
 
                                     currentBackgroundLayer.render(canvas = nativeCanvas)
+
+                                    currentBackgroundOutlineLayer.render(canvas = nativeCanvas)
 
                                     currentHighlightedLineLayer?.render(canvas = nativeCanvas)
 

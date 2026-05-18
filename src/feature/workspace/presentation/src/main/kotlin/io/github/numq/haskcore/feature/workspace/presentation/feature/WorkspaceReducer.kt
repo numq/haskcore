@@ -51,6 +51,8 @@ internal class WorkspaceReducer(
 
         is WorkspaceCommand.CloseWorkspaceSuccess -> transition(state)
 
+        is WorkspaceCommand.ExitApplication -> transition(state).event(WorkspaceEvent.ExitApplication)
+
         is WorkspaceCommand.OpenDocument -> transition(state).effect(
             action(
                 key = command.key, fallback = WorkspaceCommand::HandleFailure, block = {

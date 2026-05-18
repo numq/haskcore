@@ -15,6 +15,7 @@ fun WorkspaceView(
     projectScope: Scope,
     handleError: (Throwable) -> Unit,
     logo: Painter,
+    exitApplication: () -> Unit,
     execution: @Composable () -> Unit,
     explorer: @Composable (path: String?) -> Unit,
     log: @Composable () -> Unit,
@@ -30,6 +31,8 @@ fun WorkspaceView(
         feature.events.collect { event ->
             when (event) {
                 is WorkspaceEvent.HandleFailure -> handleError(event.throwable)
+
+                is WorkspaceEvent.ExitApplication -> exitApplication()
             }
         }
     }
