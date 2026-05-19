@@ -3,10 +3,7 @@ plugins {
 }
 
 dependencies {
-    implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.serialization.protobuf)
-    implementation(libs.arrow.core)
-    implementation(libs.koin.core)
     implementation(libs.datastore)
     implementation(libs.directory.watcher)
     implementation(projects.common.core)

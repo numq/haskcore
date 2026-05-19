@@ -7,7 +7,6 @@ import io.github.numq.haskcore.common.presentation.font.EditorFont
 import io.github.numq.haskcore.common.presentation.theme.editor.EditorTheme
 import io.github.numq.haskcore.feature.editor.core.analysis.CodeIssue
 import io.github.numq.haskcore.feature.editor.core.caret.Caret
-import io.github.numq.haskcore.feature.editor.core.guideline.Guideline
 import io.github.numq.haskcore.feature.editor.core.selection.Selection
 import io.github.numq.haskcore.feature.editor.core.syntax.Occurrence
 import io.github.numq.haskcore.feature.editor.core.syntax.Token
@@ -119,9 +118,9 @@ internal class SkiaLayerFactory(
         })
 
     override fun createGuidelineLayer(
-        guideline: Guideline, height: Float, scrollX: Float, font: EditorFont, theme: EditorTheme,
+        column: Int, height: Float, scrollX: Float, font: EditorFont, theme: EditorTheme,
     ) = GuidelineLayer(
-        x = (guideline.column * font.charWidth) - scrollX + Measurements.EDITOR_PADDING_START,
+        x = (column * font.charWidth) - scrollX + Measurements.EDITOR_PADDING_START,
         height = height,
         paint = paintCache.getOrCreate(
             key = PaintCache.Key(color = theme.codeAreaColorPalette.guidelineColor)

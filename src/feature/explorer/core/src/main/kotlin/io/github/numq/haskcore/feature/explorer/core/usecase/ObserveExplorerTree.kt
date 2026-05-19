@@ -81,7 +81,7 @@ class ObserveExplorerTree(
 
             else -> ExplorerTree.Loaded(
                 root = root,
-                nodes = nodes,
+                nodes = nodes.distinctBy(ExplorerNode::path),
                 position = ExplorerPosition(index = explorer.index, offset = explorer.offset)
             )
         }

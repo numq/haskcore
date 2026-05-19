@@ -1,9 +1,9 @@
 package io.github.numq.haskcore.feature.editor.presentation.cache
 
-import io.github.numq.haskcore.feature.editor.core.syntax.Token
 import io.github.numq.haskcore.common.presentation.font.EditorFont
 import io.github.numq.haskcore.common.presentation.theme.editor.EditorTheme
 import io.github.numq.haskcore.common.presentation.theme.editor.palette.highlighting.HighlightingColorPalette
+import io.github.numq.haskcore.feature.editor.core.syntax.Token
 import org.jetbrains.skia.paragraph.Paragraph
 import org.jetbrains.skia.paragraph.ParagraphStyle
 import org.jetbrains.skia.paragraph.TextStyle

@@ -30,9 +30,14 @@ val editorFeaturePresentationModule = module {
         scopedOwner { MenuReducer() }
 
         scopedOwner {
+            val documentPath = get<String>(qualifier = ScopeQualifier.Document)
+
             EditorReducer(
+                path = documentPath,
                 menuReducer = get(),
+                observeAnalysis = get(),
                 observeEditor = get(),
+                observeSyntax = get(),
                 updateActiveLines = get(),
                 processKey = get(),
                 moveCaret = get(),

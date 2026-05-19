@@ -2,24 +2,40 @@ package io.github.numq.haskcore.feature.editor.presentation.feature
 
 import io.github.numq.haskcore.common.core.text.TextPosition
 import io.github.numq.haskcore.feature.editor.core.Editor
+import io.github.numq.haskcore.feature.editor.core.analysis.Analysis
+import io.github.numq.haskcore.feature.editor.core.syntax.Syntax
 import kotlinx.coroutines.flow.Flow
 
 internal sealed interface EditorCommand {
     enum class Key {
-        INITIALIZE, INITIALIZE_SUCCESS, UPDATE_VIEWPORT, PROCESS_KEY, MOVE_CARET, START_SELECTION, EXTEND_SELECTION, SCROLL
+        INITIALIZE_EDITOR, INITIALIZE_EDITOR_SUCCESS, UPDATE_EDITOR, INITIALIZE_ANALYSIS_SUCCESS, INITIALIZE_SYNTAX_SUCCESS, UPDATE_VIEWPORT, PROCESS_KEY, MOVE_CARET, START_SELECTION, EXTEND_SELECTION, SCROLL
     }
 
     data class HandleFailure(val throwable: Throwable) : EditorCommand
 
-    data object Initialize : EditorCommand {
-        val key = Key.INITIALIZE
+    data object InitializeEditor : EditorCommand {
+        val key = Key.INITIALIZE_EDITOR
     }
 
-    data class InitializeSuccess(val flow: Flow<Editor>) : EditorCommand {
-        val key = Key.INITIALIZE_SUCCESS
+    data class InitializeEditorSuccess(val flow: Flow<Editor>) : EditorCommand {
+        val key = Key.INITIALIZE_EDITOR_SUCCESS
     }
 
-    data class UpdateEditor(val editor: Editor) : EditorCommand
+    data class UpdateEditor(val editor: Editor) : EditorCommand {
+        val key = Key.UPDATE_EDITOR
+    }
+
+    data class InitializeAnalysisSuccess(val flow: Flow<Analysis?>) : EditorCommand {
+        val key = Key.INITIALIZE_ANALYSIS_SUCCESS
+    }
+
+    data class UpdateAnalysis(val analysis: Analysis?) : EditorCommand
+
+    data class InitializeSyntaxSuccess(val flow: Flow<Syntax?>) : EditorCommand {
+        val key = Key.INITIALIZE_SYNTAX_SUCCESS
+    }
+
+    data class UpdateSyntax(val syntax: Syntax?) : EditorCommand
 
     data class UpdateViewport(val start: Int, val end: Int) : EditorCommand {
         val key = Key.UPDATE_VIEWPORT

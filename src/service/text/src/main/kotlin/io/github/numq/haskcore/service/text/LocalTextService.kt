@@ -1,9 +1,10 @@
 package io.github.numq.haskcore.service.text
 
+import arrow.core.Either
 import arrow.core.left
-import io.github.numq.haskcore.common.core.text.TextEdit
-import io.github.numq.haskcore.common.core.text.TextOperation
-import io.github.numq.haskcore.common.core.text.TextSnapshot
+import com.github.difflib.DiffUtils
+import com.github.difflib.patch.DeltaType
+import io.github.numq.haskcore.common.core.text.*
 import io.github.numq.haskcore.service.text.buffer.RopeTextBufferFactory
 import io.github.numq.haskcore.service.text.buffer.TextBuffer
 import kotlinx.coroutines.CoroutineScope
@@ -17,6 +18,8 @@ internal class LocalTextService(
 ) : TextService {
     private companion object {
         const val EDITS_BUFFER_CAPACITY = 64
+
+        const val SPLIT_REGEX = "(?<=\\n)|(?<=\\r\\n)"
     }
 
     private val _textBuffer = MutableStateFlow<TextBuffer?>(null)
@@ -84,6 +87,54 @@ internal class LocalTextService(
 
             else -> IllegalStateException("Revision mismatch: expected ${textBuffer.snapshot.value.revision}, got ${operation.revision}").left()
         }
+    }
+
+    override suspend fun computeDifference(original: String, revised: String) = Either.catch {
+        val originalLines = original.split(Regex(SPLIT_REGEX))
+
+        val revisedLines = revised.split(Regex(SPLIT_REGEX))
+
+        val patch = DiffUtils.diff(originalLines, revisedLines)
+
+        val operations = patch.deltas.sortedByDescending { delta ->
+            delta.source.position
+        }.flatMap { delta ->
+            val position = TextPosition(line = delta.source.position, column = 0)
+
+            when (delta.type) {
+                DeltaType.DELETE -> listOf(
+                    TextOperation.Data.Single.Delete(
+                        range = TextRange(
+                            start = position, end = TextPosition(
+                                line = delta.source.position + delta.source.lines.size, column = 0
+                            )
+                        )
+                    )
+                )
+
+                DeltaType.INSERT -> listOf(
+                    TextOperation.Data.Single.Insert(
+                        position = position, text = delta.target.lines.joinToString("")
+                    )
+                )
+
+                DeltaType.CHANGE -> listOf(
+                    TextOperation.Data.Single.Delete(
+                        range = TextRange(
+                            start = position, end = TextPosition(
+                                line = delta.source.position + delta.source.lines.size, column = 0
+                            )
+                        )
+                    ), TextOperation.Data.Single.Insert(
+                        position = position, text = delta.target.lines.joinToString("")
+                    )
+                )
+
+                else -> emptyList()
+            }
+        }
+
+        TextOperation.Data.Batch(operations = operations)
     }
 
     override fun close() {

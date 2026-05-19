@@ -55,17 +55,13 @@ internal class HaskellSyntaxService(
                 }
 
                 SyntaxTree(
-                    revision = revision,
-                    tree = newTree,
-                    syntax = Syntax(revision = revision, text = snapshot.text)
+                    revision = revision, tree = newTree, syntax = Syntax(revision = revision, text = snapshot.text)
                 )
             }?.takeUnless(SyntaxTree::isClosed)?.tree?.close() ?: Unit
         }
     }
 
-    override suspend fun applyChange(
-        snapshot: TextSnapshot, data: TextEdit.Data, range: TextRange, position: TextPosition,
-    ) = Either.catch {
+    override suspend fun applyChange(snapshot: TextSnapshot, data: TextEdit.Data, range: TextRange) = Either.catch {
         withContext(dispatcher) {
             val oldTree = _syntaxTree.value?.takeUnless(SyntaxTree::isClosed)?.tree ?: return@withContext
 
@@ -97,9 +93,7 @@ internal class HaskellSyntaxService(
 
                 _syntaxTree.getAndUpdate { currentSyntaxTree ->
                     currentSyntaxTree?.copy(
-                        revision = revision,
-                        tree = newTree,
-                        syntax = currentSyntaxTree.syntax.copy(revision = revision)
+                        revision = revision, tree = newTree, syntax = currentSyntaxTree.syntax.copy(revision = revision)
                     )
                 }?.takeUnless(SyntaxTree::isClosed)?.tree?.close()
             } catch (throwable: Throwable) {

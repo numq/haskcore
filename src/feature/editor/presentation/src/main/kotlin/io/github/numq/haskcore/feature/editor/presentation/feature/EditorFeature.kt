@@ -11,5 +11,5 @@ internal class EditorFeature(
     initialState = EditorState.Loading,
     scope = scope,
     reducer = reducer,
-    EditorCommand.Initialize,
+    EditorCommand.InitializeEditor,
 )

@@ -4,7 +4,6 @@ plugins {
 }
 
 dependencies {
-    implementation(libs.java.diff.utils)
     implementation(projects.common.core)
     implementation(projects.service.clipboard)
     implementation(projects.service.document)

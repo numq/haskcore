@@ -273,12 +273,12 @@ internal fun EditorViewReady(
             val currentGutterSeparatorLayer by rememberUpdatedState(gutterSeparatorLayer)
 
             val guidelineLayer by remember(
-                state.editor.guideline, currentViewport.height, state.scrollbar.x, font, theme
+                state.editor.language, currentViewport.height, state.scrollbar.x, font, theme
             ) {
                 derivedStateOf {
-                    state.editor.guideline?.let { guideline ->
+                    state.editor.language.column?.let { column ->
                         layerFactory.createGuidelineLayer(
-                            guideline = guideline,
+                            column = column,
                             height = currentViewport.height,
                             scrollX = state.scrollbar.x,
                             font = font,
@@ -291,12 +291,12 @@ internal fun EditorViewReady(
             val currentGuidelineLayer by rememberUpdatedState(guidelineLayer)
 
             val contentLayers by remember(
-                currentViewport.viewportLines, state.editor.syntax, state.scrollbar.x, font, theme
+                currentViewport.viewportLines, state.syntax, state.scrollbar.x, font, theme
             ) {
                 derivedStateOf {
                     layerFactory.createCodeAreaContentLayers(
                         viewportLines = currentViewport.viewportLines,
-                        tokensPerLine = state.editor.syntax?.tokensPerLine,
+                        tokensPerLine = state.syntax?.tokensPerLine,
                         scrollX = state.scrollbar.x,
                         font = font,
                         theme = theme
@@ -307,10 +307,10 @@ internal fun EditorViewReady(
             val currentContentLayers by rememberUpdatedState(contentLayers)
 
             val occurrenceLayers by remember(
-                state.editor.caret, state.editor.syntax, currentContentLayers, state.scrollbar.x, theme
+                state.editor.caret, state.syntax, currentContentLayers, state.scrollbar.x, theme
             ) {
                 derivedStateOf {
-                    when (val highlighting = state.editor.syntax) {
+                    when (val highlighting = state.syntax) {
                         null -> emptyList()
 
                         else -> layerFactory.createOccurrenceLayers(
@@ -326,9 +326,9 @@ internal fun EditorViewReady(
 
             val currentOccurrenceLayers by rememberUpdatedState(occurrenceLayers)
 
-            val issueLayers by remember(currentContentLayers, state.editor.analysis, state.scrollbar.x, theme) {
+            val issueLayers by remember(currentContentLayers, state.analysis, state.scrollbar.x, theme) {
                 derivedStateOf {
-                    state.editor.analysis?.let { analysis ->
+                    state.analysis?.let { analysis ->
                         layerFactory.createIssueLayers(
                             contentLayers = currentContentLayers,
                             issues = analysis.issues,

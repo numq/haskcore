@@ -4,9 +4,6 @@ plugins {
 }
 
 dependencies {
-    implementation(libs.kotlinx.coroutines.core)
-    implementation(libs.arrow.core)
-    implementation(libs.koin.core)
     implementation(libs.tree.sitter)
     implementation(libs.tree.sitter.haskell)
     implementation(projects.common.core)

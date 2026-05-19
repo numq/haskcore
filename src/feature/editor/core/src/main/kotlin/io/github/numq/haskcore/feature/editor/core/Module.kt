@@ -38,20 +38,29 @@ val editorFeatureCoreModule = module {
         scopedOwner { MoveCaret(editorService = get(), textService = get()) }
 
         scopedOwner {
-            val documentPath = get<String>(qualifier = ScopeQualifier.Document)
+            ObserveAnalysis(
+                editorService = get(),
+                loggerService = get(),
+                lspService = get(),
+                textService = get(),
+                toolchainService = get()
+            )
+        }
 
+        scopedOwner {
             ObserveEditor(
-                documentPath = documentPath,
                 editorService = get(),
                 documentService = get(),
-                syntaxService = get(),
                 journalService = get(),
                 loggerService = get(),
                 lspService = get(),
                 textService = get(),
-                toolchainService = get(),
                 vfsService = get()
             )
+        }
+
+        scopedOwner {
+            ObserveSyntax(editorService = get(), syntaxService = get(), loggerService = get(), textService = get())
         }
 
         scopedOwner {

@@ -5,8 +5,6 @@ plugins {
 
 dependencies {
     implementation(libs.kotlinx.serialization.protobuf)
-    implementation(libs.arrow.core)
-    implementation(libs.koin.core)
     implementation(libs.datastore)
     implementation(projects.common.core)
     testImplementation(libs.junit)

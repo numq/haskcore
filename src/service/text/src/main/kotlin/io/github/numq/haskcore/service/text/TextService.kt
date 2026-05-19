@@ -15,4 +15,6 @@ interface TextService : AutoCloseable {
     suspend fun initialize(initialText: String): Either<Throwable, Unit>
 
     suspend fun execute(operation: TextOperation): Either<Throwable, Unit>
+
+    suspend fun computeDifference(original: String, revised: String): Either<Throwable, TextOperation.Data.Batch>
 }

@@ -4,7 +4,6 @@ import io.github.numq.haskcore.common.presentation.font.EditorFont
 import io.github.numq.haskcore.common.presentation.theme.editor.EditorTheme
 import io.github.numq.haskcore.feature.editor.core.analysis.CodeIssue
 import io.github.numq.haskcore.feature.editor.core.caret.Caret
-import io.github.numq.haskcore.feature.editor.core.guideline.Guideline
 import io.github.numq.haskcore.feature.editor.core.selection.Selection
 import io.github.numq.haskcore.feature.editor.core.syntax.Occurrence
 import io.github.numq.haskcore.feature.editor.core.syntax.Token
@@ -43,7 +42,7 @@ interface LayerFactory {
     fun createGutterSeparatorLayer(x: Float, height: Float, theme: EditorTheme): GutterSeparatorLayer
 
     fun createGuidelineLayer(
-        guideline: Guideline, height: Float, scrollX: Float, font: EditorFont, theme: EditorTheme,
+        column: Int, height: Float, scrollX: Float, font: EditorFont, theme: EditorTheme,
     ): GuidelineLayer
 
     fun createCodeAreaContentLayers(

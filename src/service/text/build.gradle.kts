@@ -4,9 +4,7 @@ plugins {
 }
 
 dependencies {
-    implementation(libs.kotlinx.coroutines.core)
-    implementation(libs.arrow.core)
-    implementation(libs.koin.core)
+    implementation(libs.java.diff.utils)
     implementation(projects.common.core)
     testImplementation(libs.junit)
     testImplementation(libs.kotlin.test)

@@ -12,9 +12,7 @@ interface SyntaxService : AutoCloseable {
 
     suspend fun fullParse(snapshot: TextSnapshot): Either<Throwable, Unit>
 
-    suspend fun applyChange(
-        snapshot: TextSnapshot, data: TextEdit.Data, range: TextRange, position: TextPosition,
-    ): Either<Throwable, Unit>
+    suspend fun applyChange(snapshot: TextSnapshot, data: TextEdit.Data, range: TextRange): Either<Throwable, Unit>
 
     suspend fun parseFoldingRegions(range: TextRange): Either<Throwable, Unit>
 

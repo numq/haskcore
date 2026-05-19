@@ -1,17 +1,17 @@
 package io.github.numq.haskcore.feature.editor.presentation.feature
 
-import io.github.numq.haskcore.common.presentation.feature.Reducer
-import io.github.numq.haskcore.common.presentation.feature.action
-import io.github.numq.haskcore.common.presentation.feature.effect
-import io.github.numq.haskcore.common.presentation.feature.event
-import io.github.numq.haskcore.common.presentation.feature.stream
+import io.github.numq.haskcore.common.presentation.feature.*
 import io.github.numq.haskcore.feature.editor.core.usecase.*
 import io.github.numq.haskcore.feature.editor.presentation.menu.MenuReducer
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 
 internal class EditorReducer(
+    private val path: String,
     private val menuReducer: MenuReducer,
+    private val observeAnalysis: ObserveAnalysis,
     private val observeEditor: ObserveEditor,
+    private val observeSyntax: ObserveSyntax,
     private val updateActiveLines: UpdateActiveLines,
     private val processKey: ProcessKey,
     private val moveCaret: MoveCaret,
@@ -27,16 +27,16 @@ internal class EditorReducer(
 
         is EditorCommand.HandleFailure -> transition(state).event(EditorEvent.HandleFailure(throwable = command.throwable))
 
-        is EditorCommand.Initialize -> transition(state).effect(
+        is EditorCommand.InitializeEditor -> transition(state).effect(
             action(
                 key = command.key, fallback = EditorCommand::HandleFailure, block = {
-                    observeEditor(input = Unit).fold(
-                        ifLeft = EditorCommand::HandleFailure, ifRight = EditorCommand::InitializeSuccess
+                    observeEditor(input = ObserveEditor.Input(path = path)).fold(
+                        ifLeft = EditorCommand::HandleFailure, ifRight = EditorCommand::InitializeEditorSuccess
                     )
                 })
         )
 
-        is EditorCommand.InitializeSuccess -> transition(state).effect(
+        is EditorCommand.InitializeEditorSuccess -> transition(state).effect(
             stream(
                 key = command.key,
                 flow = command.flow.map(EditorCommand::UpdateEditor),
@@ -45,9 +45,59 @@ internal class EditorReducer(
         )
 
         is EditorCommand.UpdateEditor -> when (state) {
-            is EditorState.Loading -> transition(EditorState.Ready(editor = command.editor))
+            is EditorState.Loading -> EditorState.Ready(editor = command.editor)
 
-            is EditorState.Ready -> transition(state.copy(editor = command.editor))
+            is EditorState.Ready -> state.copy(editor = command.editor)
+        }.let { state ->
+            transition(state).effects(
+                action(
+                    key = command.key, fallback = EditorCommand::HandleFailure, block = {
+                        observeAnalysis(
+                            input = ObserveAnalysis.Input(
+                                path = path, language = state.editor.language
+                            )
+                        ).fold(
+                            ifLeft = EditorCommand::HandleFailure, ifRight = EditorCommand::InitializeAnalysisSuccess
+                        )
+                    }), action(
+                    key = command.key, fallback = EditorCommand::HandleFailure, block = {
+                        observeSyntax(input = ObserveSyntax.Input(language = state.editor.language)).fold(
+                            ifLeft = EditorCommand::HandleFailure, ifRight = EditorCommand::InitializeSyntaxSuccess
+                        )
+                    })
+            )
+        }
+
+        is EditorCommand.InitializeAnalysisSuccess -> transition(state).effect(
+            stream(
+                key = command.key,
+                flow = command.flow.map(EditorCommand::UpdateAnalysis),
+                fallback = EditorCommand::HandleFailure
+            )
+        )
+
+        is EditorCommand.UpdateAnalysis -> when (state) {
+            is EditorState.Ready if command.analysis?.revision == state.editor.snapshot.revision -> transition(
+                state.copy(analysis = command.analysis)
+            )
+
+            else -> transition(state)
+        }
+
+        is EditorCommand.InitializeSyntaxSuccess -> transition(state).effect(
+            stream(
+                key = command.key,
+                flow = command.flow.distinctUntilChanged().map(EditorCommand::UpdateSyntax),
+                fallback = EditorCommand::HandleFailure
+            )
+        )
+
+        is EditorCommand.UpdateSyntax -> when (state) {
+            is EditorState.Ready if command.syntax?.revision == state.editor.snapshot.revision -> transition(
+                state.copy(syntax = command.syntax)
+            )
+
+            else -> transition(state)
         }
 
         is EditorCommand.UpdateViewport -> transition(state).effect(
