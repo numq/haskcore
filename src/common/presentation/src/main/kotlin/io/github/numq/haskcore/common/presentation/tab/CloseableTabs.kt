@@ -26,7 +26,9 @@ fun <T> CloseableTabs(
 
     Row(
         modifier = modifier.fillMaxWidth().height(40.dp).background(MaterialTheme.colorScheme.background)
-            .padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically
+            .padding(horizontal = 4.dp),
+        horizontalArrangement = Arrangement.Start,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         if (title != null) {
             Text(

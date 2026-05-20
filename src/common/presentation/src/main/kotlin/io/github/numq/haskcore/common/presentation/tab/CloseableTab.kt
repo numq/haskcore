@@ -45,8 +45,8 @@ fun CloseableTab(title: String, isSelected: Boolean, select: () -> Unit, close: 
             .padding(horizontal = 12.dp), contentAlignment = Alignment.Center
     ) {
         Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(space = 4.dp, alignment = Alignment.Start)
+            horizontalArrangement = Arrangement.spacedBy(space = 4.dp, alignment = Alignment.Start),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = title, fontSize = 12.sp, fontWeight = when {
