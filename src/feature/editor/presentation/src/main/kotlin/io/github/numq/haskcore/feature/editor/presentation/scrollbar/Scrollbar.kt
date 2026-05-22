@@ -1,7 +1,7 @@
 package io.github.numq.haskcore.feature.editor.presentation.scrollbar
 
 import io.github.numq.haskcore.common.core.text.TextPosition
-import io.github.numq.haskcore.common.presentation.font.EditorFont
+import io.github.numq.haskcore.common.presentation.font.Font
 import io.github.numq.haskcore.feature.editor.presentation.measurements.Measurements
 import kotlin.math.max
 
@@ -11,7 +11,7 @@ internal data class Scrollbar(val x: Float, val y: Float) {
     }
 
     fun calculateScrollOffset(
-        position: TextPosition, font: EditorFont, viewportWidth: Float, viewportHeight: Float, gutterWidth: Float,
+        position: TextPosition, font: Font, viewportWidth: Float, viewportHeight: Float, gutterWidth: Float,
     ): Scrollbar {
         val (line, column) = position
 

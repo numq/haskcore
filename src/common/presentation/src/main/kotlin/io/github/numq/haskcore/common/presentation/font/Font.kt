@@ -2,14 +2,13 @@ package io.github.numq.haskcore.common.presentation.font
 
 import kotlinx.atomicfu.atomic
 import org.jetbrains.skia.*
+import org.jetbrains.skia.Font
 import org.jetbrains.skia.paragraph.FontCollection
 import org.jetbrains.skia.paragraph.ParagraphBuilder
 import org.jetbrains.skia.paragraph.ParagraphStyle
 import org.jetbrains.skia.paragraph.TypefaceFontProvider
 
-open class CustomFont(
-    private val typeface: Typeface, val size: Float, lineSpacing: Float,
-) : AutoCloseable {
+data class Font(val typeface: Typeface, val size: Float, val lineSpacing: Float) : AutoCloseable {
     private val _isClosed = atomic(false)
 
     private val isClosed get() = _isClosed.value

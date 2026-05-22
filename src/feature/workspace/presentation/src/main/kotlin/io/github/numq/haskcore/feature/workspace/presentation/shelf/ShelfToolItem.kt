@@ -4,7 +4,6 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,6 +18,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import io.github.numq.haskcore.feature.workspace.core.ShelfTool
@@ -27,15 +27,9 @@ import io.github.numq.haskcore.feature.workspace.core.ShelfTool
 internal fun ShelfToolItem(tool: ShelfTool, isActive: Boolean, select: () -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
 
-    val isHovered by interactionSource.collectIsHoveredAsState()
-
     val containerColor by animateColorAsState(
         targetValue = when {
-            isActive && isHovered -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = .9f)
-
-            isActive -> MaterialTheme.colorScheme.primaryContainer
-
-            isHovered -> MaterialTheme.colorScheme.surfaceVariant
+            isActive -> MaterialTheme.colorScheme.primary
 
             else -> Color.Transparent
         }
@@ -43,9 +37,7 @@ internal fun ShelfToolItem(tool: ShelfTool, isActive: Boolean, select: () -> Uni
 
     val contentColor by animateColorAsState(
         targetValue = when {
-            isActive -> MaterialTheme.colorScheme.onPrimaryContainer
-
-            isHovered -> MaterialTheme.colorScheme.onSurface
+            isActive -> MaterialTheme.colorScheme.onPrimary
 
             else -> MaterialTheme.colorScheme.onSurfaceVariant
         }
@@ -53,8 +45,8 @@ internal fun ShelfToolItem(tool: ShelfTool, isActive: Boolean, select: () -> Uni
 
     Box(modifier = Modifier.size(40.dp), contentAlignment = Alignment.Center) {
         Surface(
-            modifier = Modifier.size(32.dp).hoverable(interactionSource).clickable(
-                interactionSource = interactionSource, indication = null, onClick = select
+            modifier = Modifier.size(32.dp).hoverable(interactionSource).clip(RoundedCornerShape(8.dp)).clickable(
+                interactionSource = interactionSource, onClick = select
             ), shape = RoundedCornerShape(8.dp), color = containerColor, contentColor = contentColor
         ) {
             Box(contentAlignment = Alignment.Center) {

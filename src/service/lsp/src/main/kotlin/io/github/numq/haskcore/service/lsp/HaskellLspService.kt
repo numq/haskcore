@@ -75,6 +75,8 @@ internal class HaskellLspService(
 
     private fun buildUri(path: String) = File(path).toURI()
 
+    private fun normalizePath(path: String) = File(path).canonicalFile.absolutePath.replace("\\", "/")
+
     private fun decodeSemanticTokens(data: List<Int>, legend: LspTokenLegend) = either {
         ensure(data.size % 5 == 0) {
             IllegalArgumentException("Invalid semantic tokens data size: ${data.size}")
@@ -289,12 +291,13 @@ internal class HaskellLspService(
                     TextDocumentIdentifier(uri.toString()), Position(position.line, position.column)
                 )
 
-                currentConnection.server.textDocumentService?.completion(params)?.await()
-                    ?.map(::identity, CompletionList::getItems)?.map(CompletionItem::toLspCompletion).orEmpty()
+                val completionList = currentConnection.server.textDocumentService?.completion(params)?.await()
+
+                completionList?.map(::identity, CompletionList::getItems)?.map(CompletionItem::toLspCompletion)
             }
 
-            else -> emptyList()
-        }
+            else -> null
+        }.orEmpty()
     }
 
     override suspend fun requestReferences(
@@ -313,11 +316,11 @@ internal class HaskellLspService(
                 }
 
                 currentConnection.server.textDocumentService?.references(params)?.await()?.map(Location::toTextRange)
-                    ?.map(::LspReference).orEmpty()
+                    ?.map(::LspReference)
             }
 
-            else -> emptyList()
-        }
+            else -> null
+        }.orEmpty()
     }
 
     override suspend fun requestTokens(path: String, snapshot: TextSnapshot, range: TextRange) = Either.catch {
@@ -342,10 +345,10 @@ internal class HaskellLspService(
     }
 
     override fun publishDiagnostics(diagnostics: PublishDiagnosticsParams) {
-        val path = File(URI(diagnostics.uri)).absolutePath
+        val normalizedPath = normalizePath(path = File(URI(diagnostics.uri)).absolutePath)
 
         _diagnostics.tryEmit(diagnostics.diagnostics.map { diagnostic ->
-            diagnostic.toLspDiagnostic(path = path)
+            diagnostic.toLspDiagnostic(path = normalizedPath)
         })
     }
 

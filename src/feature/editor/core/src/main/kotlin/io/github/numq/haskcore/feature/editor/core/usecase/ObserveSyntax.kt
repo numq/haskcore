@@ -205,9 +205,7 @@ class ObserveSyntax(
                 }
             }.filterNotNull().filter { syntax ->
                 syntax.tokensPerLine.isNotEmpty()
-            }.distinctUntilChanged { old, new ->
-                old.tokensPerLine == new.tokensPerLine && old.occurrences == new.occurrences
-            }.collect(::send)
+            }.distinctUntilChanged().collect(::send)
         }
 
         else -> flowOf<Syntax?>(null)

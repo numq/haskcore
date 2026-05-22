@@ -21,7 +21,7 @@ class CachedVfsServiceTest {
     private lateinit var service: CachedVfsService
 
     @BeforeTest
-    fun setup() {
+    fun setUp() {
         coEvery { vfsDataSource.getSnapshotData() } returns null.right()
         coEvery { vfsDataSource.updateSnapshotData(any()) } returns null.right()
         service = CachedVfsService(testScope, vfsDataSource)

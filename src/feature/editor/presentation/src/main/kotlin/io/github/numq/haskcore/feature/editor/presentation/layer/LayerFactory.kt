@@ -1,6 +1,6 @@
 package io.github.numq.haskcore.feature.editor.presentation.layer
 
-import io.github.numq.haskcore.common.presentation.font.EditorFont
+import io.github.numq.haskcore.common.presentation.font.Font
 import io.github.numq.haskcore.common.presentation.theme.editor.EditorTheme
 import io.github.numq.haskcore.feature.editor.core.analysis.CodeIssue
 import io.github.numq.haskcore.feature.editor.core.caret.Caret
@@ -32,7 +32,7 @@ interface LayerFactory {
     ): HighlightedLineLayer?
 
     fun createGutterLineLayer(
-        line: Int, width: Float, textY: Float, font: EditorFont, theme: EditorTheme,
+        line: Int, width: Float, textY: Float, font: Font, theme: EditorTheme,
     ): GutterLineLayer
 
     fun createGutterActionLayers(
@@ -41,15 +41,13 @@ interface LayerFactory {
 
     fun createGutterSeparatorLayer(x: Float, height: Float, theme: EditorTheme): GutterSeparatorLayer
 
-    fun createGuidelineLayer(
-        column: Int, height: Float, scrollX: Float, font: EditorFont, theme: EditorTheme,
-    ): GuidelineLayer
+    fun createGuidelineLayer(column: Int, height: Float, scrollX: Float, font: Font, theme: EditorTheme): GuidelineLayer
 
     fun createCodeAreaContentLayers(
         viewportLines: List<ViewportLine>,
         tokensPerLine: Map<Int, List<Token>>?,
         scrollX: Float,
-        font: EditorFont,
+        font: Font,
         theme: EditorTheme,
     ): List<TextContentLayer>
 
@@ -70,6 +68,6 @@ interface LayerFactory {
     ): SelectionLayer
 
     fun createCaretLayer(
-        contentLayers: List<TextContentLayer>, caret: Caret, scrollX: Float, font: EditorFont, theme: EditorTheme,
+        contentLayers: List<TextContentLayer>, caret: Caret, scrollX: Float, font: Font, theme: EditorTheme,
     ): CaretLayer?
 }

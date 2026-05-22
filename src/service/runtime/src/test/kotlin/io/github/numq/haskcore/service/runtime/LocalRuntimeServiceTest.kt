@@ -12,7 +12,7 @@ internal class LocalRuntimeServiceTest {
     fun `should start process and receive output`() = runTest {
         val service = LocalRuntimeService(this)
         val request = RuntimeRequest.Cabal(
-            id = "build-1", name = "Build Project", arguments = listOf("--version")
+            id = "build-1", name = "Build Project", arguments = listOf("--version"), workingDir = null
         )
 
         val flow = service.execute(request).getOrElse { throw it }
@@ -25,7 +25,7 @@ internal class LocalRuntimeServiceTest {
     @Test
     fun `should receive process output`() = runTest {
         val api = LocalRuntimeService(this)
-        val request = RuntimeRequest.Cabal("id", "name", listOf("--version"))
+        val request = RuntimeRequest.Cabal("id", "name", listOf("--version"), workingDir = null)
 
         val flow = api.execute(request).getOrElse { throw it }
 

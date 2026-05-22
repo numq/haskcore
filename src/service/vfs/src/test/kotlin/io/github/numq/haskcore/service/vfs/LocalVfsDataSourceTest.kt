@@ -18,7 +18,7 @@ internal class LocalVfsDataSourceTest {
     private lateinit var dataSource: LocalVfsDataSource
 
     @BeforeTest
-    fun setup() {
+    fun setUp() {
         dataSource = LocalVfsDataSource(testScope, dataStore)
     }
 

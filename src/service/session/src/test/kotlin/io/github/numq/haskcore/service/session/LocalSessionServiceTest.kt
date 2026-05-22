@@ -22,7 +22,7 @@ internal class LocalSessionServiceTest {
     private val sessionFlow = MutableStateFlow(SessionData())
 
     @BeforeEach
-    fun setup() {
+    fun setUp() {
         every { sessionDataSource.sessionData } returns sessionFlow
     }
 

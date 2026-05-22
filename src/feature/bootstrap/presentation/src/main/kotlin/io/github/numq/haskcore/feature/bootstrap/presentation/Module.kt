@@ -9,7 +9,7 @@ import org.koin.dsl.module
 val bootstrapFeaturePresentationModule = module {
     scope<ScopeQualifier.Type.Application> {
         scopedOwner {
-            BootstrapReducer(boot = get())
+            BootstrapReducer(fontManager = get(), boot = get())
         }
 
         scopedOwner {

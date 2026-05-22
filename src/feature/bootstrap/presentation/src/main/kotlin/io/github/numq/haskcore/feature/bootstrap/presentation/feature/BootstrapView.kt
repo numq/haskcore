@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.rememberWindowState
+import io.github.numq.haskcore.common.presentation.font.Font
 import io.github.numq.haskcore.feature.bootstrap.core.Bootstrap
 import org.jetbrains.skia.Image
 import org.koin.compose.koinInject
@@ -35,7 +36,7 @@ fun BootstrapView(
     title: String,
     logo: Painter,
     exitApplication: () -> Unit,
-    content: @Composable (Bootstrap) -> Unit,
+    content: @Composable (Bootstrap, welcomeLogoFont: Font, welcomeMonoFont: Font, editorMonoFont: Font) -> Unit,
 ) {
     val feature = koinInject<BootstrapFeature>(scope = applicationScope)
 
@@ -98,6 +99,8 @@ fun BootstrapView(
             }
         }
 
-        is BootstrapState.Content -> content(currentState.bootstrap)
+        is BootstrapState.Content -> with(currentState) {
+            content(bootstrap, welcomeLogoFont, welcomeMonoFont, editorMonoFont)
+        }
     }
 }

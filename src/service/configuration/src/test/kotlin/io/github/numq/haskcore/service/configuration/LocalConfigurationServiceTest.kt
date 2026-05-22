@@ -17,7 +17,7 @@ internal class LocalConfigurationServiceTest {
     private val configurationDataFlow = MutableStateFlow(ConfigurationData(timestampNanos = 1000L))
 
     @BeforeEach
-    fun setup() {
+    fun setUp() {
         every { configurationDataSource.configurationData } returns configurationDataFlow
     }
 

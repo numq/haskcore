@@ -53,38 +53,38 @@ internal fun WorkspaceViewReady(
 
     val windowState = rememberWindowState(
         placement = when {
-            state.workspace.isFullscreen == true -> WindowPlacement.Fullscreen
+        state.workspace.isFullscreen == true -> WindowPlacement.Fullscreen
 
-            else -> WindowPlacement.Floating
-        }, position = state.workspace.x?.let { x ->
-            state.workspace.y?.let { y ->
-                WindowPosition(x = x.dp, y = y.dp)
-            }
-        } ?: WindowPosition.PlatformDefault, size = state.workspace.width?.dp?.let { width ->
-            state.workspace.height?.dp?.let { height ->
-                DpSize(width = width, height = height)
-            }
-        } ?: DpSize(800.dp, 600.dp))
+        else -> WindowPlacement.Floating
+    }, position = state.workspace.x?.let { x ->
+        state.workspace.y?.let { y ->
+            WindowPosition(x = x.dp, y = y.dp)
+        }
+    } ?: WindowPosition.PlatformDefault, size = state.workspace.width?.dp?.let { width ->
+        state.workspace.height?.dp?.let { height ->
+            DpSize(width = width, height = height)
+        }
+    } ?: DpSize(800.dp, 600.dp))
 
     DisposableEffect(windowState) {
         onDispose {
             val workspace = state.workspace
 
-            val x = windowState.position.x.value
-
-            val y = windowState.position.y.value
-
-            val width = windowState.size.width.value
-
-            val height = windowState.size.height.value
-
             val isFullscreen = windowState.placement == WindowPlacement.Fullscreen
+
+            val x = workspace.x.takeIf { isFullscreen } ?: windowState.position.x.value
+
+            val y = workspace.y.takeIf { isFullscreen } ?: windowState.position.y.value
+
+            val width = workspace.width.takeIf { isFullscreen } ?: windowState.size.width.value
+
+            val height = workspace.height.takeIf { isFullscreen } ?: windowState.size.height.value
 
             scope.launch(NonCancellable) {
                 if (x != workspace.x || y != workspace.y || width != workspace.width || height != workspace.height || isFullscreen != workspace.isFullscreen) {
                     execute(
                         WorkspaceCommand.SaveDimensions(
-                            x = x, y = y, width = width, height = height, isFullscreen = isFullscreen,
+                            x = x, y = y, width = width, height = height, isFullscreen = isFullscreen
                         )
                     )
                 }
@@ -98,26 +98,40 @@ internal fun WorkspaceViewReady(
         }.distinctUntilChanged().conflate().debounce(500.milliseconds).collect { (position, size, placement) ->
             val workspace = state.workspace
 
-            val x = position.x.value
-
-            val y = position.y.value
-
-            val width = size.width.value
-
-            val height = size.height.value
-
             val isFullscreen = placement == WindowPlacement.Fullscreen
 
-            if (x != workspace.x || y != workspace.y || width != workspace.width || height != workspace.height || isFullscreen != workspace.isFullscreen) {
-                execute(
-                    WorkspaceCommand.SaveDimensions(
-                        x = position.x.value,
-                        y = position.y.value,
-                        width = size.width.value,
-                        height = size.height.value,
-                        isFullscreen = placement == WindowPlacement.Fullscreen
+            val placementChanged = isFullscreen != workspace.isFullscreen
+
+            when {
+                placementChanged -> {
+                    val x = workspace.x.takeIf { isFullscreen } ?: position.x.value
+
+                    val y = workspace.y.takeIf { isFullscreen } ?: position.y.value
+
+                    val width = workspace.width.takeIf { isFullscreen } ?: size.width.value
+
+                    val height = workspace.height.takeIf { isFullscreen } ?: size.height.value
+
+                    execute(
+                        WorkspaceCommand.SaveDimensions(
+                            x = x, y = y, width = width, height = height, isFullscreen = isFullscreen
+                        )
                     )
-                )
+                }
+
+                !isFullscreen -> {
+                    val x = position.x.value
+
+                    val y = position.y.value
+
+                    val width = size.width.value
+
+                    val height = size.height.value
+
+                    if (x != workspace.x || y != workspace.y || width != workspace.width || height != workspace.height) {
+                        execute(WorkspaceCommand.SaveDimensions(x, y, width, height, isFullscreen = false))
+                    }
+                }
             }
         }
     }
@@ -318,9 +332,7 @@ internal fun WorkspaceViewReady(
                                                 Column(
                                                     modifier = Modifier.fillMaxSize(),
                                                     horizontalAlignment = Alignment.CenterHorizontally,
-                                                    verticalArrangement = Arrangement.spacedBy(
-                                                        space = 4.dp, alignment = Alignment.CenterVertically
-                                                    )
+                                                    verticalArrangement = Arrangement.Top
                                                 ) {
                                                     CloseableTabs(
                                                         modifier = Modifier.fillMaxWidth(),

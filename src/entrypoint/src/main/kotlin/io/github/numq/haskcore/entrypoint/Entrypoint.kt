@@ -7,10 +7,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.res.painterResource
 import io.github.numq.haskcore.common.core.di.ScopeQualifier
 import io.github.numq.haskcore.common.presentation.feature.Feature
-import io.github.numq.haskcore.common.presentation.font.DefaultFontParameters
-import io.github.numq.haskcore.common.presentation.font.EditorFont
-import io.github.numq.haskcore.common.presentation.font.LogoFont
-import io.github.numq.haskcore.common.presentation.font.MonoFont
 import io.github.numq.haskcore.common.presentation.theme.application.ApplicationTheme
 import io.github.numq.haskcore.common.presentation.theme.editor.EditorTheme
 import io.github.numq.haskcore.feature.bootstrap.presentation.feature.BootstrapView
@@ -70,24 +66,6 @@ object Entrypoint {
             }
         }
 
-        val welcomeLogoFont = koinInject<LogoFont>(scope = applicationScope) {
-            parametersOf(
-                96f, DefaultFontParameters.DEFAULT_LINE_SPACING
-            )
-        }
-
-        val welcomeMonoFont = koinInject<MonoFont>(scope = applicationScope) {
-            parametersOf(
-                32f, DefaultFontParameters.DEFAULT_LINE_SPACING
-            )
-        }
-
-        val editorFont = koinInject<EditorFont>(scope = applicationScope) {
-            parametersOf(
-                DefaultFontParameters.DEFAULT_SIZE, DefaultFontParameters.DEFAULT_LINE_SPACING
-            )
-        }
-
         val logo = painterResource("drawable/logo.svg")
 
         val isDark = isSystemInDarkTheme()
@@ -103,7 +81,7 @@ object Entrypoint {
                 title = APPLICATION_NAME,
                 logo = logo,
                 exitApplication = exitApplication,
-                content = { bootstrap ->
+                content = { bootstrap, welcomeLogoFont, welcomeMonoFont, editorMonoFont ->
                     NavigationView(
                         applicationScope = applicationScope,
                         handleError = Throwable::printStackTrace,
@@ -170,7 +148,7 @@ object Entrypoint {
                                         projectScope = projectScope,
                                         handleError = Throwable::printStackTrace,
                                         path = path,
-                                        font = editorFont,
+                                        font = editorMonoFont,
                                         theme = editorTheme,
                                         layerFactory = layerFactory,
                                     )

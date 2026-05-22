@@ -20,8 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.rememberWindowState
-import io.github.numq.haskcore.common.presentation.font.LogoFont
-import io.github.numq.haskcore.common.presentation.font.MonoFont
+import io.github.numq.haskcore.common.presentation.font.Font
 import io.github.numq.haskcore.common.presentation.overlay.dialog.file.FileDialog
 import io.github.numq.haskcore.feature.welcome.core.RecentProject
 import io.github.numq.haskcore.feature.welcome.presentation.button.ActionButton
@@ -38,8 +37,8 @@ fun WelcomeView(
     handleError: (Throwable) -> Unit,
     title: String,
     logo: Painter,
-    logoFont: LogoFont,
-    monoFont: MonoFont,
+    logoFont: Font,
+    monoFont: Font,
     openProject: (path: String, name: String?) -> Unit,
     exitApplication: () -> Unit,
 ) {

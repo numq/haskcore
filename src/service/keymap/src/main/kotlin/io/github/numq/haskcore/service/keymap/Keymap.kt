@@ -1,31 +1,57 @@
 package io.github.numq.haskcore.service.keymap
 
-import java.awt.event.KeyEvent
-
 internal object Keymap {
-    val editor = mapOf(
-        KeyStroke(keyCode = KeyEvent.VK_LEFT, modifiers = 0) to "editor.action.moveLeft",
-        KeyStroke(keyCode = KeyEvent.VK_RIGHT, modifiers = 0) to "editor.action.moveRight",
-        KeyStroke(keyCode = KeyEvent.VK_UP, modifiers = 0) to "editor.action.moveUp",
-        KeyStroke(keyCode = KeyEvent.VK_DOWN, modifiers = 0) to "editor.action.moveDown",
+    val editorActions = setOf(
+        KeymapAction.Navigation.Move.Left,
+        KeymapAction.Navigation.Move.Right,
+        KeymapAction.Navigation.Move.Up,
+        KeymapAction.Navigation.Move.Down,
+        KeymapAction.Navigation.Move.LeftWithSelection,
+        KeymapAction.Navigation.Move.RightWithSelection,
+        KeymapAction.Navigation.Move.UpWithSelection,
+        KeymapAction.Navigation.Move.DownWithSelection,
 
-        KeyStroke(keyCode = KeyEvent.VK_BACK_SPACE, modifiers = 0) to "editor.action.backspace",
-        KeyStroke(keyCode = KeyEvent.VK_ENTER, modifiers = 0) to "editor.action.enter",
-        KeyStroke(keyCode = KeyEvent.VK_TAB, modifiers = 0) to "editor.action.tab",
+        KeymapAction.Navigation.WordMove.Left,
+        KeymapAction.Navigation.WordMove.Right,
+        KeymapAction.Navigation.WordMove.LeftWithSelection,
+        KeymapAction.Navigation.WordMove.RightWithSelection,
 
-        KeyStroke(keyCode = KeyEvent.VK_A, modifiers = KeyEvent.CTRL_DOWN_MASK) to "editor.action.selectAll",
-        KeyStroke(keyCode = KeyEvent.VK_S, modifiers = KeyEvent.CTRL_DOWN_MASK) to "editor.action.save",
+        KeymapAction.Navigation.LineMove.Start,
+        KeymapAction.Navigation.LineMove.End,
+        KeymapAction.Navigation.LineMove.StartWithSelection,
+        KeymapAction.Navigation.LineMove.EndWithSelection,
 
-        KeyStroke(keyCode = KeyEvent.VK_Z, modifiers = KeyEvent.CTRL_DOWN_MASK) to "editor.action.undo",
-        KeyStroke(
-            keyCode = KeyEvent.VK_Z, modifiers = KeyEvent.CTRL_DOWN_MASK or KeyEvent.SHIFT_DOWN_MASK
-        ) to "editor.action.redo",
-        KeyStroke(keyCode = KeyEvent.VK_Y, modifiers = KeyEvent.CTRL_DOWN_MASK) to "editor.action.redo",
+        KeymapAction.Navigation.DocumentMove.Start,
+        KeymapAction.Navigation.DocumentMove.End,
+        KeymapAction.Navigation.DocumentMove.StartWithSelection,
+        KeymapAction.Navigation.DocumentMove.EndWithSelection,
 
-        KeyStroke(keyCode = KeyEvent.VK_X, modifiers = KeyEvent.CTRL_DOWN_MASK) to "editor.action.cut",
-        KeyStroke(keyCode = KeyEvent.VK_C, modifiers = KeyEvent.CTRL_DOWN_MASK) to "editor.action.copy",
-        KeyStroke(keyCode = KeyEvent.VK_V, modifiers = KeyEvent.CTRL_DOWN_MASK) to "editor.action.paste",
+        KeymapAction.Editing.Basic.Backspace,
+        KeymapAction.Editing.Basic.Delete,
+        KeymapAction.Editing.Basic.Enter,
+        KeymapAction.Editing.Basic.Tab,
+
+        KeymapAction.Editing.WordDelete.Left,
+        KeymapAction.Editing.WordDelete.Right,
+
+        KeymapAction.Editing.LineOperation.Duplicate,
+        KeymapAction.Editing.LineOperation.Delete,
+
+        KeymapAction.Clipboard.Cut,
+        KeymapAction.Clipboard.Copy,
+        KeymapAction.Clipboard.Paste,
+
+        KeymapAction.History.Undo,
+        KeymapAction.History.Redo,
+
+        KeymapAction.File.SelectAll,
+        KeymapAction.File.Save,
     )
 
-    val data = mapOf(KeymapContext.EDITOR to editor)
+    val actionsByContext = mapOf(
+        KeymapContext.GLOBAL to emptySet(),
+        KeymapContext.EDITOR to editorActions,
+        KeymapContext.FILE_TREE to emptySet(),
+        KeymapContext.TERMINAL to emptySet(),
+    )
 }

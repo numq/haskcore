@@ -1,27 +1,33 @@
 package io.github.numq.haskcore.service.keymap
 
 import arrow.core.Either
+import java.awt.event.KeyEvent
 
 internal class DefaultKeymapService(
-    private val keymapData: Map<KeymapContext, Map<KeyStroke, String>>,
+    private val actionsByContext: Map<KeymapContext, Set<KeymapAction>>,
 ) : KeymapService {
-    override fun getActionId(
-        keyStroke: KeyStroke, context: KeymapContext,
-    ) = Either.catch {
-        val localAction = keymapData[context]?.get(keyStroke)
-
-        when (localAction) {
-            null if context != KeymapContext.GLOBAL -> keymapData[KeymapContext.GLOBAL]?.get(keyStroke)
-
-            else -> localAction
+    private val actionsByContextAndKey: Map<KeymapContext, Map<Pair<Int, Int>, KeymapAction>> by lazy {
+        actionsByContext.mapValues { (_, actions) ->
+            buildMap {
+                actions.forEach { action ->
+                    put(action.keyCode to action.modifiers, action)
+                }
+            }
         }
     }
 
-    override suspend fun getKeyStrokes(actionId: String) = Either.catch {
-        keymapData.values.flatMap { keyStrokes ->
-            keyStrokes.entries
-        }.filter { keyStroke ->
-            keyStroke.value == actionId
-        }.map(Map.Entry<KeyStroke, String>::key).distinct()
+    private fun normalizeModifiers(modifiers: Int) =
+        modifiers and (KeyEvent.SHIFT_DOWN_MASK or KeyEvent.CTRL_DOWN_MASK or KeyEvent.META_DOWN_MASK or KeyEvent.ALT_DOWN_MASK or KeyEvent.ALT_GRAPH_DOWN_MASK)
+
+    override suspend fun findAction(keyCode: Int, modifiers: Int, context: KeymapContext) = Either.catch {
+        val normalizedModifiers = normalizeModifiers(modifiers = modifiers)
+
+        val key = keyCode to normalizedModifiers
+
+        actionsByContextAndKey[context]?.get(key) ?: when (context) {
+            KeymapContext.GLOBAL -> null
+
+            else -> actionsByContextAndKey[KeymapContext.GLOBAL]?.get(key)
+        }
     }
 }

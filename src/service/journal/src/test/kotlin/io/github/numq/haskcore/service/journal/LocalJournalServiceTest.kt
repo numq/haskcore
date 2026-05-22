@@ -22,23 +22,8 @@ internal class LocalJournalServiceTest {
     private val journalDataFlow = MutableStateFlow(JournalData())
 
     @BeforeEach
-    fun setup() {
+    fun setUp() {
         every { journalDataSource.journalData } returns journalDataFlow
-    }
-
-    @Test
-    fun `push should add record and update index`() = runTest(UnconfinedTestDispatcher()) {
-        val service = LocalJournalService(backgroundScope, journalDataSource)
-
-        val edit = TextEdit.User(
-            data = TextEdit.Data.Single.Insert(
-                startPosition = TextPosition(0, 0),
-                newEndPosition = TextPosition(0, 5),
-                insertedText = "hello",
-                startByte = 0,
-                newEndByte = 5
-            ), revision = TextRevision.ZERO
-        )
 
         coEvery { journalDataSource.update(any()) } answers {
             val transform = firstArg<(JournalData) -> JournalData>()
@@ -46,13 +31,30 @@ internal class LocalJournalServiceTest {
             journalDataFlow.value = newData
             Either.Right(newData)
         }
+    }
+
+    @Test
+    fun `push should add record and update index`() = runTest(UnconfinedTestDispatcher()) {
+        val service = LocalJournalService(backgroundScope, journalDataSource)
+
+        val targetRevision = TextRevision(value = 0)
+        val edit = TextEdit.User(
+            data = TextEdit.Data.Single.Insert(
+                startPosition = TextPosition(0, 0),
+                newEndPosition = TextPosition(0, 5),
+                insertedText = "hello",
+                startByte = 0,
+                newEndByte = 5
+            ), revision = targetRevision
+        )
 
         service.push(edit)
 
+        assertEquals(0, journalDataFlow.value.currentIndex)
+
         val currentJournal = service.journal.value
-        assertEquals(0, currentJournal.currentIndex)
         assertEquals(1, currentJournal.edits.size)
-        assertEquals(1L, currentJournal.edits.first().revision)
+        assertEquals(targetRevision.value, currentJournal.edits.first().revision.value)
     }
 
     @Test
@@ -72,20 +74,16 @@ internal class LocalJournalServiceTest {
 
         val service = LocalJournalService(backgroundScope, journalDataSource)
 
-        coEvery { journalDataSource.update(any()) } answers {
-            val transform = firstArg<(JournalData) -> JournalData>()
-            val newData = transform(journalDataFlow.value)
-            journalDataFlow.value = newData
-            Either.Right(newData)
-        }
-
-        val result = service.undo(1L)
+        val currentSnapshotRevision = TextRevision(value = 2)
+        val result = service.undo(currentSnapshotRevision)
 
         assertTrue(result.isRight())
-        assertEquals(-1, service.journal.value.currentIndex)
+
+        assertEquals(-1, journalDataFlow.value.currentIndex)
 
         result.onRight { edit ->
             assertTrue(edit?.data is TextEdit.Data.Single.Delete)
+            assertEquals(currentSnapshotRevision.value, edit?.revision?.value)
         }
     }
 }

@@ -2,7 +2,7 @@ package io.github.numq.haskcore.feature.editor.presentation.feature.view
 
 import androidx.compose.runtime.*
 import io.github.numq.haskcore.common.core.di.ScopeQualifier
-import io.github.numq.haskcore.common.presentation.font.EditorFont
+import io.github.numq.haskcore.common.presentation.font.Font
 import io.github.numq.haskcore.common.presentation.theme.editor.EditorTheme
 import io.github.numq.haskcore.feature.editor.presentation.feature.EditorEvent
 import io.github.numq.haskcore.feature.editor.presentation.feature.EditorFeature
@@ -17,7 +17,7 @@ fun EditorView(
     projectScope: Scope,
     handleError: (Throwable) -> Unit,
     path: String?,
-    font: EditorFont,
+    font: Font,
     theme: EditorTheme,
     layerFactory: LayerFactory,
 ) {

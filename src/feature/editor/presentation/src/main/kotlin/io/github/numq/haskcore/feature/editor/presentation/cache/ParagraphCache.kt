@@ -1,6 +1,6 @@
 package io.github.numq.haskcore.feature.editor.presentation.cache
 
-import io.github.numq.haskcore.common.presentation.font.EditorFont
+import io.github.numq.haskcore.common.presentation.font.Font
 import io.github.numq.haskcore.common.presentation.theme.editor.EditorTheme
 import io.github.numq.haskcore.common.presentation.theme.editor.palette.highlighting.HighlightingColorPalette
 import io.github.numq.haskcore.feature.editor.core.syntax.Token
@@ -10,7 +10,7 @@ import org.jetbrains.skia.paragraph.TextStyle
 
 internal class ParagraphCache(override val capacity: Int) : LruCache<ParagraphCache.Key, Paragraph>() {
     data class Key(
-        val text: String, val tokens: List<Token>, val width: Float, val font: EditorFont, val theme: EditorTheme,
+        val text: String, val tokens: List<Token>, val width: Float, val font: Font, val theme: EditorTheme,
     )
 
     private fun HighlightingColorPalette.getColorForHighlightingToken(type: Token.Type) = when (type) {

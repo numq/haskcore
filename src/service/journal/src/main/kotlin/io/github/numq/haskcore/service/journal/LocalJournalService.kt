@@ -42,16 +42,26 @@ internal class LocalJournalService(
         var edit: TextEdit? = null
 
         journalDataSource.update { journalData ->
-            when {
-                journalData.currentIndex >= 0 -> {
-                    val record = journalData.records[journalData.currentIndex]
+            if (journalData.currentIndex >= 0) {
+                val record = journalData.records.getOrNull(journalData.currentIndex)
 
-                    edit = record.toTextEdit().invert()
+                val originalEdit = record?.toTextEdit()
 
-                    journalData.copy(currentIndex = journalData.currentIndex - 1)
+                when (val inverted = originalEdit?.invert()) {
+                    null -> journalData
+
+                    else -> {
+                        edit = when (inverted) {
+                            is TextEdit.User -> inverted.copy(revision = revision)
+
+                            is TextEdit.System -> inverted.copy(revision = revision)
+                        }
+
+                        journalData.copy(currentIndex = journalData.currentIndex - 1)
+                    }
                 }
-
-                else -> journalData
+            } else {
+                journalData
             }
         }.bind()
 
@@ -62,18 +72,26 @@ internal class LocalJournalService(
         var edit: TextEdit? = null
 
         journalDataSource.update { journalData ->
-            when {
-                journalData.currentIndex < journalData.records.size - 1 -> {
-                    val nextIndex = journalData.currentIndex + 1
+            if (journalData.currentIndex < journalData.records.size - 1) {
+                val nextIndex = journalData.currentIndex + 1
 
-                    val recordToRedo = journalData.records[nextIndex]
+                val recordToRedo = journalData.records.getOrNull(nextIndex)
 
-                    edit = recordToRedo.toTextEdit()
+                when (val originalEdit = recordToRedo?.toTextEdit()) {
+                    null -> journalData
 
-                    journalData.copy(currentIndex = nextIndex)
+                    else -> {
+                        edit = when (originalEdit) {
+                            is TextEdit.User -> originalEdit.copy(revision = revision)
+
+                            is TextEdit.System -> originalEdit.copy(revision = revision)
+                        }
+
+                        journalData.copy(currentIndex = nextIndex)
+                    }
                 }
-
-                else -> journalData
+            } else {
+                journalData
             }
         }.bind()
 

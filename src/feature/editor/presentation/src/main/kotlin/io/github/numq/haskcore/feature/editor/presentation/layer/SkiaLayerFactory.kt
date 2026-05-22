@@ -3,7 +3,7 @@ package io.github.numq.haskcore.feature.editor.presentation.layer
 import arrow.core.getOrElse
 import io.github.numq.haskcore.common.core.text.TextPosition
 import io.github.numq.haskcore.common.core.text.TextRange
-import io.github.numq.haskcore.common.presentation.font.EditorFont
+import io.github.numq.haskcore.common.presentation.font.Font
 import io.github.numq.haskcore.common.presentation.theme.editor.EditorTheme
 import io.github.numq.haskcore.feature.editor.core.analysis.CodeIssue
 import io.github.numq.haskcore.feature.editor.core.caret.Caret
@@ -71,7 +71,7 @@ internal class SkiaLayerFactory(
     }
 
     override fun createGutterLineLayer(
-        line: Int, width: Float, textY: Float, font: EditorFont, theme: EditorTheme,
+        line: Int, width: Float, textY: Float, font: Font, theme: EditorTheme,
     ): GutterLineLayer {
         val text = "${line + 1}"
 
@@ -118,7 +118,7 @@ internal class SkiaLayerFactory(
         })
 
     override fun createGuidelineLayer(
-        column: Int, height: Float, scrollX: Float, font: EditorFont, theme: EditorTheme,
+        column: Int, height: Float, scrollX: Float, font: Font, theme: EditorTheme,
     ) = GuidelineLayer(
         x = (column * font.charWidth) - scrollX + Measurements.EDITOR_PADDING_START,
         height = height,
@@ -132,7 +132,7 @@ internal class SkiaLayerFactory(
         viewportLines: List<ViewportLine>,
         tokensPerLine: Map<Int, List<Token>>?,
         scrollX: Float,
-        font: EditorFont,
+        font: Font,
         theme: EditorTheme,
     ) = viewportLines.map { viewportLine ->
         val line = viewportLine.line
@@ -299,7 +299,7 @@ internal class SkiaLayerFactory(
     }
 
     override fun createCaretLayer(
-        contentLayers: List<TextContentLayer>, caret: Caret, scrollX: Float, font: EditorFont, theme: EditorTheme,
+        contentLayers: List<TextContentLayer>, caret: Caret, scrollX: Float, font: Font, theme: EditorTheme,
     ): CaretLayer? {
         val contentLayer = contentLayers.firstOrNull { codeAreaContentLayer ->
             codeAreaContentLayer.viewportLine.line == caret.position.line

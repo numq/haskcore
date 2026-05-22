@@ -27,13 +27,13 @@ internal fun EditorViewEmpty() {
             Column(
                 modifier = Modifier.wrapContentWidth(),
                 horizontalAlignment = Alignment.Start,
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                verticalArrangement = Arrangement.spacedBy(space = 4.dp, alignment = Alignment.CenterVertically)
             ) {
-                ShortcutHint(label = "Open Project", keys = "Ctrl + O")
+                ShortcutHint(label = "Open Project", keys = "Ctrl + O") // todo add shortcut
 
-                ShortcutHint(label = "New File", keys = "Ctrl + N")
+                ShortcutHint(label = "New File", keys = "Ctrl + N") // todo add shortcut
 
-                ShortcutHint(label = "Search Everywhere", keys = "Double Shift")
+                ShortcutHint(label = "Search Everywhere", keys = "Double Shift") // todo add shortcut
             }
         }
     }

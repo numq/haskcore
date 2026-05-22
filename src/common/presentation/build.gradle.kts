@@ -13,9 +13,11 @@ dependencies {
     api(libs.compose.ui)
     api(libs.koin.compose)
     api(projects.common.core)
-    testImplementation(libs.compose.desktop)
     testImplementation(libs.junit)
     testImplementation(libs.kotlin.test)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.mockk)
+    testImplementation(compose.desktop.currentOs)
 }
 
 tasks.withType<Test>().configureEach {

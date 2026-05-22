@@ -8,7 +8,7 @@ import org.koin.dsl.module
 val keymapServiceModule = module {
     scope<ScopeQualifier.Type.Application> {
         scopedOwner {
-            DefaultKeymapService(keymapData = mapOf(KeymapContext.EDITOR to Keymap.editor))
+            DefaultKeymapService(actionsByContext = Keymap.actionsByContext)
         } bind KeymapService::class
     }
 }

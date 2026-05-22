@@ -2,7 +2,8 @@ package io.github.numq.haskcore.common.presentation
 
 import io.github.numq.haskcore.common.core.di.ScopeQualifier
 import io.github.numq.haskcore.common.core.di.scopedOwner
-import io.github.numq.haskcore.common.presentation.font.*
+import io.github.numq.haskcore.common.presentation.font.FontManager
+import io.github.numq.haskcore.common.presentation.font.SkiaFontManager
 import io.github.numq.haskcore.common.presentation.overlay.dialog.file.DesktopFileDialog
 import io.github.numq.haskcore.common.presentation.overlay.dialog.file.FileDialog
 import io.github.numq.haskcore.common.presentation.theme.editor.AlucardEditorTheme
@@ -13,25 +14,7 @@ import org.koin.dsl.module
 
 val commonPresentationModule = module {
     scope<ScopeQualifier.Type.Application> {
-        scopedOwner { FontManager() }
-
-        scopedOwner { (size: Float, lineSpacing: Float) ->
-            LogoFont(
-                typeface = get<FontManager>().loadFont(FontResources.LOGO), size = size, lineSpacing = lineSpacing
-            )
-        }
-
-        scopedOwner { (size: Float, lineSpacing: Float) ->
-            MonoFont(
-                typeface = get<FontManager>().loadFont(FontResources.MONO), size = size, lineSpacing = lineSpacing
-            )
-        }
-
-        scopedOwner { (size: Float, lineSpacing: Float) ->
-            EditorFont(
-                typeface = get<FontManager>().loadFont(FontResources.MONO), size = size, lineSpacing = lineSpacing
-            )
-        }
+        scopedOwner { SkiaFontManager() } bind FontManager::class
 
         scopedOwner { DesktopFileDialog() } bind FileDialog::class
 

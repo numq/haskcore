@@ -20,7 +20,7 @@ internal class LocalProjectServiceTest {
     private lateinit var service: LocalProjectService
 
     @BeforeEach
-    fun setup() {
+    fun setUp() {
         every { projectDataSource.projectData } returns projectDataFlow
         service = LocalProjectService(testProjectPath, projectDataSource)
     }

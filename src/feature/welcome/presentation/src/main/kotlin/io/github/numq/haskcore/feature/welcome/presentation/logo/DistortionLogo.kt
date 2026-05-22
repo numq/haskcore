@@ -11,8 +11,7 @@ import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
-import io.github.numq.haskcore.common.presentation.font.LogoFont
-import io.github.numq.haskcore.common.presentation.font.MonoFont
+import io.github.numq.haskcore.common.presentation.font.Font
 import kotlinx.coroutines.delay
 import org.jetbrains.skia.ClipMode
 import org.jetbrains.skia.Paint
@@ -20,7 +19,7 @@ import org.jetbrains.skia.Rect
 import kotlin.math.sin
 
 @Composable
-internal fun DistortionLogo(title: String, logoFont: LogoFont, monoFont: MonoFont, textColor: Color) {
+internal fun DistortionLogo(title: String, logoFont: Font, monoFont: Font, textColor: Color) {
     val transition = rememberInfiniteTransition()
 
     val paint = remember { Paint() }
