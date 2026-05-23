@@ -57,7 +57,7 @@ internal class LocalRuntimeService(private val scope: CoroutineScope) : RuntimeS
 
         send(RuntimeEvent.Started(request = request))
 
-        val exitCode = process.waitFor()
+        val exitCode = runInterruptible(Dispatchers.IO) { process.waitFor() }
 
         joinAll(stdoutJob, stderrJob)
 

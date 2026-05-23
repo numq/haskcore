@@ -2,6 +2,7 @@ package io.github.numq.haskcore.service.toolchain
 
 import arrow.core.raise.either
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.BufferedReader
@@ -24,7 +25,7 @@ internal class LocalProcessRunner : ProcessRunner {
                 try {
                     val output = process.inputStream.bufferedReader().use(BufferedReader::readText).trim()
 
-                    val exitCode = process.waitFor()
+                    val exitCode = runInterruptible(Dispatchers.IO) { process.waitFor() }
 
                     when (exitCode) {
                         0 if output.isNotEmpty() -> output.lines().firstOrNull()?.trim() ?: output
