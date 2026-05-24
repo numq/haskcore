@@ -15,8 +15,8 @@ import io.github.numq.haskcore.feature.editor.presentation.guideline.GuidelineLa
 import io.github.numq.haskcore.feature.editor.presentation.gutter.GutterActionLayer
 import io.github.numq.haskcore.feature.editor.presentation.gutter.GutterLineLayer
 import io.github.numq.haskcore.feature.editor.presentation.gutter.GutterSeparatorLayer
+import io.github.numq.haskcore.feature.editor.presentation.issue.IssueLayer
 import io.github.numq.haskcore.feature.editor.presentation.occurrence.OccurrenceLayer
-import io.github.numq.haskcore.feature.editor.presentation.overlay.IssueLayer
 import io.github.numq.haskcore.feature.editor.presentation.selection.SelectionLayer
 import io.github.numq.haskcore.feature.editor.presentation.text.TextContentLayer
 import io.github.numq.haskcore.feature.editor.presentation.viewport.ViewportLine
