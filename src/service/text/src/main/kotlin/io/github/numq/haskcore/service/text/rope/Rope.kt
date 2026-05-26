@@ -11,19 +11,19 @@ import kotlin.math.max
 import kotlin.math.min
 
 internal class Rope private constructor(
-    private val root: RopeNode,
+    private val root: Node,
     private val charset: Charset,
-    private val ropeNodeLeafFactory: RopeNodeLeafFactory,
+    private val ropeNodeFactory: RopeNodeFactory,
     val textVersion: Long = 0L,
 ) {
     constructor(
         initialText: String = "",
         charset: Charset = StandardCharsets.UTF_8,
-        ropeNodeLeafFactory: RopeNodeLeafFactory = RopeNodeLeafFactory(enablePooling = true, charset = charset),
+        ropeNodeFactory: RopeNodeFactory = RopeNodeFactory(enablePooling = true, charset = charset),
     ) : this(
-        root = if (initialText.isEmpty()) RopeNode.Empty else ropeNodeLeafFactory.createLeaf(content = initialText),
+        root = if (initialText.isEmpty()) Node.Empty else ropeNodeFactory.create(text = initialText),
         charset = charset,
-        ropeNodeLeafFactory = ropeNodeLeafFactory,
+        ropeNodeFactory = ropeNodeFactory,
         textVersion = 0L
     )
 
@@ -55,66 +55,66 @@ internal class Rope private constructor(
 
     val maxLineLength: Int get() = root.maxLineLength
 
-    private fun createLeaf(content: String) = ropeNodeLeafFactory.createLeaf(content)
+    private fun createNode(text: String) = ropeNodeFactory.create(text = text)
 
-    private fun isRed(node: RopeNode) = node.color == RopeNode.Color.RED
+    private fun isRed(node: Node) = node.color == Node.Color.RED
 
-    private fun rotateLeft(node: RopeNode.Branch): RopeNode.Branch {
+    private fun rotateLeft(node: Node.Branch): Node.Branch {
         val x = node.right
 
-        if (x !is RopeNode.Branch) return node
+        if (x !is Node.Branch) return node
 
-        return RopeNode.Branch(
-            left = RopeNode.Branch(node.left, x.left, node.color), right = x.right, color = x.color
+        return Node.Branch(
+            left = Node.Branch(node.left, x.left, node.color), right = x.right, color = x.color
         )
     }
 
-    private fun rotateRight(node: RopeNode.Branch): RopeNode.Branch {
+    private fun rotateRight(node: Node.Branch): Node.Branch {
         val x = node.left
 
-        if (x !is RopeNode.Branch) return node
+        if (x !is Node.Branch) return node
 
-        return RopeNode.Branch(
-            left = x.left, right = RopeNode.Branch(x.right, node.right, node.color), color = x.color
+        return Node.Branch(
+            left = x.left, right = Node.Branch(x.right, node.right, node.color), color = x.color
         )
     }
 
-    private fun flipColors(node: RopeNode.Branch): RopeNode.Branch {
-        fun flip(color: RopeNode.Color) = when (color) {
-            RopeNode.Color.BLACK -> RopeNode.Color.RED
+    private fun flipColors(node: Node.Branch): Node.Branch {
+        fun flip(color: Node.Color) = when (color) {
+            Node.Color.BLACK -> Node.Color.RED
 
-            else -> RopeNode.Color.BLACK
+            else -> Node.Color.BLACK
         }
 
         val newLeft = when (val left = node.left) {
-            is RopeNode.Leaf -> left.copy(color = flip(left.color))
+            is Node.Leaf -> left.copy(color = flip(left.color))
 
-            is RopeNode.Branch -> left.copy(color = flip(left.color))
+            is Node.Branch -> left.copy(color = flip(left.color))
 
-            RopeNode.Empty -> left
+            Node.Empty -> left
         }
 
         val newRight = when (val right = node.right) {
-            is RopeNode.Leaf -> right.copy(color = flip(right.color))
+            is Node.Leaf -> right.copy(color = flip(right.color))
 
-            is RopeNode.Branch -> right.copy(color = flip(right.color))
+            is Node.Branch -> right.copy(color = flip(right.color))
 
-            RopeNode.Empty -> right
+            Node.Empty -> right
         }
 
         return node.copy(left = newLeft, right = newRight, color = flip(node.color))
     }
 
-    private fun quickBalance(node: RopeNode): RopeNode {
-        if (node !is RopeNode.Branch) return node
+    private fun quickBalance(node: Node): Node {
+        if (node !is Node.Branch) return node
 
         var current = node
 
-        if (isRed(current.right) && !isRed(current.left) && current.right is RopeNode.Branch) {
+        if (isRed(current.right) && !isRed(current.left) && current.right is Node.Branch) {
             current = rotateLeft(current)
         }
 
-        if (isRed(current.left) && current.left is RopeNode.Branch && isRed(current.left.left)) {
+        if (isRed(current.left) && current.left is Node.Branch && isRed(current.left.left)) {
             current = rotateRight(current)
         }
 
@@ -125,20 +125,20 @@ internal class Rope private constructor(
         return current
     }
 
-    private fun splitAt(offset: Int, node: RopeNode): Pair<RopeNode, RopeNode> = when {
-        offset <= 0 -> Pair(RopeNode.Empty, node)
+    private fun splitAt(offset: Int, node: Node): Pair<Node, Node> = when {
+        offset <= 0 -> Pair(Node.Empty, node)
 
-        offset >= node.charCount -> Pair(node, RopeNode.Empty)
+        offset >= node.charCount -> Pair(node, Node.Empty)
 
-        node is RopeNode.Leaf -> {
-            val leftContent = node.content.substring(0, offset)
+        node is Node.Leaf -> {
+            val leftContent = node.text.substring(0, offset)
 
-            val rightContent = node.content.substring(offset)
+            val rightContent = node.text.substring(offset)
 
-            Pair(createLeaf(leftContent), createLeaf(rightContent))
+            Pair(createNode(leftContent), createNode(rightContent))
         }
 
-        node is RopeNode.Branch -> when {
+        node is Node.Branch -> when {
             offset < node.left.charCount -> {
                 val (leftLeft, leftRight) = splitAt(offset, node.left)
 
@@ -152,23 +152,23 @@ internal class Rope private constructor(
             }
         }
 
-        else -> Pair(RopeNode.Empty, RopeNode.Empty)
+        else -> Pair(Node.Empty, Node.Empty)
     }
 
-    private fun concat(left: RopeNode, right: RopeNode): RopeNode {
-        if (left === RopeNode.Empty) return right
+    private fun concat(left: Node, right: Node): Node {
+        if (left === Node.Empty) return right
 
-        if (right === RopeNode.Empty) return left
+        if (right === Node.Empty) return left
 
-        if (left is RopeNode.Leaf && right is RopeNode.Leaf && left.length + right.length <= 8192) {
-            return createLeaf(left.content + right.content)
+        if (left is Node.Leaf && right is Node.Leaf && left.length + right.length <= 8192) {
+            return createNode(left.text + right.text)
         }
 
-        return quickBalance(RopeNode.Branch(left, right, RopeNode.Color.RED))
+        return quickBalance(Node.Branch(left, right, Node.Color.RED))
     }
 
-    private fun needsFullRebalance(node: RopeNode): Boolean {
-        if (node !is RopeNode.Branch) return false
+    private fun needsFullRebalance(node: Node): Boolean {
+        if (node !is Node.Branch) return false
 
         val maxHeight = max(node.left.height, node.right.height)
 
@@ -179,32 +179,32 @@ internal class Rope private constructor(
 
     private fun calculateOptimalHeight(size: Int) = max(2, (ln(size.toDouble()) / ln(1.618)).toInt() + 1)
 
-    private fun forceBalance(node: RopeNode): RopeNode {
-        val leaves = ArrayList<RopeNode>(128)
+    private fun forceBalance(node: Node): Node {
+        val leaves = ArrayList<Node>(128)
 
         collectLeaves(node, leaves)
 
         return buildBalancedTree(leaves)
     }
 
-    private fun collectLeaves(node: RopeNode, acc: MutableList<RopeNode>) {
+    private fun collectLeaves(node: Node, acc: MutableList<Node>) {
         when (node) {
-            is RopeNode.Leaf -> if (node.content.isNotEmpty()) {
+            is Node.Leaf -> if (node.text.isNotEmpty()) {
                 acc.add(node)
             }
 
-            is RopeNode.Branch -> {
+            is Node.Branch -> {
                 collectLeaves(node.left, acc)
 
                 collectLeaves(node.right, acc)
             }
 
-            RopeNode.Empty -> Unit
+            Node.Empty -> Unit
         }
     }
 
-    private fun collectRange(node: RopeNode, start: Int, end: Int, acc: MutableList<RopeNode>) {
-        if (start >= end || node === RopeNode.Empty) return
+    private fun collectRange(node: Node, start: Int, end: Int, acc: MutableList<Node>) {
+        if (start >= end || node === Node.Empty) return
 
         if (start == 0 && end == node.charCount) {
             acc.add(node)
@@ -213,13 +213,13 @@ internal class Rope private constructor(
         }
 
         when (node) {
-            is RopeNode.Leaf -> {
-                val sub = node.content.substring(start, end)
+            is Node.Leaf -> {
+                val sub = node.text.substring(start, end)
 
-                acc.add(createLeaf(sub))
+                acc.add(createNode(sub))
             }
 
-            is RopeNode.Branch -> {
+            is Node.Branch -> {
                 val leftCount = node.left.charCount
 
                 if (start < leftCount) {
@@ -231,24 +231,24 @@ internal class Rope private constructor(
                 }
             }
 
-            RopeNode.Empty -> Unit
+            Node.Empty -> Unit
         }
     }
 
-    private fun buildBalancedTree(nodes: List<RopeNode>): RopeNode {
-        if (nodes.isEmpty()) return RopeNode.Empty
+    private fun buildBalancedTree(nodes: List<Node>): Node {
+        if (nodes.isEmpty()) return Node.Empty
 
-        val mergedNodes = ArrayList<RopeNode>(nodes.size)
+        val mergedNodes = ArrayList<Node>(nodes.size)
 
         var currentBuilder = StringBuilder()
 
         for (node in nodes) {
-            if (node is RopeNode.Leaf) {
+            if (node is Node.Leaf) {
                 if (currentBuilder.length + node.length <= 4096) {
-                    currentBuilder.append(node.content)
+                    currentBuilder.append(node.text)
                 } else {
                     if (currentBuilder.isNotEmpty()) {
-                        mergedNodes.add(createLeaf(currentBuilder.toString()))
+                        mergedNodes.add(createNode(currentBuilder.toString()))
 
                         currentBuilder = StringBuilder()
                     }
@@ -256,12 +256,12 @@ internal class Rope private constructor(
                     if (node.length > 4096) {
                         mergedNodes.add(node)
                     } else {
-                        currentBuilder.append(node.content)
+                        currentBuilder.append(node.text)
                     }
                 }
             } else {
                 if (currentBuilder.isNotEmpty()) {
-                    mergedNodes.add(createLeaf(currentBuilder.toString()))
+                    mergedNodes.add(createNode(currentBuilder.toString()))
 
                     currentBuilder = StringBuilder()
                 }
@@ -271,14 +271,14 @@ internal class Rope private constructor(
         }
 
         if (currentBuilder.isNotEmpty()) {
-            mergedNodes.add(createLeaf(currentBuilder.toString()))
+            mergedNodes.add(createNode(currentBuilder.toString()))
         }
 
-        fun buildRecursive(start: Int, end: Int): RopeNode {
+        fun buildRecursive(start: Int, end: Int): Node {
             val count = end - start
 
             return when (count) {
-                0 -> RopeNode.Empty
+                0 -> Node.Empty
 
                 1 -> mergedNodes[start]
 
@@ -289,7 +289,7 @@ internal class Rope private constructor(
 
                     val rightTree = buildRecursive(mid, end)
 
-                    RopeNode.Branch(leftTree, rightTree, RopeNode.Color.BLACK)
+                    Node.Branch(leftTree, rightTree, Node.Color.BLACK)
                 }
             }
         }
@@ -304,7 +304,7 @@ internal class Rope private constructor(
 
         if (insertions.isEmpty()) return deleteBatchFast(deletions)
 
-        val nodes = ArrayList<RopeNode>(deletions.size + insertions.size + 16)
+        val nodes = ArrayList<Node>(deletions.size + insertions.size + 16)
 
         val allOps = ArrayList<RopeBatch>(deletions.size + insertions.size)
 
@@ -325,7 +325,7 @@ internal class Rope private constructor(
                 is RopeBatch.Delete -> lastOpEnd = max(lastOpEnd, op.offset + op.length)
 
                 is RopeBatch.Insert -> {
-                    nodes.add(createLeaf(op.text))
+                    nodes.add(createNode(op.text))
 
                     lastOpEnd = max(lastOpEnd, op.offset)
                 }
@@ -344,7 +344,7 @@ internal class Rope private constructor(
 
         cachedTextVersion.value = -1L
 
-        return Rope(buildBalancedTree(nodes), charset, ropeNodeLeafFactory, textVersion + 1)
+        return Rope(buildBalancedTree(nodes), charset, ropeNodeFactory, textVersion + 1)
     }
 
     fun getByteOffset(charOffset: Int): Int {
@@ -358,11 +358,11 @@ internal class Rope private constructor(
 
         var remaining = charOffset
 
-        fun traverse(node: RopeNode) {
+        fun traverse(node: Node) {
             if (remaining <= 0) return
 
             when (node) {
-                is RopeNode.Leaf -> when {
+                is Node.Leaf -> when {
                     remaining >= node.length -> {
                         bytes += node.byteCount
 
@@ -388,7 +388,7 @@ internal class Rope private constructor(
                             var failedFastPath = false
 
                             for (i in 0 until remaining) {
-                                val c = node.content[i]
+                                val c = node.text[i]
 
                                 if (Character.isSurrogate(c)) {
                                     failedFastPath = true
@@ -408,19 +408,19 @@ internal class Rope private constructor(
                             }
 
                             bytes += if (failedFastPath) {
-                                node.content.substring(0, remaining).toByteArray(charset).size
+                                node.text.substring(0, remaining).toByteArray(charset).size
                             } else {
                                 localBytes
                             }
                         } else {
-                            bytes += node.content.substring(0, remaining).toByteArray(charset).size
+                            bytes += node.text.substring(0, remaining).toByteArray(charset).size
 
                             remaining = 0
                         }
                     }
                 }
 
-                is RopeNode.Branch -> when {
+                is Node.Branch -> when {
                     remaining >= node.left.charCount -> {
                         bytes += node.left.byteCount
 
@@ -432,7 +432,7 @@ internal class Rope private constructor(
                     else -> traverse(node.left)
                 }
 
-                RopeNode.Empty -> Unit
+                Node.Empty -> Unit
             }
         }
 
@@ -456,11 +456,11 @@ internal class Rope private constructor(
 
         var targetLines = lineIndex
 
-        fun traverse(node: RopeNode) {
+        fun traverse(node: Node) {
             if (targetLines <= 0) return
 
             when (node) {
-                is RopeNode.Leaf -> {
+                is Node.Leaf -> {
                     if (node.lineBreakCount < targetLines) {
                         chars += node.length
 
@@ -470,14 +470,14 @@ internal class Rope private constructor(
 
                         var linesFound = 0
 
-                        var nextNewline = node.content.indexOf('\n', i)
+                        var nextNewline = node.text.indexOf('\n', i)
 
                         while (nextNewline != -1 && linesFound < targetLines) {
                             linesFound++
 
                             i = nextNewline + 1
 
-                            nextNewline = node.content.indexOf('\n', i)
+                            nextNewline = node.text.indexOf('\n', i)
                         }
 
                         chars += i
@@ -486,7 +486,7 @@ internal class Rope private constructor(
                     }
                 }
 
-                is RopeNode.Branch -> when {
+                is Node.Branch -> when {
                     node.left.lineBreakCount < targetLines -> {
                         chars += node.left.charCount
 
@@ -498,7 +498,7 @@ internal class Rope private constructor(
                     else -> traverse(node.left)
                 }
 
-                RopeNode.Empty -> Unit
+                Node.Empty -> Unit
             }
         }
 
@@ -516,13 +516,13 @@ internal class Rope private constructor(
 
         var currentLine = 0
 
-        fun find(node: RopeNode) {
+        fun find(node: Node) {
             when (node) {
-                is RopeNode.Leaf -> {
+                is Node.Leaf -> {
                     val textBefore = when {
-                        remainingOffset >= node.length -> node.content
+                        remainingOffset >= node.length -> node.text
 
-                        else -> node.content.substring(0, remainingOffset)
+                        else -> node.text.substring(0, remainingOffset)
                     }
 
                     val linesInLeaf = textBefore.count { it == '\n' }
@@ -534,7 +534,7 @@ internal class Rope private constructor(
                     }
                 }
 
-                is RopeNode.Branch -> when {
+                is Node.Branch -> when {
                     remainingOffset >= node.left.charCount -> {
                         currentLine += node.left.lineBreakCount
 
@@ -546,7 +546,7 @@ internal class Rope private constructor(
                     else -> find(node.left)
                 }
 
-                RopeNode.Empty -> Unit
+                Node.Empty -> Unit
             }
         }
 
@@ -574,12 +574,12 @@ internal class Rope private constructor(
 
         var currentOffset = offset
 
-        fun traverse(node: RopeNode) {
+        fun traverse(node: Node) {
             if (remaining <= 0) return
 
             when (node) {
-                is RopeNode.Leaf -> {
-                    val nodeContent = node.content
+                is Node.Leaf -> {
+                    val nodeContent = node.text
 
                     val nodeLength = node.length
 
@@ -602,7 +602,7 @@ internal class Rope private constructor(
                     }
                 }
 
-                is RopeNode.Branch -> {
+                is Node.Branch -> {
                     val leftCount = node.left.charCount
 
                     when {
@@ -620,7 +620,7 @@ internal class Rope private constructor(
                     }
                 }
 
-                RopeNode.Empty -> Unit
+                Node.Empty -> Unit
             }
         }
 
@@ -636,17 +636,17 @@ internal class Rope private constructor(
 
         val sb = StringBuilder(totalChars)
 
-        fun appendAll(n: RopeNode) {
+        fun appendAll(n: Node) {
             when (n) {
-                is RopeNode.Leaf -> sb.append(n.content)
+                is Node.Leaf -> sb.append(n.text)
 
-                is RopeNode.Branch -> {
+                is Node.Branch -> {
                     appendAll(n.left)
 
                     appendAll(n.right)
                 }
 
-                RopeNode.Empty -> Unit
+                Node.Empty -> Unit
             }
         }
 
@@ -666,10 +666,10 @@ internal class Rope private constructor(
 
         if (text.isEmpty()) return this
 
-        val newLeaf = createLeaf(text)
+        val newLeaf = createNode(text)
 
-        if (root === RopeNode.Empty) {
-            return Rope(newLeaf, charset, ropeNodeLeafFactory, textVersion + 1)
+        if (root === Node.Empty) {
+            return Rope(newLeaf, charset, ropeNodeFactory, textVersion + 1)
         }
 
         val (left, right) = splitAt(offset, root)
@@ -682,7 +682,7 @@ internal class Rope private constructor(
 
         byteOffsetCache.clear()
 
-        return Rope(balanced, charset, ropeNodeLeafFactory, textVersion + 1)
+        return Rope(balanced, charset, ropeNodeFactory, textVersion + 1)
     }
 
     fun delete(offset: Int, length: Int): Rope {
@@ -702,7 +702,7 @@ internal class Rope private constructor(
 
         byteOffsetCache.clear()
 
-        return Rope(balanced, charset, ropeNodeLeafFactory, textVersion + 1)
+        return Rope(balanced, charset, ropeNodeFactory, textVersion + 1)
     }
 
     fun batch(block: RopeBuilder.() -> Unit) = RopeBuilder.Companion.build(this, block)
@@ -712,7 +712,7 @@ internal class Rope private constructor(
 
         val sortedInserts = insertions.sortedBy { it.first }
 
-        val nodes = ArrayList<RopeNode>()
+        val nodes = ArrayList<Node>()
 
         var lastPos = 0
 
@@ -721,7 +721,7 @@ internal class Rope private constructor(
                 collectRange(root, lastPos, offset, nodes)
             }
 
-            nodes.add(createLeaf(text))
+            nodes.add(createNode(text))
 
             lastPos = offset
         }
@@ -730,7 +730,7 @@ internal class Rope private constructor(
             collectRange(root, lastPos, totalChars, nodes)
         }
 
-        return Rope(buildBalancedTree(nodes), charset, ropeNodeLeafFactory, textVersion + 1)
+        return Rope(buildBalancedTree(nodes), charset, ropeNodeFactory, textVersion + 1)
     }
 
     fun deleteBatchFast(deletions: List<Pair<Int, Int>>): Rope {
@@ -738,7 +738,7 @@ internal class Rope private constructor(
 
         val sortedDeletions = deletions.sortedBy { it.first }
 
-        val nodes = ArrayList<RopeNode>()
+        val nodes = ArrayList<Node>()
 
         var currentPos = 0
 
@@ -754,26 +754,26 @@ internal class Rope private constructor(
             collectRange(root, currentPos, totalChars, nodes)
         }
 
-        return Rope(buildBalancedTree(nodes), charset, ropeNodeLeafFactory, textVersion + 1)
+        return Rope(buildBalancedTree(nodes), charset, ropeNodeFactory, textVersion + 1)
     }
 
     fun rebuildWithCharset(newCharset: Charset): Rope {
         if (this.charset == newCharset) return this
 
-        val newFactory = RopeNodeLeafFactory(enablePooling = true, charset = newCharset)
+        val newFactory = RopeNodeFactory(enablePooling = true, charset = newCharset)
 
-        fun rebuildNode(node: RopeNode): RopeNode = when (node) {
-            is RopeNode.Leaf -> newFactory.createLeaf(node.content)
+        fun rebuildNode(node: Node): Node = when (node) {
+            is Node.Leaf -> newFactory.create(text = node.text)
 
-            is RopeNode.Branch -> {
-                val newLeft = rebuildNode(node.left)
+            is Node.Branch -> {
+                val newLeft = rebuildNode(node = node.left)
 
-                val newRight = rebuildNode(node.right)
+                val newRight = rebuildNode(node = node.right)
 
-                RopeNode.Branch(newLeft, newRight, node.color)
+                Node.Branch(newLeft, newRight, color = node.color)
             }
 
-            RopeNode.Empty -> RopeNode.Empty
+            Node.Empty -> Node.Empty
         }
 
         val newRoot = rebuildNode(root)

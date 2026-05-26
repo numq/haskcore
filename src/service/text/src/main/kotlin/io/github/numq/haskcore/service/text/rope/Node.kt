@@ -2,7 +2,7 @@ package io.github.numq.haskcore.service.text.rope
 
 import kotlin.math.max
 
-internal sealed interface RopeNode {
+internal sealed interface Node {
     enum class Color {
         RED, BLACK
     }
@@ -25,35 +25,35 @@ internal sealed interface RopeNode {
 
     val height: Int
 
-    val left: RopeNode
+    val left: Node
 
-    val right: RopeNode
+    val right: Node
 
     data class Leaf(
-        val content: String,
+        val text: String,
         override val byteCount: Int,
         override val lineBreakCount: Int,
         override val prefixLineLength: Int,
         override val suffixLineLength: Int,
         override val maxLineLength: Int,
         override val color: Color = Color.BLACK,
-    ) : RopeNode {
-        override val charCount: Int get() = content.length
+    ) : Node {
+        override val charCount: Int get() = text.length
 
         override val longestLineThroughSplit = 0
 
         override val height: Int get() = 1
 
-        override val left: RopeNode get() = Empty
+        override val left: Node get() = Empty
 
-        override val right: RopeNode get() = Empty
+        override val right: Node get() = Empty
 
-        val length: Int get() = content.length
+        val length: Int get() = text.length
     }
 
     data class Branch(
-        override val left: RopeNode, override val right: RopeNode, override val color: Color = Color.BLACK,
-    ) : RopeNode {
+        override val left: Node, override val right: Node, override val color: Color = Color.BLACK,
+    ) : Node {
         override val charCount = left.charCount + right.charCount
 
         override val byteCount = left.byteCount + right.byteCount
@@ -81,7 +81,7 @@ internal sealed interface RopeNode {
         override val height = 1 + max(left.height, right.height)
     }
 
-    object Empty : RopeNode {
+    object Empty : Node {
         override val charCount = 0
 
         override val byteCount = 0
@@ -100,8 +100,8 @@ internal sealed interface RopeNode {
 
         override val height = 0
 
-        override val left: RopeNode get() = this
+        override val left: Node get() = this
 
-        override val right: RopeNode get() = this
+        override val right: Node get() = this
     }
 }

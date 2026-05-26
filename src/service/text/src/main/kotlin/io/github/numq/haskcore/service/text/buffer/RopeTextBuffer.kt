@@ -5,7 +5,7 @@ import arrow.core.raise.Raise
 import arrow.core.raise.either
 import io.github.numq.haskcore.service.text.rope.Rope
 import io.github.numq.haskcore.service.text.rope.RopeNavigator
-import io.github.numq.haskcore.service.text.rope.RopeNodeLeafFactory
+import io.github.numq.haskcore.service.text.rope.RopeNodeFactory
 import io.github.numq.haskcore.service.text.snapshot.ImmutableTextSnapshot
 import io.github.numq.haskcore.common.core.text.*
 import kotlinx.atomicfu.atomic
@@ -65,7 +65,7 @@ internal class RopeTextBuffer(
         return Rope(
             initialText = normalizedText,
             charset = charset,
-            ropeNodeLeafFactory = RopeNodeLeafFactory(enablePooling = true, charset = charset)
+            ropeNodeFactory = RopeNodeFactory(enablePooling = true, charset = charset)
         )
     }
 

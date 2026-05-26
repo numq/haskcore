@@ -6,9 +6,9 @@ import java.util.*
 import kotlin.math.max
 import kotlin.math.min
 
-internal class RopeNodeLeafFactory(
+internal class RopeNodeFactory(
     enablePooling: Boolean, private val charset: Charset, private val maxLeafSize: Int = 8192,
-) {
+) : NodeFactory {
     private companion object {
         const val DEFAULT_LEAF_CACHE_SIZE = 2048
 
@@ -43,12 +43,12 @@ internal class RopeNodeLeafFactory(
 
         fun stats() = "Tiny: ${tinyStringsPool.size}, Small: ${smallStringsPool.size}, Large: ${largeStringsPool.size}"
 
-        fun getOrCreate(content: String): String = when {
-            content.length <= TINY_STRING_THRESHOLD -> tinyStringsPool.getOrPut(content) { content }
+        fun getOrCreate(text: String): String = when {
+            text.length <= TINY_STRING_THRESHOLD -> tinyStringsPool.getOrPut(text) { text }
 
-            content.length <= SMALL_STRING_THRESHOLD -> smallStringsPool.getOrPut(content) { content }
+            text.length <= SMALL_STRING_THRESHOLD -> smallStringsPool.getOrPut(text) { text }
 
-            else -> largeStringsPool.getOrPut(content) { content }
+            else -> largeStringsPool.getOrPut(text) { text }
         }
 
         fun clear() {
@@ -64,31 +64,31 @@ internal class RopeNodeLeafFactory(
         val bytes: Int, val newlineCount: Int, val maxLineLen: Int, val prefixLen: Int, val suffixLen: Int,
     )
 
-    private val leafCache = object : LinkedHashMap<String, RopeNode>(
+    private val leafCache = object : LinkedHashMap<String, Node>(
         DEFAULT_LEAF_CACHE_SIZE / 2, .75f, true
     ) {
         override fun removeEldestEntry(
-            eldest: MutableMap.MutableEntry<String, RopeNode>,
+            eldest: MutableMap.MutableEntry<String, Node>,
         ) = size > DEFAULT_LEAF_CACHE_SIZE
     }
 
     private val stringPool = if (enablePooling) StringPool() else null
 
-    private fun calculateStringStats(content: String): StringStats {
+    private fun calculateStringStats(text: String): StringStats {
         var newlineCount = 0
 
         var maxLineLen = 0
 
         var currentLineLen = 0
 
-        val len = content.length
+        val len = text.length
 
         var prefixLen = len
 
         var foundFirstNewline = false
 
         for (i in 0 until len) {
-            when (content[i]) {
+            when (text[i]) {
                 '\n' -> {
                     if (!foundFirstNewline) {
                         prefixLen = i
@@ -109,29 +109,29 @@ internal class RopeNodeLeafFactory(
 
         if (currentLineLen > maxLineLen) maxLineLen = currentLineLen
 
-        val lastNewlineIndex = content.lastIndexOf('\n')
+        val lastNewlineIndex = text.lastIndexOf('\n')
 
         val suffixLen = if (lastNewlineIndex == -1) len else len - (lastNewlineIndex + 1)
 
         val bytes = when (charset) {
-            StandardCharsets.UTF_32, StandardCharsets.UTF_32BE, StandardCharsets.UTF_32LE -> content.length * 4
+            StandardCharsets.UTF_32, StandardCharsets.UTF_32BE, StandardCharsets.UTF_32LE -> text.length * 4
 
-            StandardCharsets.UTF_16, StandardCharsets.UTF_16BE, StandardCharsets.UTF_16LE -> content.length * 2
+            StandardCharsets.UTF_16, StandardCharsets.UTF_16BE, StandardCharsets.UTF_16LE -> text.length * 2
 
             StandardCharsets.UTF_8 -> {
                 var utf8Size = 0
 
                 var i = 0
 
-                while (i < content.length) {
-                    val c = content[i].code
+                while (i < text.length) {
+                    val c = text[i].code
 
                     when {
                         c <= 0x7F -> utf8Size += 1
 
                         c <= 0x7FF -> utf8Size += 2
 
-                        Character.isHighSurrogate(content[i]) && i + 1 < len && Character.isLowSurrogate(content[i + 1]) -> {
+                        Character.isHighSurrogate(text[i]) && i + 1 < len && Character.isLowSurrogate(text[i + 1]) -> {
                             utf8Size += 4
 
                             i++
@@ -146,18 +146,18 @@ internal class RopeNodeLeafFactory(
                 utf8Size
             }
 
-            else -> content.toByteArray(charset).size
+            else -> text.toByteArray(charset).size
         }
 
         return StringStats(bytes, newlineCount, maxLineLen, prefixLen, suffixLen)
     }
 
-    private fun splitLargeContent(content: String): RopeNode {
-        val parts = ArrayList<RopeNode>(content.length / maxLeafSize + 2)
+    private fun splitLargeText(text: String): Node {
+        val parts = ArrayList<Node>(text.length / maxLeafSize + 2)
 
         var start = 0
 
-        val len = content.length
+        val len = text.length
 
         while (start < len) {
             var end = min(start + maxLeafSize, len)
@@ -168,7 +168,7 @@ internal class RopeNodeLeafFactory(
                 val searchLimit = max(start, end - SEARCH_BACK_LIMIT)
 
                 for (i in end - 1 downTo searchLimit) {
-                    if (content[i] == '\n') {
+                    if (text[i] == '\n') {
                         newlinePos = i + 1
 
                         break
@@ -178,9 +178,9 @@ internal class RopeNodeLeafFactory(
                 if (newlinePos != -1) end = newlinePos
             }
 
-            val part = content.substring(start, end)
+            val part = text.substring(start, end)
 
-            parts.add(createLeaf(part))
+            parts.add(create(part))
 
             start = end
         }
@@ -188,9 +188,9 @@ internal class RopeNodeLeafFactory(
         return buildBalancedTree(parts)
     }
 
-    private fun buildBalancedTree(nodes: List<RopeNode>): RopeNode {
-        fun build(start: Int, end: Int): RopeNode = when (val count = end - start) {
-            0 -> RopeNode.Empty
+    private fun buildBalancedTree(nodes: List<Node>): Node {
+        fun build(start: Int, end: Int): Node = when (val count = end - start) {
+            0 -> Node.Empty
 
             1 -> nodes[start]
 
@@ -201,7 +201,7 @@ internal class RopeNodeLeafFactory(
 
                 val right = build(mid, end)
 
-                RopeNode.Branch(left, right, RopeNode.Color.BLACK)
+                Node.Branch(left, right, Node.Color.BLACK)
             }
         }
 
@@ -211,29 +211,28 @@ internal class RopeNodeLeafFactory(
     @Synchronized
     fun getStats() = stringPool?.stats()
 
-    @Synchronized
-    fun createLeaf(content: String): RopeNode {
-        if (content.isEmpty()) return RopeNode.Empty
+    override fun create(text: String): Node {
+        if (text.isEmpty()) return Node.Empty
 
-        if (content.length > maxLeafSize) return splitLargeContent(content)
+        if (text.length > maxLeafSize) return splitLargeText(text)
 
-        val pooledContent = stringPool?.getOrCreate(content) ?: content
+        val pooledText = stringPool?.getOrCreate(text) ?: text
 
-        leafCache[pooledContent]?.let { return it }
+        leafCache[pooledText]?.let { return it }
 
-        val stats = calculateStringStats(pooledContent)
+        val stats = calculateStringStats(pooledText)
 
-        val leaf = RopeNode.Leaf(
-            content = pooledContent,
+        val leaf = Node.Leaf(
+            text = pooledText,
             byteCount = stats.bytes,
             lineBreakCount = stats.newlineCount,
             prefixLineLength = stats.prefixLen,
             suffixLineLength = stats.suffixLen,
             maxLineLength = stats.maxLineLen,
-            color = RopeNode.Color.BLACK
+            color = Node.Color.BLACK
         )
 
-        leafCache[pooledContent] = leaf
+        leafCache[pooledText] = leaf
 
         return leaf
     }
