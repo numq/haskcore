@@ -1,13 +1,11 @@
 package io.github.numq.haskcore.common.core.text
 
-import java.nio.charset.Charset
-
 interface TextSnapshot {
     val revision: TextRevision
 
-    val charset: Charset
+    val encoding: TextEncoding
 
-    val textLineEnding: TextLineEnding
+    val lineEnding: TextLineEnding
 
     val lines: Int
 

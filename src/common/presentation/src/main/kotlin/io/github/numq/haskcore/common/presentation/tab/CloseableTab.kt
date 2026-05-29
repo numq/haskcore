@@ -6,11 +6,11 @@ import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -20,7 +20,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -33,27 +32,20 @@ fun CloseableTab(title: String, isSelected: Boolean, select: () -> Unit, close: 
     val backgroundColor = when {
         isSelected -> MaterialTheme.colorScheme.surface
 
-        isHovered -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .4f)
+        isHovered -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = .08f)
 
         else -> Color.Transparent
     }
 
     Box(
         modifier = Modifier.height(32.dp).clip(RoundedCornerShape(8.dp)).background(backgroundColor)
-            .hoverable(interactionSource)
-            .clickable(interactionSource = interactionSource, indication = null, onClick = select)
-            .padding(horizontal = 12.dp), contentAlignment = Alignment.Center
+            .hoverable(interactionSource).clickable(
+                interactionSource = interactionSource, indication = null, onClick = select
+            ).padding(horizontal = 8.dp), contentAlignment = Alignment.Center
     ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(space = 4.dp, alignment = Alignment.Start),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        Row(horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = title, fontSize = 12.sp, fontWeight = when {
-                    isSelected -> FontWeight.SemiBold
-
-                    else -> FontWeight.Normal
-                }, color = when {
+                text = title, fontSize = 12.sp, color = when {
                     isSelected -> MaterialTheme.colorScheme.onSurface
 
                     else -> MaterialTheme.colorScheme.onSurfaceVariant
@@ -61,28 +53,24 @@ fun CloseableTab(title: String, isSelected: Boolean, select: () -> Unit, close: 
             )
 
             when {
-                isSelected || isHovered -> Box(
-                    modifier = Modifier.size(16.dp).clip(CircleShape).background(
-                        color = when {
-                            isHovered -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = .1f)
+                isSelected || isHovered -> {
+                    Spacer(modifier = Modifier.width(4.dp))
 
-                            else -> Color.Transparent
-                        }
-                    ).clickable(onClick = close), contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = null,
-                        modifier = Modifier.size(10.dp),
-                        tint = when {
-                            isSelected -> MaterialTheme.colorScheme.onSurface
+                    IconButton(onClick = close, modifier = Modifier.size(16.dp)) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = null,
+                            modifier = Modifier.size(10.dp),
+                            tint = when {
+                                isSelected -> MaterialTheme.colorScheme.onSurface
 
-                            else -> MaterialTheme.colorScheme.onSurfaceVariant
-                        }
-                    )
+                                else -> MaterialTheme.colorScheme.onSurfaceVariant
+                            }
+                        )
+                    }
                 }
 
-                else -> Spacer(modifier = Modifier.size(16.dp))
+                else -> Spacer(modifier = Modifier.size(20.dp))
             }
         }
     }
