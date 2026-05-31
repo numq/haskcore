@@ -39,5 +39,6 @@ data class TextRange(val start: TextPosition, val end: TextPosition) {
 
     fun contains(other: TextRange) = start <= other.start && end >= other.end
 
-    fun intersects(other: TextRange) = start < other.end && other.start < end
+    fun intersects(other: TextRange) =
+        !(end.line < other.start.line || end.line == other.start.line && end.column <= other.start.column || other.end.line < start.line || other.end.line == start.line && other.end.column <= start.column)
 }
