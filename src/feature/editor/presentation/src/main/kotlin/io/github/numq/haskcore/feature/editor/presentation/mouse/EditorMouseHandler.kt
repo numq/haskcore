@@ -5,20 +5,15 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.input.pointer.changedToDown
-import androidx.compose.ui.input.pointer.isPrimaryPressed
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.*
 import io.github.numq.haskcore.common.core.text.TextPosition
 import io.github.numq.haskcore.common.core.text.TextSnapshot
 import io.github.numq.haskcore.feature.editor.presentation.feature.EditorCommand
 import io.github.numq.haskcore.feature.editor.presentation.scrollbar.Scrollbar
 import io.github.numq.haskcore.feature.editor.presentation.text.TextContentLayer
 import io.github.numq.haskcore.feature.editor.presentation.viewport.Viewport
+import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -113,64 +108,111 @@ internal fun EditorMouseHandler(
 
     val mouseModifier = Modifier.pointerInput(enabled) {
         if (enabled) {
-            awaitPointerEventScope {
-                while (true) {
-                    val event = awaitPointerEvent(PointerEventPass.Main)
+            coroutineScope {
+                var hoverJob: Job? = null
 
-                    val change = event.changes.first()
+                var lastHoverPosition: TextPosition? = null
 
-                    when {
-                        change.changedToDown() -> {
-                            focusRequester.requestFocus()
+                awaitPointerEventScope {
+                    while (isActive) {
+                        val event = awaitPointerEvent(PointerEventPass.Main)
 
-                            val position = calculatePositionAtOffset(
-                                offset = change.position,
-                                viewport = currentViewport,
-                                contentLayers = currentContentLayers,
-                                gutterWidth = gutterWidth,
-                                scrollX = currentScrollbar.x,
-                                snapshot = currentSnapshot
-                            )
+                        val change = event.changes.first()
 
-                            val buttons = event.buttons
+                        when (event.type) {
+                            PointerEventType.Move -> {
+                                if (draggingMousePosition != null) continue
 
-                            when {
-                                buttons.isPrimaryPressed -> {
-                                    scope.launch { execute(EditorCommand.MoveCaret(position = position)) }
+                                val position = calculatePositionAtOffset(
+                                    offset = change.position,
+                                    viewport = currentViewport,
+                                    contentLayers = currentContentLayers,
+                                    gutterWidth = gutterWidth,
+                                    scrollX = currentScrollbar.x,
+                                    snapshot = currentSnapshot
+                                )
 
-                                    selectionCommands.trySend(EditorCommand.TextSelection.Start(position = position))
+                                if (position != lastHoverPosition) {
+                                    hoverJob?.cancel()
 
-                                    draggingMousePosition = change.position
+                                    lastHoverPosition = position
 
-                                    while (true) {
-                                        val dragEvent = awaitPointerEvent()
+                                    scope.launch { execute(EditorCommand.DismissDocumentation) }
 
-                                        val anyPressed = dragEvent.changes.any { it.pressed }
+                                    hoverJob = scope.launch {
+                                        delay(500L)
 
-                                        if (!anyPressed) {
-                                            draggingMousePosition = null
+                                        execute(EditorCommand.RequestDocumentation(position = position))
+                                    }
+                                }
+                            }
 
-                                            break
-                                        }
+                            PointerEventType.Press -> {
+                                hoverJob?.cancel()
 
-                                        dragEvent.changes.firstOrNull()?.let { currentDrag ->
-                                            draggingMousePosition = currentDrag.position
+                                lastHoverPosition = null
 
-                                            val currentPosition = calculatePositionAtOffset(
-                                                offset = currentDrag.position,
-                                                viewport = currentViewport,
-                                                contentLayers = currentContentLayers,
-                                                gutterWidth = gutterWidth,
-                                                scrollX = currentScrollbar.x,
-                                                snapshot = currentSnapshot
-                                            )
+                                scope.launch { execute(EditorCommand.DismissDocumentation) }
 
-                                            selectionCommands.trySend(EditorCommand.TextSelection.Extend(position = currentPosition))
+                                if (change.changedToDown()) {
+                                    focusRequester.requestFocus()
 
-                                            currentDrag.consume()
+                                    val position = calculatePositionAtOffset(
+                                        offset = change.position,
+                                        viewport = currentViewport,
+                                        contentLayers = currentContentLayers,
+                                        gutterWidth = gutterWidth,
+                                        scrollX = currentScrollbar.x,
+                                        snapshot = currentSnapshot
+                                    )
+
+                                    val buttons = event.buttons
+
+                                    if (buttons.isPrimaryPressed) {
+                                        scope.launch { execute(EditorCommand.MoveCaret(position = position)) }
+
+                                        selectionCommands.trySend(EditorCommand.TextSelection.Start(position = position))
+
+                                        draggingMousePosition = change.position
+
+                                        while (isActive) {
+                                            val dragEvent = awaitPointerEvent()
+
+                                            val anyPressed = dragEvent.changes.any(PointerInputChange::pressed)
+
+                                            if (!anyPressed) {
+                                                draggingMousePosition = null
+
+                                                break
+                                            }
+
+                                            dragEvent.changes.firstOrNull()?.let { currentDrag ->
+                                                draggingMousePosition = currentDrag.position
+
+                                                val currentPosition = calculatePositionAtOffset(
+                                                    offset = currentDrag.position,
+                                                    viewport = currentViewport,
+                                                    contentLayers = currentContentLayers,
+                                                    gutterWidth = gutterWidth,
+                                                    scrollX = currentScrollbar.x,
+                                                    snapshot = currentSnapshot
+                                                )
+
+                                                selectionCommands.trySend(EditorCommand.TextSelection.Extend(position = currentPosition))
+
+                                                currentDrag.consume()
+                                            }
                                         }
                                     }
                                 }
+                            }
+
+                            PointerEventType.Exit -> {
+                                hoverJob?.cancel()
+
+                                lastHoverPosition = null
+
+                                scope.launch { execute(EditorCommand.DismissDocumentation) }
                             }
                         }
                     }

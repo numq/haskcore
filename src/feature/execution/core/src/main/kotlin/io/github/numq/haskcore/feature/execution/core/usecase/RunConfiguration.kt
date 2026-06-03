@@ -6,11 +6,14 @@ import io.github.numq.haskcore.feature.execution.core.ExecutionConfiguration
 import io.github.numq.haskcore.feature.execution.core.LaunchTarget
 import io.github.numq.haskcore.service.runtime.RuntimeRequest
 import io.github.numq.haskcore.service.runtime.RuntimeService
+import java.util.*
 
 class RunConfiguration(private val runtimeService: RuntimeService) : UseCase.Command<RunConfiguration.Input> {
     data class Input(val configuration: ExecutionConfiguration)
 
     override suspend fun Raise<Throwable>.command(input: Input) = with(input.configuration) {
+        val id = "${id}_${UUID.randomUUID()}"
+
         val request = when (val launchTarget = target) {
             is LaunchTarget.Stack -> RuntimeRequest.Stack(
                 id = id,

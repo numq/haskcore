@@ -8,6 +8,7 @@ sealed interface CodeIssue {
     val message: String
 
     val source: String?
+
     val code: String?
 
     data class Unknown(

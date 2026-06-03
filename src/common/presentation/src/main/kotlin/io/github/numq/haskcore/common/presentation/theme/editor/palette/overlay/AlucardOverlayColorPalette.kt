@@ -7,6 +7,8 @@ internal object AlucardOverlayColorPalette : OverlayColorPalette {
 
     override val tooltipBorderColor = 0xFFbcbab3.toInt()
 
+    override val unknownUnderlineColor = 0xFF706e67.toInt()
+
     override val errorUnderlineColor = 0xFFcb3a2a.toInt()
 
     override val warningUnderlineColor = 0xFFa34d14.toInt()
@@ -15,15 +17,15 @@ internal object AlucardOverlayColorPalette : OverlayColorPalette {
 
     override val hintUnderlineColor = 0xFF14710a.toInt()
 
-    override val autocompleteBackgroundColor = 0xFFdedccf.toInt()
+    override val suggestionsBackgroundColor = 0xFFdedccf.toInt()
 
-    override val autocompleteSelectedBackgroundColor = 0xFFcfcdbe.toInt()
+    override val suggestionsSelectedBackgroundColor = 0xFFcfcdbe.toInt()
 
-    override val autocompleteTextColor = 0xFF1f1f1f.toInt()
+    override val suggestionsTextColor = 0xFF1f1f1f.toInt()
 
-    override val autocompleteSelectedTextColor = 0xFF1f1f1f.toInt()
+    override val suggestionsSelectedTextColor = 0xFF1f1f1f.toInt()
 
-    override val autocompleteBorderColor = 0xFFbcbab3.toInt()
+    override val suggestionsBorderColor = 0xFFbcbab3.toInt()
 
     override val contextMenuBackgroundColor = 0xFFdedccf.toInt()
 

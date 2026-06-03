@@ -11,6 +11,10 @@ sealed interface TextEdit {
 
     data class System(override val revision: TextRevision, override val data: Data) : TextEdit
 
+    fun toSystemOperation(snapshot: TextSnapshot) = TextOperation.System(
+        revision = snapshot.revision, data = data.toOperationData(snapshot = snapshot)
+    )
+
     fun invert() = when (this) {
         is User -> User(revision = revision, data = data.invert())
 
@@ -31,6 +35,34 @@ sealed interface TextEdit {
         val newEndPosition: TextPosition
 
         val timestamp: Timestamp
+
+        fun toOperationData(snapshot: TextSnapshot): TextOperation.Data = when (this) {
+            is Single.Insert -> TextOperation.Data.Single.Insert(
+                position = startPosition.coerceIn(snapshot), text = insertedText
+            )
+
+            is Single.Delete -> TextOperation.Data.Single.Delete(
+                range = TextRange(start = startPosition, end = oldEndPosition).coerceIn(snapshot)
+            )
+
+            is Single.Replace -> TextOperation.Data.Single.Replace(
+                range = TextRange(start = startPosition, end = oldEndPosition).coerceIn(snapshot), text = newText
+            )
+
+            is Batch -> TextOperation.Data.Batch(operations = singles.mapNotNull { single ->
+                single.toOperationData(snapshot = snapshot) as? TextOperation.Data.Single
+            })
+        }
+
+        fun isEffectivelyEmpty(): Boolean = when (this) {
+            is Single.Insert -> insertedText.isEmpty()
+
+            is Single.Delete -> deletedText.isEmpty() || startPosition == oldEndPosition
+
+            is Single.Replace -> (oldText == newText) || (startPosition == oldEndPosition && newText.isEmpty())
+
+            is Batch -> singles.all(Single::isEffectivelyEmpty)
+        }
 
         fun invert(): Data = when (this) {
             is Single.Insert -> Single.Delete(

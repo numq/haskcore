@@ -7,11 +7,13 @@ dependencies {
     implementation(libs.kotlinx.serialization.protobuf)
     implementation(libs.datastore)
     implementation(projects.common.core)
-    implementation(projects.service.document)
     implementation(projects.service.configuration)
+    implementation(projects.service.document)
+    implementation(projects.service.lsp)
     implementation(projects.service.project)
     implementation(projects.service.session)
     implementation(projects.service.text)
+    implementation(projects.service.toolchain)
     implementation(projects.service.vfs)
 }
 

@@ -50,7 +50,17 @@ internal fun TextEdit.Data.toJournalRecordData(revision: TextRevision): JournalR
     is TextEdit.Data.Batch -> JournalRecordData.Batch(
         revision = revision.value,
         timestampNanos = timestamp.nanoseconds,
-        records = singles.map { single -> single.toJournalRecordData(revision = revision) })
+        records = singles.filter { single ->
+            when (single) {
+                is TextEdit.Data.Single.Insert -> true
+
+                is TextEdit.Data.Single.Delete -> single.deletedText.isNotEmpty()
+
+                is TextEdit.Data.Single.Replace -> true
+            }
+        }.map { single ->
+            single.toJournalRecordData(revision = revision)
+        })
 }
 
 internal fun JournalRecordData.toTextEdit(): TextEdit {
@@ -82,9 +92,17 @@ internal fun JournalRecordData.toTextEdit(): TextEdit {
             oldEndByte = oldEndByte
         )
 
-        is JournalRecordData.Batch -> TextEdit.Data.Batch(singles = records.mapNotNull { journalRecordData ->
-            journalRecordData.toTextEdit() as? TextEdit.Data.Single
-        })
+        is JournalRecordData.Batch -> {
+            val singles = records.mapNotNull { journalRecordData ->
+                val edit = journalRecordData.toTextEdit()
+
+                edit.data as? TextEdit.Data.Single
+            }
+
+            check(singles.isNotEmpty()) { "Batch conversion resulted in empty singles list. Records: $records" }
+
+            TextEdit.Data.Batch(singles = singles)
+        }
     }
 
     return TextEdit.User(revision = TextRevision(value = revision), data = data)

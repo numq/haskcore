@@ -4,7 +4,10 @@ import arrow.core.Either
 import arrow.core.flatMap
 import arrow.core.raise.Raise
 import arrow.core.right
-import io.github.numq.haskcore.common.core.text.*
+import io.github.numq.haskcore.common.core.text.TextOperation
+import io.github.numq.haskcore.common.core.text.TextPosition
+import io.github.numq.haskcore.common.core.text.TextRange
+import io.github.numq.haskcore.common.core.text.TextSnapshot
 import io.github.numq.haskcore.common.core.usecase.UseCase
 import io.github.numq.haskcore.feature.editor.core.EditorService
 import io.github.numq.haskcore.feature.editor.core.caret.Caret
@@ -209,42 +212,6 @@ class ProcessKey(
         }
     }
 
-    private fun TextPosition.coerceIn(snapshot: TextSnapshot) = when (snapshot.lines) {
-        0 -> TextPosition.ZERO
-
-        else -> {
-            val line = line.coerceIn(0, snapshot.lines - 1)
-
-            TextPosition(line = line, column = column.coerceIn(0, snapshot.getLineLength(line = line)))
-        }
-    }
-
-    private fun TextRange.coerceIn(snapshot: TextSnapshot) = TextRange(
-        start = start.coerceIn(snapshot), end = end.coerceIn(snapshot)
-    )
-
-    private fun TextEdit.Data.toOperationData(snapshot: TextSnapshot): TextOperation.Data = when (this) {
-        is TextEdit.Data.Single.Insert -> TextOperation.Data.Single.Insert(
-            position = startPosition.coerceIn(snapshot), text = insertedText
-        )
-
-        is TextEdit.Data.Single.Delete -> TextOperation.Data.Single.Delete(
-            range = TextRange(start = startPosition, end = oldEndPosition).coerceIn(snapshot)
-        )
-
-        is TextEdit.Data.Single.Replace -> TextOperation.Data.Single.Replace(
-            range = TextRange(start = startPosition, end = oldEndPosition).coerceIn(snapshot), text = newText
-        )
-
-        is TextEdit.Data.Batch -> TextOperation.Data.Batch(operations = singles.mapNotNull { single ->
-            single.toOperationData(snapshot = snapshot) as? TextOperation.Data.Single
-        })
-    }
-
-    private fun TextEdit.toSystemOperation(snapshot: TextSnapshot) = TextOperation.System(
-        revision = snapshot.revision, data = data.toOperationData(snapshot = snapshot)
-    )
-
     override suspend fun Raise<Throwable>.command(input: Input) = with(input) {
         mutex.withLock {
             val snapshot = textService.snapshot.value ?: return@withLock
@@ -447,9 +414,24 @@ class ProcessKey(
                     val tabText = "    "
 
                     val data = when {
-                        selection.range.isNotEmpty -> TextOperation.Data.Single.Replace(
-                            range = selection.range, text = tabText
-                        )
+                        selection.range.isNotEmpty -> {
+                            val startLine = selection.range.start.line
+
+                            val endLine = selection.range.end.line
+
+                            val lines = (startLine..endLine).map { line ->
+                                snapshot.getLineText(line = line)
+                            }
+
+                            val newText = lines.joinToString("\n") { "$tabText$it" }
+
+                            TextOperation.Data.Single.Replace(
+                                range = TextRange(
+                                    start = TextPosition(line = startLine, column = 0),
+                                    end = TextPosition(line = endLine, column = snapshot.getLineLength(endLine))
+                                ), text = newText
+                            )
+                        }
 
                         else -> TextOperation.Data.Single.Insert(position = caret.position, text = tabText)
                     }
@@ -640,7 +622,7 @@ class ProcessKey(
                 KeymapAction.File.SelectAll -> editorService.selectAll(snapshot = snapshot).bind()
 
                 KeymapAction.File.Save -> documentService.saveDocument(
-                    path = path, content = snapshot.text
+                    path = path, content = snapshot.text, encoding = snapshot.encoding
                 ).bind()
 
                 null -> {
@@ -648,13 +630,17 @@ class ProcessKey(
                         val text = String(Character.toChars(utf16CodePoint))
 
                         val data = when {
-                            selection.range.isNotEmpty -> TextOperation.Data.Single.Replace(
-                                range = selection.range, text = text
-                            )
+                            selection.range.isNotEmpty -> {
+                                val selectedText = snapshot.getTextInRange(range = selection.range)
 
-                            else -> TextOperation.Data.Single.Insert(
-                                position = caret.position, text = text
-                            )
+                                if (selectedText == text) {
+                                    return@withLock
+                                }
+
+                                TextOperation.Data.Single.Replace(range = selection.range, text = text)
+                            }
+
+                            else -> TextOperation.Data.Single.Insert(position = caret.position, text = text)
                         }
 
                         executeUserOperation(snapshot = snapshot, data = data).bind()

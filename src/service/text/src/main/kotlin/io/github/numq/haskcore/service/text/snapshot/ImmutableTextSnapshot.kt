@@ -3,14 +3,13 @@ package io.github.numq.haskcore.service.text.snapshot
 import io.github.numq.haskcore.common.core.text.*
 import io.github.numq.haskcore.service.text.rope.Rope
 import io.github.numq.haskcore.service.text.rope.RopeNavigator
-import java.nio.charset.Charset
 import kotlin.math.max
 
 internal class ImmutableTextSnapshot(
     private val rope: Rope,
     override val revision: TextRevision,
-    override val charset: Charset,
-    override val textLineEnding: TextLineEnding,
+    override val encoding: TextEncoding,
+    override val lineEnding: TextLineEnding,
 ) : TextSnapshot {
     override val lines = rope.totalLines
 
@@ -18,7 +17,7 @@ internal class ImmutableTextSnapshot(
 
     override val lastPosition get() = RopeNavigator.calculateLastPosition(rope = rope)
 
-    override val text get() = RopeNavigator.getFullText(rope = rope, textLineEnding = textLineEnding)
+    override val text get() = RopeNavigator.getFullText(rope = rope, lineEnding = lineEnding)
 
     override fun isValidPosition(position: TextPosition) = when {
         position.line < 0 || position.column < 0 -> false
@@ -45,7 +44,7 @@ internal class ImmutableTextSnapshot(
 
         val text = rope.getText(offset = lineStart, length = lineEnd - lineStart)
 
-        return RopeNavigator.restoreLineEndings(text = text, textLineEnding = textLineEnding)
+        return RopeNavigator.restoreLineEndings(text = text, lineEnding = lineEnding)
     }
 
     override fun getLineLength(line: Int) = RopeNavigator.calculateLineLength(rope = rope, line = line)
@@ -65,7 +64,7 @@ internal class ImmutableTextSnapshot(
 
                 val text = rope.getText(offset = startOffset, length = length)
 
-                RopeNavigator.restoreLineEndings(text = text, textLineEnding = textLineEnding)
+                RopeNavigator.restoreLineEndings(text = text, lineEnding = lineEnding)
             }
         }
     }

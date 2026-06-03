@@ -2,6 +2,7 @@ package io.github.numq.haskcore.feature.editor.presentation
 
 import io.github.numq.haskcore.common.core.di.ScopeQualifier
 import io.github.numq.haskcore.common.core.di.scopedOwner
+import io.github.numq.haskcore.common.core.language.Language
 import io.github.numq.haskcore.feature.editor.presentation.cache.PaintCache
 import io.github.numq.haskcore.feature.editor.presentation.cache.ParagraphCache
 import io.github.numq.haskcore.feature.editor.presentation.cache.TextLineCache
@@ -30,15 +31,15 @@ val editorFeaturePresentationModule = module {
         scopedOwner { MenuReducer() }
 
         scopedOwner {
-            val documentPath = get<String>(qualifier = ScopeQualifier.Document)
-
             EditorReducer(
-                path = documentPath,
                 menuReducer = get(),
                 observeAnalysis = get(),
                 observeEditor = get(),
                 observeSyntax = get(),
                 updateActiveLines = get(),
+                requestCodeDocumentation = get(),
+                dismissCodeDocumentation = get(),
+                applyCodeSuggestion = get(),
                 processKey = get(),
                 moveCaret = get(),
                 startSelection = get(),
@@ -46,6 +47,8 @@ val editorFeaturePresentationModule = module {
             )
         }
 
-        scopedOwner { EditorFeature(reducer = get()) }
+        scopedOwner { (path: String, language: Language) ->
+            EditorFeature(path = path, language = language, reducer = get())
+        }
     }
 }

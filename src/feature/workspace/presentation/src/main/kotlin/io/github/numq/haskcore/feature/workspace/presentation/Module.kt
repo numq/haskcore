@@ -10,10 +10,10 @@ val workspaceFeaturePresentationModule = module {
     scope<ScopeQualifier.Type.Project> {
         scopedOwner {
             WorkspaceReducer(
-                closeWorkspaceDocument = get(),
+                closeDocument = get(),
                 closeWorkspace = get(),
                 observeWorkspace = get(),
-                openWorkspaceDocument = get(),
+                openDocument = get(),
                 saveDimensions = get(),
                 saveVerticalRatio = get(),
                 selectShelfTool = get(),

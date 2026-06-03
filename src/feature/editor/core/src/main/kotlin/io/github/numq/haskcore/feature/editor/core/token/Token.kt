@@ -1,4 +1,4 @@
-package io.github.numq.haskcore.feature.editor.core.syntax
+package io.github.numq.haskcore.feature.editor.core.token
 
 import io.github.numq.haskcore.common.core.text.TextRange
 

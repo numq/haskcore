@@ -1,3 +1,5 @@
 package io.github.numq.haskcore.feature.workspace.core
 
-data class WorkspaceDocument(val path: String, val name: String)
+import io.github.numq.haskcore.common.core.language.Language
+
+data class WorkspaceDocument(val path: String, val name: String, val language: Language)

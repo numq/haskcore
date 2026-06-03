@@ -4,7 +4,7 @@ import io.github.numq.haskcore.feature.output.core.Output
 import io.github.numq.haskcore.feature.output.core.OutputSession
 import kotlinx.coroutines.flow.Flow
 
-internal sealed interface OutputCommand {
+sealed interface OutputCommand {
     enum class Key {
         INITIALIZE, INITIALIZE_SUCCESS, SELECT_SESSION, CLOSE_SESSION, COPY_TEXT
     }

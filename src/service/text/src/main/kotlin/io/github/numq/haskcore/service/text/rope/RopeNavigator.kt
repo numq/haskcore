@@ -118,7 +118,7 @@ internal object RopeNavigator {
         rope = rope, position = range.start
     ) && isValidInsertPosition(rope = rope, position = range.end)
 
-    fun restoreLineEndings(text: String, textLineEnding: TextLineEnding) = when (textLineEnding) {
+    fun restoreLineEndings(text: String, lineEnding: TextLineEnding) = when (lineEnding) {
         TextLineEnding.LF -> text
 
         TextLineEnding.CRLF -> text.replace("\n", "\r\n")
@@ -126,7 +126,7 @@ internal object RopeNavigator {
         TextLineEnding.CR -> text.replace("\n", "\r")
     }
 
-    fun getFullText(rope: Rope, textLineEnding: TextLineEnding) = restoreLineEndings(
-        text = rope.getText(offset = 0, length = rope.totalChars), textLineEnding = textLineEnding
+    fun getFullText(rope: Rope, lineEnding: TextLineEnding) = restoreLineEndings(
+        text = rope.getText(offset = 0, length = rope.totalChars), lineEnding = lineEnding
     )
 }

@@ -1,13 +1,12 @@
 package io.github.numq.haskcore.service.text.rope
 
-import java.nio.charset.Charset
-import java.nio.charset.StandardCharsets
+import io.github.numq.haskcore.common.core.text.TextEncoding
 import java.util.*
 import kotlin.math.max
 import kotlin.math.min
 
 internal class RopeNodeFactory(
-    enablePooling: Boolean, private val charset: Charset, private val maxLeafSize: Int = 8192,
+    enablePooling: Boolean, private val encoding: TextEncoding, private val maxLeafSize: Int = 8192,
 ) : NodeFactory {
     private companion object {
         const val DEFAULT_LEAF_CACHE_SIZE = 2048
@@ -113,12 +112,12 @@ internal class RopeNodeFactory(
 
         val suffixLen = if (lastNewlineIndex == -1) len else len - (lastNewlineIndex + 1)
 
-        val bytes = when (charset) {
-            StandardCharsets.UTF_32, StandardCharsets.UTF_32BE, StandardCharsets.UTF_32LE -> text.length * 4
+        val bytes = when (encoding) {
+            is TextEncoding.UTF32LE, is TextEncoding.UTF32BE -> text.length * 4
 
-            StandardCharsets.UTF_16, StandardCharsets.UTF_16BE, StandardCharsets.UTF_16LE -> text.length * 2
+            is TextEncoding.UTF16LE, is TextEncoding.UTF16BE -> text.length * 2
 
-            StandardCharsets.UTF_8 -> {
+            is TextEncoding.UTF8 -> {
                 var utf8Size = 0
 
                 var i = 0
@@ -145,8 +144,6 @@ internal class RopeNodeFactory(
 
                 utf8Size
             }
-
-            else -> text.toByteArray(charset).size
         }
 
         return StringStats(bytes, newlineCount, maxLineLen, prefixLen, suffixLen)

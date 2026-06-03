@@ -21,21 +21,27 @@ internal class LocalJournalService(
     )
 
     override suspend fun push(edit: TextEdit.User) = journalDataSource.update { journalData ->
-        val record = edit.toJournalRecordData(revision = edit.revision)
+        when {
+            edit.data.isEffectivelyEmpty() -> journalData
 
-        val activeHistory = when {
-            journalData.currentIndex >= 0 && journalData.currentIndex < journalData.records.size - 1 -> journalData.records.subList(
-                0, journalData.currentIndex + 1
-            )
+            else -> {
+                val record = edit.toJournalRecordData(revision = edit.revision)
 
-            journalData.currentIndex == -1 && journalData.records.isNotEmpty() -> emptyList()
+                val activeHistory = when {
+                    journalData.currentIndex >= 0 && journalData.currentIndex < journalData.records.size - 1 -> journalData.records.subList(
+                        0, journalData.currentIndex + 1
+                    )
 
-            else -> journalData.records
+                    journalData.currentIndex == -1 && journalData.records.isNotEmpty() -> emptyList()
+
+                    else -> journalData.records
+                }
+
+                val newRecords = (activeHistory + record).takeLast(JOURNAL_LIMIT)
+
+                journalData.copy(records = newRecords, currentIndex = newRecords.size - 1)
+            }
         }
-
-        val newRecords = (activeHistory + record).takeLast(JOURNAL_LIMIT)
-
-        journalData.copy(records = newRecords, currentIndex = newRecords.size - 1)
     }.map {}
 
     override suspend fun undo(revision: TextRevision) = either {

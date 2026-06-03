@@ -9,6 +9,8 @@ interface OverlayColorPalette : ColorPalette {
 
     val tooltipBorderColor: Int
 
+    val unknownUnderlineColor: Int
+
     val errorUnderlineColor: Int
 
     val warningUnderlineColor: Int
@@ -17,15 +19,15 @@ interface OverlayColorPalette : ColorPalette {
 
     val hintUnderlineColor: Int
 
-    val autocompleteBackgroundColor: Int
+    val suggestionsBackgroundColor: Int
 
-    val autocompleteSelectedBackgroundColor: Int
+    val suggestionsSelectedBackgroundColor: Int
 
-    val autocompleteTextColor: Int
+    val suggestionsTextColor: Int
 
-    val autocompleteSelectedTextColor: Int
+    val suggestionsSelectedTextColor: Int
 
-    val autocompleteBorderColor: Int
+    val suggestionsBorderColor: Int
 
     val contextMenuBackgroundColor: Int
 

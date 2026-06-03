@@ -1,12 +1,9 @@
 package io.github.numq.haskcore.entrypoint
 
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.res.painterResource
 import io.github.numq.haskcore.common.core.di.ScopeQualifier
-import io.github.numq.haskcore.common.presentation.feature.Feature
 import io.github.numq.haskcore.common.presentation.theme.application.ApplicationTheme
 import io.github.numq.haskcore.common.presentation.theme.editor.EditorTheme
 import io.github.numq.haskcore.feature.bootstrap.presentation.feature.BootstrapView
@@ -14,12 +11,12 @@ import io.github.numq.haskcore.feature.editor.presentation.feature.view.EditorVi
 import io.github.numq.haskcore.feature.editor.presentation.layer.LayerFactory
 import io.github.numq.haskcore.feature.execution.presentation.feature.ExecutionView
 import io.github.numq.haskcore.feature.explorer.presentation.feature.ExplorerCommand
-import io.github.numq.haskcore.feature.explorer.presentation.feature.ExplorerEvent
-import io.github.numq.haskcore.feature.explorer.presentation.feature.ExplorerState
+import io.github.numq.haskcore.feature.explorer.presentation.feature.ExplorerFeature
 import io.github.numq.haskcore.feature.explorer.presentation.feature.ExplorerView
 import io.github.numq.haskcore.feature.log.presentation.feature.LogView
 import io.github.numq.haskcore.feature.navigation.core.Destination
 import io.github.numq.haskcore.feature.navigation.presentation.feature.NavigationView
+import io.github.numq.haskcore.feature.output.presentation.feature.OutputFeature
 import io.github.numq.haskcore.feature.output.presentation.feature.OutputView
 import io.github.numq.haskcore.feature.status.presentation.feature.StatusView
 import io.github.numq.haskcore.feature.welcome.presentation.feature.WelcomeView
@@ -121,9 +118,17 @@ object Entrypoint {
                                 }
                             }
 
-                            val explorerFeature = koinInject<Feature<ExplorerState, ExplorerCommand, ExplorerEvent>>(
-                                scope = projectScope
-                            )
+                            val explorerFeature = koinInject<ExplorerFeature>(scope = projectScope)
+
+                            val outputFeature = koinInject<OutputFeature>(scope = projectScope)
+
+                            val outputState by outputFeature.state.collectAsState()
+
+                            val hasOutput = remember(outputState.output) {
+                                with(outputState.output) {
+                                    sessions.isNotEmpty() && activeSession != null
+                                }
+                            }
 
                             WorkspaceView(
                                 projectScope = projectScope,
@@ -143,20 +148,27 @@ object Entrypoint {
                                 log = {
                                     LogView(projectScope = projectScope, handleError = Throwable::printStackTrace)
                                 },
-                                editor = { path ->
+                                editor = { path, language ->
                                     EditorView(
                                         projectScope = projectScope,
                                         handleError = Throwable::printStackTrace,
                                         path = path,
+                                        language = language,
                                         font = editorMonoFont,
                                         theme = editorTheme,
                                         layerFactory = layerFactory,
                                     )
                                 },
-                                output = {
-                                    OutputView(
-                                        projectScope = projectScope, handleError = Throwable::printStackTrace
-                                    )
+                                output = when {
+                                    hasOutput -> {
+                                        @Composable {
+                                            OutputView(
+                                                projectScope = projectScope, handleError = Throwable::printStackTrace
+                                            )
+                                        }
+                                    }
+
+                                    else -> null
                                 },
                                 status = {
                                     StatusView(

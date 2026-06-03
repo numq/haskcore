@@ -1,6 +1,7 @@
 package io.github.numq.haskcore.feature.editor.core.syntax
 
 import io.github.numq.haskcore.common.core.text.TextRevision
+import io.github.numq.haskcore.feature.editor.core.token.Token
 
 data class Syntax(
     val revision: TextRevision,

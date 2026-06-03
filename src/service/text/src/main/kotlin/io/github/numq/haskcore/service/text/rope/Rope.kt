@@ -1,8 +1,8 @@
 package io.github.numq.haskcore.service.text.rope
 
+import io.github.numq.haskcore.common.core.text.TextEncoding
 import kotlinx.atomicfu.atomic
 import java.lang.ref.SoftReference
-import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
 import java.util.*
 import kotlin.math.abs
@@ -12,19 +12,20 @@ import kotlin.math.min
 
 internal class Rope private constructor(
     private val root: Node,
-    private val charset: Charset,
+    private val encoding: TextEncoding,
     private val ropeNodeFactory: RopeNodeFactory,
     val textVersion: Long = 0L,
 ) {
     constructor(
-        initialText: String = "",
-        charset: Charset = StandardCharsets.UTF_8,
-        ropeNodeFactory: RopeNodeFactory = RopeNodeFactory(enablePooling = true, charset = charset),
+        initialText: String,
+        encoding: TextEncoding,
+        ropeNodeFactory: RopeNodeFactory,
     ) : this(
-        root = if (initialText.isEmpty()) Node.Empty else ropeNodeFactory.create(text = initialText),
-        charset = charset,
-        ropeNodeFactory = ropeNodeFactory,
-        textVersion = 0L
+        root = when {
+            initialText.isEmpty() -> Node.Empty
+
+            else -> ropeNodeFactory.create(text = initialText)
+        }, encoding = encoding, ropeNodeFactory = ropeNodeFactory, textVersion = 0L
     )
 
     private val lineOffsetCache = Collections.synchronizedMap(object : LinkedHashMap<Int, Int>(512, .75f, true) {
@@ -39,15 +40,7 @@ internal class Rope private constructor(
 
     private val cachedTextVersion = atomic(-1L)
 
-    private fun getBOMSize(charset: Charset) = when (charset) {
-        StandardCharsets.UTF_32 -> 4
-
-        StandardCharsets.UTF_16 -> 2
-
-        else -> 0
-    }
-
-    val totalBytes: Int get() = root.byteCount + getBOMSize(charset)
+    val totalBytes: Int get() = root.byteCount + encoding.bomSize
 
     val totalChars: Int get() = root.charCount
 
@@ -344,13 +337,13 @@ internal class Rope private constructor(
 
         cachedTextVersion.value = -1L
 
-        return Rope(buildBalancedTree(nodes), charset, ropeNodeFactory, textVersion + 1)
+        return Rope(buildBalancedTree(nodes), encoding, ropeNodeFactory, textVersion + 1)
     }
 
     fun getByteOffset(charOffset: Int): Int {
         if (charOffset < 0 || charOffset > totalChars) throw IndexOutOfBoundsException()
 
-        if (charOffset == 0) return getBOMSize(charset)
+        if (charOffset == 0) return encoding.bomSize
 
         byteOffsetCache[charOffset]?.let { return it }
 
@@ -370,6 +363,8 @@ internal class Rope private constructor(
                     }
 
                     else -> {
+                        val charset = encoding.charset
+
                         val multiplier = when (charset) {
                             StandardCharsets.UTF_32, StandardCharsets.UTF_32BE, StandardCharsets.UTF_32LE -> 4
 
@@ -438,7 +433,7 @@ internal class Rope private constructor(
 
         traverse(root)
 
-        val finalBytes = bytes + getBOMSize(charset)
+        val finalBytes = bytes + encoding.bomSize
 
         if (byteOffsetCache.size < 1024) byteOffsetCache[charOffset] = finalBytes
 
@@ -669,7 +664,9 @@ internal class Rope private constructor(
         val newLeaf = createNode(text)
 
         if (root === Node.Empty) {
-            return Rope(newLeaf, charset, ropeNodeFactory, textVersion + 1)
+            return Rope(
+                root = newLeaf, encoding = encoding, ropeNodeFactory = ropeNodeFactory, textVersion = textVersion + 1
+            )
         }
 
         val (left, right) = splitAt(offset, root)
@@ -682,7 +679,9 @@ internal class Rope private constructor(
 
         byteOffsetCache.clear()
 
-        return Rope(balanced, charset, ropeNodeFactory, textVersion + 1)
+        return Rope(
+            root = balanced, encoding = encoding, ropeNodeFactory = ropeNodeFactory, textVersion = textVersion + 1
+        )
     }
 
     fun delete(offset: Int, length: Int): Rope {
@@ -702,7 +701,9 @@ internal class Rope private constructor(
 
         byteOffsetCache.clear()
 
-        return Rope(balanced, charset, ropeNodeFactory, textVersion + 1)
+        return Rope(
+            root = balanced, encoding = encoding, ropeNodeFactory = ropeNodeFactory, textVersion = textVersion + 1
+        )
     }
 
     fun batch(block: RopeBuilder.() -> Unit) = RopeBuilder.Companion.build(this, block)
@@ -710,7 +711,7 @@ internal class Rope private constructor(
     fun insertBatchFast(insertions: List<Pair<Int, String>>): Rope {
         if (insertions.isEmpty()) return this
 
-        val sortedInserts = insertions.sortedBy { it.first }
+        val sortedInserts = insertions.sortedBy(Pair<Int, String>::first)
 
         val nodes = ArrayList<Node>()
 
@@ -718,25 +719,30 @@ internal class Rope private constructor(
 
         for ((offset, text) in sortedInserts) {
             if (offset > lastPos) {
-                collectRange(root, lastPos, offset, nodes)
+                collectRange(node = root, start = lastPos, end = offset, acc = nodes)
             }
 
-            nodes.add(createNode(text))
+            nodes.add(createNode(text = text))
 
             lastPos = offset
         }
 
         if (lastPos < totalChars) {
-            collectRange(root, lastPos, totalChars, nodes)
+            collectRange(node = root, start = lastPos, end = totalChars, acc = nodes)
         }
 
-        return Rope(buildBalancedTree(nodes), charset, ropeNodeFactory, textVersion + 1)
+        return Rope(
+            root = buildBalancedTree(nodes),
+            encoding = encoding,
+            ropeNodeFactory = ropeNodeFactory,
+            textVersion = textVersion + 1
+        )
     }
 
     fun deleteBatchFast(deletions: List<Pair<Int, Int>>): Rope {
         if (deletions.isEmpty()) return this
 
-        val sortedDeletions = deletions.sortedBy { it.first }
+        val sortedDeletions = deletions.sortedBy(Pair<Int, Int>::first)
 
         val nodes = ArrayList<Node>()
 
@@ -744,23 +750,28 @@ internal class Rope private constructor(
 
         for ((delOffset, delLength) in sortedDeletions) {
             if (delOffset > currentPos) {
-                collectRange(root, currentPos, delOffset, nodes)
+                collectRange(node = root, start = currentPos, end = delOffset, acc = nodes)
             }
 
             currentPos = max(currentPos, delOffset + delLength)
         }
 
         if (currentPos < totalChars) {
-            collectRange(root, currentPos, totalChars, nodes)
+            collectRange(node = root, start = currentPos, end = totalChars, acc = nodes)
         }
 
-        return Rope(buildBalancedTree(nodes), charset, ropeNodeFactory, textVersion + 1)
+        return Rope(
+            root = buildBalancedTree(nodes),
+            encoding = encoding,
+            ropeNodeFactory = ropeNodeFactory,
+            textVersion = textVersion + 1
+        )
     }
 
-    fun rebuildWithCharset(newCharset: Charset): Rope {
-        if (this.charset == newCharset) return this
+    fun rebuildWithEncoding(newEncoding: TextEncoding): Rope {
+        if (this.encoding == newEncoding) return this
 
-        val newFactory = RopeNodeFactory(enablePooling = true, charset = newCharset)
+        val newFactory = RopeNodeFactory(enablePooling = true, encoding = newEncoding)
 
         fun rebuildNode(node: Node): Node = when (node) {
             is Node.Leaf -> newFactory.create(text = node.text)
@@ -778,6 +789,6 @@ internal class Rope private constructor(
 
         val newRoot = rebuildNode(root)
 
-        return Rope(newRoot, newCharset, newFactory, textVersion)
+        return Rope(newRoot, newEncoding, newFactory, textVersion)
     }
 }

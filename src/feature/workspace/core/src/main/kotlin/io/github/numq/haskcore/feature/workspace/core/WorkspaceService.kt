@@ -6,8 +6,6 @@ import kotlinx.coroutines.flow.StateFlow
 interface WorkspaceService : AutoCloseable {
     val workspace: StateFlow<Workspace>
 
-    suspend fun getName(path: String): Either<Throwable, String>
-
     suspend fun selectShelfTool(tool: ShelfTool): Either<Throwable, Unit>
 
     suspend fun saveLeftShelfPanelRatio(ratio: Float): Either<Throwable, Unit>

@@ -5,16 +5,15 @@ import arrow.core.raise.Raise
 import io.github.numq.haskcore.common.core.text.*
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import java.nio.charset.Charset
 
 internal interface TextBuffer {
     val snapshot: StateFlow<TextSnapshot>
 
     val data: SharedFlow<TextEdit.Data>
 
-    suspend fun changeLineEnding(textLineEnding: TextLineEnding): Either<Throwable, Unit>
+    suspend fun changeLineEnding(lineEnding: TextLineEnding): Either<Throwable, Unit>
 
-    suspend fun changeCharset(charset: Charset): Either<Throwable, Unit>
+    suspend fun changeEncoding(encoding: TextEncoding): Either<Throwable, Unit>
 
     suspend fun insert(position: TextPosition, text: String): Either<Throwable, TextEdit.Data.Single?>
 

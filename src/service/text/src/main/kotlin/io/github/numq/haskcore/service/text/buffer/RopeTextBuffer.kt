@@ -3,22 +3,20 @@ package io.github.numq.haskcore.service.text.buffer
 import arrow.core.Either
 import arrow.core.raise.Raise
 import arrow.core.raise.either
+import io.github.numq.haskcore.common.core.text.*
 import io.github.numq.haskcore.service.text.rope.Rope
 import io.github.numq.haskcore.service.text.rope.RopeNavigator
 import io.github.numq.haskcore.service.text.rope.RopeNodeFactory
 import io.github.numq.haskcore.service.text.snapshot.ImmutableTextSnapshot
-import io.github.numq.haskcore.common.core.text.*
 import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import java.nio.charset.Charset
-import java.nio.charset.StandardCharsets
 
 internal class RopeTextBuffer(
-    private val initialText: String,
-    initialTextLineEnding: TextLineEnding = TextLineEnding.analyze(initialText).dominant,
-    initialCharset: Charset = StandardCharsets.UTF_8,
+    initialText: String,
+    initialEncoding: TextEncoding,
+    initialLineEnding: TextLineEnding,
 ) : TextBuffer {
     private companion object {
         const val DATA_CAPACITY = 64
@@ -28,18 +26,18 @@ internal class RopeTextBuffer(
 
     private val _revision = atomic(0L)
 
-    private val _rope = MutableStateFlow(initializeRope(text = initialText, charset = initialCharset))
+    private val _rope = MutableStateFlow(initializeRope(text = initialText, encoding = initialEncoding))
 
-    private val _lineEnding = MutableStateFlow(initialTextLineEnding)
+    private val _encoding = MutableStateFlow(initialEncoding)
 
-    private val _charset = MutableStateFlow(initialCharset)
+    private val _lineEnding = MutableStateFlow(initialLineEnding)
 
     private val _snapshot = MutableStateFlow(
         ImmutableTextSnapshot(
             rope = _rope.value,
             revision = TextRevision(value = _revision.value),
-            charset = _charset.value,
-            textLineEnding = _lineEnding.value
+            encoding = _encoding.value,
+            lineEnding = _lineEnding.value
         )
     )
 
@@ -55,7 +53,7 @@ internal class RopeTextBuffer(
         else -> text.replace("\r\n", "\n").replace("\r", "\n")
     }
 
-    private fun initializeRope(text: String, charset: Charset): Rope {
+    private fun initializeRope(text: String, encoding: TextEncoding): Rope {
         val normalizedText = when {
             text.isEmpty() -> text
 
@@ -64,8 +62,8 @@ internal class RopeTextBuffer(
 
         return Rope(
             initialText = normalizedText,
-            charset = charset,
-            ropeNodeFactory = RopeNodeFactory(enablePooling = true, charset = charset)
+            encoding = encoding,
+            ropeNodeFactory = RopeNodeFactory(enablePooling = true, encoding = encoding)
         )
     }
 
@@ -204,7 +202,7 @@ internal class RopeTextBuffer(
         val revision = TextRevision(value = _revision.incrementAndGet())
 
         val snapshot = ImmutableTextSnapshot(
-            rope = newRope, revision = revision, charset = _charset.value, textLineEnding = _lineEnding.value
+            rope = newRope, revision = revision, encoding = _encoding.value, lineEnding = _lineEnding.value
         )
 
         _rope.value = newRope
@@ -216,20 +214,20 @@ internal class RopeTextBuffer(
         data
     }
 
-    override suspend fun changeLineEnding(textLineEnding: TextLineEnding) = Either.catch {
-        _lineEnding.value = textLineEnding
-    }
-
-    override suspend fun changeCharset(charset: Charset) = Either.catch {
+    override suspend fun changeEncoding(encoding: TextEncoding) = Either.catch {
         mutex.withLock {
-            if (_charset.value != charset) {
-                val newCharset = _charset.updateAndGet { charset }
+            if (_encoding.value != encoding) {
+                val newEncoding = _encoding.updateAndGet { encoding }
 
                 _rope.update { rope ->
-                    rope.rebuildWithCharset(newCharset = newCharset)
+                    rope.rebuildWithEncoding(newEncoding = newEncoding)
                 }
             }
         }
+    }
+
+    override suspend fun changeLineEnding(lineEnding: TextLineEnding) = Either.catch {
+        _lineEnding.value = lineEnding
     }
 
     override suspend fun insert(position: TextPosition, text: String) = either {
@@ -273,12 +271,12 @@ internal class RopeTextBuffer(
 
                 override val data = this@RopeTextBuffer.data
 
-                override suspend fun changeLineEnding(textLineEnding: TextLineEnding) = either {
+                override suspend fun changeLineEnding(lineEnding: TextLineEnding) = either {
                     raise(IllegalStateException("Cannot change line endings during a batch operation"))
                 }
 
-                override suspend fun changeCharset(charset: Charset) = either {
-                    raise(IllegalStateException("Cannot change charset during a batch operation"))
+                override suspend fun changeEncoding(encoding: TextEncoding) = either {
+                    raise(IllegalStateException("Cannot change encoding during a batch operation"))
                 }
 
                 private suspend fun applyToBatch(

@@ -13,12 +13,12 @@ import io.github.numq.haskcore.service.syntax.query.SyntaxQueryProvider
 import io.github.numq.haskcore.service.syntax.symbol.SymbolIndexer
 import io.github.numq.haskcore.service.syntax.token.SyntaxTokenProvider
 import io.github.numq.haskcore.service.syntax.tree.SyntaxTree
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.treesitter.TSInputEdit
+import org.treesitter.TSInputEncoding
 import org.treesitter.TSParser
 
 internal class HaskellSyntaxService(
@@ -29,7 +29,11 @@ internal class HaskellSyntaxService(
     private val syntaxTokenProvider: SyntaxTokenProvider,
     private val queryProvider: SyntaxQueryProvider,
 ) : SyntaxService {
+    private val lock = Mutex()
+
     private val dispatcher = Dispatchers.Default.limitedParallelism(1)
+
+    private val encoding = TSInputEncoding.TSInputEncodingUTF8
 
     private val parser = TSParser().apply { language = queryProvider.language }
 
@@ -41,29 +45,53 @@ internal class HaskellSyntaxService(
         syntaxTree?.syntax
     }.stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = null)
 
+    private suspend inline fun <T> withTreeLock(block: () -> T) = lock.withLock {
+        block()
+    }
+
+    private suspend fun getCurrentTree() = withTreeLock {
+        _syntaxTree.value?.takeUnless(SyntaxTree::isClosed)?.tree
+    }
+
+    private suspend fun updateTree(update: suspend (SyntaxTree?) -> SyntaxTree?) = withTreeLock {
+        val oldTree = _syntaxTree.value
+
+        val newTree = update(oldTree)
+
+        if (newTree != oldTree) {
+            _syntaxTree.value = newTree
+
+            oldTree?.takeUnless(SyntaxTree::isClosed)?.takeIf { tree ->
+                tree != newTree
+            }?.close()
+        }
+    }
+
     override suspend fun fullParse(snapshot: TextSnapshot) = Either.catch {
         withContext(dispatcher) {
             val revision = snapshot.revision
 
-            _syntaxTree.getAndUpdate { syntaxTree ->
-                val newTree = parser.parseString(null, snapshot.text)
+            updateTree { syntaxTree ->
+                val newTree = parser.parseStringEncoding(null, snapshot.text, encoding)
 
                 symbolIndexer.reindex(
                     tree = newTree, query = queryProvider.localsQuery, snapshot = snapshot, dirtyRange = null
                 ).getOrElse { throwable ->
+                    newTree.close()
+
                     throw throwable
                 }
 
                 SyntaxTree(
                     revision = revision, tree = newTree, syntax = Syntax(revision = revision, text = snapshot.text)
                 )
-            }?.takeUnless(SyntaxTree::isClosed)?.tree?.close() ?: Unit
+            }
         }
     }
 
     override suspend fun applyChange(snapshot: TextSnapshot, data: TextEdit.Data, range: TextRange) = Either.catch {
         withContext(dispatcher) {
-            val oldTree = _syntaxTree.value?.takeUnless(SyntaxTree::isClosed)?.tree ?: return@withContext
+            val oldTree = getCurrentTree() ?: return@withContext
 
             val revision = snapshot.revision
 
@@ -78,9 +106,13 @@ internal class HaskellSyntaxService(
                 )
             }
 
-            oldTree.edit(inputEdit)
+            val oldTreeCopy = oldTree.copy()
 
-            val newTree = checkNotNull(parser.parseString(oldTree, snapshot.text)) { "Failed to parse Haskell tree" }
+            oldTreeCopy.edit(inputEdit)
+
+            val newTree = checkNotNull(parser.parseStringEncoding(oldTreeCopy, snapshot.text, encoding)) {
+                "Failed to parse Haskell syntax tree"
+            }
 
             try {
                 val dirtyRange = TextRange(start = data.startPosition, end = data.newEndPosition)
@@ -91,30 +123,32 @@ internal class HaskellSyntaxService(
                     throw throwable
                 }
 
-                _syntaxTree.getAndUpdate { currentSyntaxTree ->
+                updateTree { currentSyntaxTree ->
                     currentSyntaxTree?.copy(
                         revision = revision, tree = newTree, syntax = currentSyntaxTree.syntax.copy(revision = revision)
                     )
-                }?.takeUnless(SyntaxTree::isClosed)?.tree?.close()
+                }
             } catch (throwable: Throwable) {
                 newTree.close()
 
                 throw throwable
+            } finally {
+                oldTreeCopy.close()
             }
         }
     }
 
-    override suspend fun parseFoldingRegions(range: TextRange) = either {
-        val currentSyntaxTree = _syntaxTree.value?.takeUnless(SyntaxTree::isClosed) ?: return@either
+    override suspend fun parseFoldingRegions(snapshot: TextSnapshot, range: TextRange) = either {
+        val currentTree = getCurrentTree() ?: return@either
 
-        val tree = currentSyntaxTree.tree
+        val currentSyntaxTree = withTreeLock { _syntaxTree.value } ?: return@either
 
         withContext(dispatcher) {
             val foldingRegions = foldingProvider.getSyntaxFoldingRegions(
-                tree = tree, localsQuery = queryProvider.localsQuery, range = range
+                tree = currentTree, localsQuery = queryProvider.localsQuery, snapshot = snapshot, range = range
             ).bind()
 
-            _syntaxTree.update { latestSyntaxTree ->
+            updateTree { latestSyntaxTree ->
                 when (latestSyntaxTree?.revision) {
                     currentSyntaxTree.revision -> latestSyntaxTree.copy(
                         syntax = latestSyntaxTree.syntax.copy(
@@ -129,12 +163,14 @@ internal class HaskellSyntaxService(
     }
 
     override suspend fun parseOccurrences(position: TextPosition) = either {
-        val currentSyntaxTree = _syntaxTree.value?.takeUnless(SyntaxTree::isClosed) ?: return@either
+        val currentSyntaxTree = withTreeLock {
+            _syntaxTree.value?.takeUnless(SyntaxTree::isClosed)
+        } ?: return@either
 
         withContext(dispatcher) {
             val occurrences = occurrenceProvider.getSyntaxOccurrences(position = position).bind()
 
-            _syntaxTree.update { latestSyntaxTree ->
+            updateTree { latestSyntaxTree ->
                 when (latestSyntaxTree?.revision) {
                     currentSyntaxTree.revision -> latestSyntaxTree.copy(
                         syntax = latestSyntaxTree.syntax.copy(
@@ -149,20 +185,21 @@ internal class HaskellSyntaxService(
     }
 
     override suspend fun parseTokensPerLine(snapshot: TextSnapshot, range: TextRange) = either {
-        val currentSyntaxTree = _syntaxTree.value?.takeUnless(SyntaxTree::isClosed) ?: return@either
+        val currentTree = getCurrentTree() ?: return@either
 
-        val tree = currentSyntaxTree.tree
+        val currentSyntaxTree = withTreeLock { _syntaxTree.value } ?: return@either
 
         withContext(dispatcher) {
             val tokensPerLine = syntaxTokenProvider.getSyntaxTokensPerLine(
-                tree = tree,
+                tree = currentTree,
                 highlightsQuery = queryProvider.highlightsQuery,
                 localsQuery = queryProvider.localsQuery,
                 lineLengths = (range.start.line..range.end.line).associateWith(snapshot::getLineLength),
+                snapshot = snapshot,
                 range = range
             ).bind()
 
-            _syntaxTree.update { latestSyntaxTree ->
+            updateTree { latestSyntaxTree ->
                 when (latestSyntaxTree?.revision) {
                     currentSyntaxTree.revision -> latestSyntaxTree.copy(
                         syntax = latestSyntaxTree.syntax.copy(
@@ -179,7 +216,11 @@ internal class HaskellSyntaxService(
     override fun close() {
         scope.cancel()
 
-        _syntaxTree.getAndUpdate { null }?.close()
+        runBlocking { // todo
+            withTreeLock {
+                _syntaxTree.getAndUpdate { null }?.close()
+            }
+        }
 
         parser.close()
     }

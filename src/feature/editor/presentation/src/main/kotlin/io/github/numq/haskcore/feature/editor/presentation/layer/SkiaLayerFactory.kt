@@ -9,7 +9,7 @@ import io.github.numq.haskcore.feature.editor.core.analysis.CodeIssue
 import io.github.numq.haskcore.feature.editor.core.caret.Caret
 import io.github.numq.haskcore.feature.editor.core.selection.Selection
 import io.github.numq.haskcore.feature.editor.core.syntax.Occurrence
-import io.github.numq.haskcore.feature.editor.core.syntax.Token
+import io.github.numq.haskcore.feature.editor.core.token.Token
 import io.github.numq.haskcore.feature.editor.presentation.background.BackgroundLayer
 import io.github.numq.haskcore.feature.editor.presentation.background.BackgroundOutlineLayer
 import io.github.numq.haskcore.feature.editor.presentation.background.HighlightedLineLayer
@@ -37,6 +37,148 @@ internal class SkiaLayerFactory(
     private val paintCache: PaintCache,
     private val paragraphCache: ParagraphCache,
 ) : LayerFactory {
+    private fun buildToken(
+        line: Int,
+        start: Int,
+        end: Int,
+        type: Token.Type?,
+        isAtom: Boolean,
+        lineText: String,
+    ): Token {
+        val range = TextRange(
+            start = TextPosition(line = line, column = start), end = TextPosition(line = line, column = end)
+        )
+
+        val finalType = type ?: Token.Type.UNKNOWN
+
+        val extractedText = when {
+            start < end && start in lineText.indices && end <= lineText.length -> {
+                lineText.substring(start, end)
+            }
+
+            else -> ""
+        }
+
+        return when {
+            isAtom || finalType != Token.Type.UNKNOWN -> Token.Atom(
+                range = range, type = finalType, text = extractedText
+            )
+
+            else -> Token.Region(range = range, type = finalType)
+        }
+    }
+
+    private fun mergeTokens(
+        line: Int,
+        semanticTokens: List<Token>,
+        syntaxTokens: List<Token>,
+        text: String,
+    ) = when {
+        text.isEmpty() -> emptyList()
+
+        else -> {
+            val finalTypes = arrayOfNulls<Token.Type>(text.length)
+
+            val isAtomChar = BooleanArray(text.length)
+
+            fun getPriority(type: Token.Type?) = when (type) {
+                null, Token.Type.UNKNOWN -> 0
+
+                Token.Type.VARIABLE -> 1
+
+                else -> 2
+            }
+
+            fun writeTokenData(start: Int, end: Int, type: Token.Type, isAtom: Boolean) {
+                val coercedStart = start.coerceIn(0, text.length)
+
+                val coercedEnd = end.coerceIn(0, text.length)
+
+                for (index in coercedStart until coercedEnd) {
+                    val existingType = finalTypes[index]
+
+                    when {
+                        getPriority(type) >= getPriority(existingType) -> {
+                            finalTypes[index] = type
+
+                            isAtomChar[index] = isAtom
+                        }
+                    }
+                }
+            }
+
+            val sortedSyntaxTokens = syntaxTokens.sortedByDescending { token ->
+                token.range.end.column - token.range.start.column
+            }
+
+            sortedSyntaxTokens.forEach { syntaxToken ->
+                writeTokenData(
+                    start = syntaxToken.range.start.column,
+                    end = syntaxToken.range.end.column,
+                    type = syntaxToken.type,
+                    isAtom = syntaxToken is Token.Atom
+                )
+            }
+
+            semanticTokens.forEach { semanticToken ->
+                writeTokenData(
+                    start = semanticToken.range.start.column,
+                    end = semanticToken.range.end.column,
+                    type = semanticToken.type,
+                    isAtom = semanticToken is Token.Atom
+                )
+            }
+
+            val result = mutableListOf<Token>()
+
+            var currentType = finalTypes[0]
+
+            var currentIsAtom = isAtomChar[0]
+
+            var startColumn = 0
+
+            for (index in 1 until text.length) {
+                val nextType = finalTypes[index]
+
+                val nextIsAtom = isAtomChar[index]
+
+                when {
+                    nextType != currentType || nextIsAtom != currentIsAtom -> {
+                        result.add(
+                            buildToken(
+                                line = line,
+                                start = startColumn,
+                                end = index,
+                                type = currentType,
+                                isAtom = currentIsAtom,
+                                lineText = text
+                            )
+                        )
+
+                        currentType = nextType
+
+                        currentIsAtom = nextIsAtom
+
+                        startColumn = index
+                    }
+                }
+            }
+
+            result.add(
+                buildToken(
+                    line = line,
+                    start = startColumn,
+                    end = text.length,
+                    type = currentType,
+                    isAtom = currentIsAtom,
+                    lineText = text
+                )
+            )
+
+            result
+        }
+    }
+
     override fun createBackgroundLayer(width: Float, height: Float, theme: EditorTheme) = BackgroundLayer(
         width = width, height = height, paint = paintCache.getOrCreate(
             key = PaintCache.Key(color = theme.backgroundColorPalette.backgroundColor)
@@ -96,9 +238,7 @@ internal class SkiaLayerFactory(
 
     override fun createGutterActionLayers(
         viewportLines: List<ViewportLine>, image: Image, gutterWidth: Float, theme: EditorTheme,
-    ) = viewportLines.filter { viewportLine ->
-        viewportLine.text.trimStart().startsWith("main =")
-    }.map { line ->
+    ) = viewportLines.map { line ->
         val actionSize = line.height * .9f
 
         val x = gutterWidth - actionSize - Measurements.GUTTER_PADDING_END
@@ -130,7 +270,8 @@ internal class SkiaLayerFactory(
 
     override fun createCodeAreaContentLayers(
         viewportLines: List<ViewportLine>,
-        tokensPerLine: Map<Int, List<Token>>?,
+        semanticTokensPerLine: Map<Int, List<Token>>?,
+        syntaxTokensPerLine: Map<Int, List<Token>>?,
         scrollX: Float,
         font: Font,
         theme: EditorTheme,
@@ -139,17 +280,17 @@ internal class SkiaLayerFactory(
 
         val text = viewportLine.text
 
-        val tokens = tokensPerLine?.get(line) ?: listOf(
-            Token.Atom(
-                range = TextRange(
-                    start = TextPosition(line = line, column = 0), end = TextPosition(line = line, column = text.length)
-                ), type = Token.Type.UNKNOWN, text = text
-            )
+        val semanticTokens = semanticTokensPerLine?.get(line).orEmpty()
+
+        val syntaxTokens = syntaxTokensPerLine?.get(line).orEmpty()
+
+        val mergedTokens = mergeTokens(
+            line = line, semanticTokens = semanticTokens, syntaxTokens = syntaxTokens, text = text
         )
 
         val paragraph = paragraphCache.getOrCreate(
             key = ParagraphCache.Key(
-                text = text, tokens = tokens, width = viewportLine.width, font = font, theme = theme
+                text = text, tokens = mergedTokens, width = viewportLine.width, font = font, theme = theme
             )
         ).getOrElse { throwable ->
             throw throwable
@@ -220,9 +361,15 @@ internal class SkiaLayerFactory(
             val endX = layer.getCoordinateAtOffset(issue.range.end.column)
 
             val color = when (issue) {
+                is CodeIssue.Unknown -> theme.overlayColorPalette.unknownUnderlineColor
+
                 is CodeIssue.Error -> theme.overlayColorPalette.errorUnderlineColor
 
-                else -> theme.overlayColorPalette.warningUnderlineColor
+                is CodeIssue.Warning -> theme.overlayColorPalette.warningUnderlineColor
+
+                is CodeIssue.Information -> theme.overlayColorPalette.infoUnderlineColor
+
+                is CodeIssue.Hint -> theme.overlayColorPalette.hintUnderlineColor
             }
 
             val paint = paintCache.getOrCreate(

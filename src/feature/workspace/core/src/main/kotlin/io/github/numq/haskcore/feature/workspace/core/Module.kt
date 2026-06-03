@@ -39,11 +39,19 @@ val workspaceFeatureCoreModule = module {
             CloseWorkspace(path = projectPath, sessionService = get())
         }
 
-        scopedOwner { CloseWorkspaceDocument(projectService = get()) }
+        scopedOwner { CloseDocument(projectService = get()) }
 
-        scopedOwner { ObserveWorkspace(workspaceService = get(), projectService = get()) }
+        scopedOwner {
+            ObserveWorkspace(
+                workspaceService = get(),
+                documentService = get(),
+                lspService = get(),
+                projectService = get(),
+                toolchainService = get()
+            )
+        }
 
-        scopedOwner { OpenWorkspaceDocument(projectService = get()) }
+        scopedOwner { OpenDocument(projectService = get()) }
 
         scopedOwner { SaveDimensions(workspaceService = get()) }
 

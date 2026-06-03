@@ -45,16 +45,16 @@ internal fun CompletionItem.toLspCompletion() = LspCompletion(
     filterText = filterText)
 
 internal fun LspConnectionInternal.toLspConnection() = when (this) {
-    is LspConnectionInternal.Error -> LspConnection.Error(throwable = throwable)
-
     is LspConnectionInternal.Disconnected -> LspConnection.Disconnected
+
+    is LspConnectionInternal.Error -> LspConnection.Error(throwable = throwable)
 
     is LspConnectionInternal.Connecting -> LspConnection.Connecting
 
     is LspConnectionInternal.Connected -> LspConnection.Connected
 }
 
-internal fun Diagnostic.toLspDiagnostic(path: String): LspDiagnostic {
+internal fun Diagnostic.toLspDiagnostic(): LspDiagnostic {
     val range = range.toTextRange()
 
     val code = code?.get()?.toString()
@@ -64,23 +64,19 @@ internal fun Diagnostic.toLspDiagnostic(path: String): LspDiagnostic {
     val message = message
 
     return when (severity) {
-        DiagnosticSeverity.Error -> LspDiagnostic.Error(
-            path = path, range = range, code = code, source = source, message = message
-        )
+        DiagnosticSeverity.Error -> LspDiagnostic.Error(range = range, code = code, source = source, message = message)
 
         DiagnosticSeverity.Warning -> LspDiagnostic.Warning(
-            path = path, range = range, code = code, source = source, message = message
+            range = range, code = code, source = source, message = message
         )
 
         DiagnosticSeverity.Information -> LspDiagnostic.Information(
-            path = path, range = range, code = code, source = source, message = message
+            range = range, code = code, source = source, message = message
         )
 
-        DiagnosticSeverity.Hint -> LspDiagnostic.Hint(
-            path = path, range = range, code = code, source = source, message = message
-        )
+        DiagnosticSeverity.Hint -> LspDiagnostic.Hint(range = range, code = code, source = source, message = message)
 
-        else -> LspDiagnostic.Unknown(path = path, range = range, code = code, source = source, message = message)
+        else -> LspDiagnostic.Unknown(range = range, code = code, source = source, message = message)
     }
 }
 

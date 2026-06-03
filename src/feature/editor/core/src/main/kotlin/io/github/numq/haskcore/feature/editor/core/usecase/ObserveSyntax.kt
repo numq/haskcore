@@ -8,9 +8,9 @@ import io.github.numq.haskcore.common.core.text.TextRange
 import io.github.numq.haskcore.common.core.usecase.UseCase
 import io.github.numq.haskcore.feature.editor.core.EditorService
 import io.github.numq.haskcore.feature.editor.core.syntax.FoldingRegion
-import io.github.numq.haskcore.feature.editor.core.syntax.Occurrence
 import io.github.numq.haskcore.feature.editor.core.syntax.Syntax
-import io.github.numq.haskcore.feature.editor.core.syntax.Token
+import io.github.numq.haskcore.feature.editor.core.toOccurrence
+import io.github.numq.haskcore.feature.editor.core.toToken
 import io.github.numq.haskcore.service.logger.LoggerService
 import io.github.numq.haskcore.service.syntax.SyntaxService
 import io.github.numq.haskcore.service.syntax.occurrence.SyntaxOccurrence
@@ -18,13 +18,14 @@ import io.github.numq.haskcore.service.syntax.token.SyntaxToken
 import io.github.numq.haskcore.service.text.TextService
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 class ObserveSyntax(
     private val editorService: EditorService,
     private val syntaxService: SyntaxService,
-    private val loggerService: LoggerService, // todo
+    private val loggerService: LoggerService,
     private val textService: TextService,
 ) : UseCase.Exchange<ObserveSyntax.Input, Flow<Syntax?>> {
     data class Input(val language: Language)
@@ -35,69 +36,97 @@ class ObserveSyntax(
         const val HIGHLIGHTING_LINE_PADDING_END = HIGHLIGHTING_LINE_PADDING_START + 1
 
         const val SYNTAX_HIGHLIGHTING_DELAY_MILLIS = 300L
+
+        const val RETRY_DELAY_MS = 100L
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     private suspend fun observeSyntax() {
-        var fullParseNeeded = true
+        var lastRevision: Long? = null
 
         combine(
-            flow = textService.snapshot,
+            flow = textService.snapshot.filterNotNull(),
             flow2 = textService.edits.onStart { emit(null) },
             flow3 = editorService.activeLines,
             transform = { snapshot, edit, activeLines ->
-                when (snapshot) {
-                    null -> {
-                        fullParseNeeded = true
+                Triple(snapshot, edit, activeLines)
+            }).flatMapLatest { (snapshot, edit, activeLines) ->
+            flow {
+                try {
+                    val needsFullParse =
+                        lastRevision == null || syntaxService.syntax.value?.revision != snapshot.revision
 
-                        null
-                    }
+                    if (needsFullParse) {
+                        syntaxService.fullParse(snapshot = snapshot).getOrElse { throwable ->
+                            lastRevision = null
 
-                    else -> {
-                        if (fullParseNeeded) {
-                            this@ObserveSyntax.syntaxService.fullParse(snapshot = snapshot).getOrElse(::println) // todo
-
-                            fullParseNeeded = false
+                            throw throwable
                         }
 
-                        val startLine =
-                            (activeLines.start - HIGHLIGHTING_LINE_PADDING_START).coerceIn(0, snapshot.lines - 1)
-
-                        val endLine =
-                            (activeLines.endInclusive + HIGHLIGHTING_LINE_PADDING_END).coerceIn(0, snapshot.lines - 1)
-
-                        val startPosition = TextPosition(line = startLine, column = 0)
-
-                        val endPosition =
-                            TextPosition(line = endLine, column = snapshot.getLineText(line = endLine).length)
-
-                        val range = TextRange(start = startPosition, end = endPosition)
-
-                        edit?.data?.let { data ->
-                            syntaxService.applyChange(
-                                snapshot = snapshot, data = data, range = range
-                            ).getOrElse(::println) // todo
-                        }
-
-                        snapshot to range
+                        lastRevision = snapshot.revision.value
                     }
+
+                    val startLine =
+                        (activeLines.start - HIGHLIGHTING_LINE_PADDING_START).coerceIn(0, snapshot.lines - 1)
+                    val endLine =
+                        (activeLines.endInclusive + HIGHLIGHTING_LINE_PADDING_END).coerceIn(0, snapshot.lines - 1)
+
+                    val startPosition = TextPosition(line = startLine, column = 0)
+
+                    val endPosition = TextPosition(
+                        line = endLine, column = snapshot.getLineText(line = endLine).length
+                    )
+
+                    val range = TextRange(start = startPosition, end = endPosition)
+
+                    edit?.data?.let { data ->
+                        syntaxService.applyChange(
+                            snapshot = snapshot, data = data, range = range
+                        ).getOrElse { throwable ->
+                            if (throwable.message?.contains("closed") == true) {
+                                lastRevision = null
+                            }
+
+                            throw throwable
+                        }
+                    }
+
+                    syntaxService.parseFoldingRegions(snapshot = snapshot, range = range).getOrElse { throwable ->
+                        println("Parse folding failed: $throwable") // todo
+                    }
+
+                    syntaxService.parseTokensPerLine(snapshot = snapshot, range = range).getOrElse { throwable ->
+                        println("Parse tokens failed: $throwable") // todo
+                    }
+
+                    emit(Unit)
+                } catch (throwable: Throwable) {
+                    delay(RETRY_DELAY_MS)
+
+                    lastRevision = null
+
+                    emit(Unit)
                 }
-            }).filterNotNull().distinctUntilChanged().conflate().collect { (snapshot, range) ->
-            syntaxService.parseFoldingRegions(range = range).getOrElse(::println) // todo
+            }.retryWhen { cause, attempt ->
+                delay(RETRY_DELAY_MS * (attempt + 1))
 
-            syntaxService.parseTokensPerLine(snapshot = snapshot, range = range).getOrElse(::println) // todo
-        }
+                true
+            }
+        }.collect()
     }
 
     @OptIn(FlowPreview::class)
     private suspend fun observeOccurrences() = editorService.caret.map { caret ->
         caret.position
     }.distinctUntilChanged().debounce(SYNTAX_HIGHLIGHTING_DELAY_MILLIS).collect { position ->
-        syntaxService.parseOccurrences(position = position).getOrElse(::println)
+        syntaxService.parseOccurrences(position = position).getOrElse { throwable ->
+            println("Parse occurrences failed: $throwable") // todo
+        }
     }
 
     @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
     override suspend fun Raise<Throwable>.exchange(input: Input) = when (input.language) {
-        is Language.Haskell -> channelFlow {
+        is Language.Haskell -> channelFlow<Syntax> {
             launch {
                 observeSyntax()
             }
@@ -106,108 +135,21 @@ class ObserveSyntax(
                 observeOccurrences()
             }
 
-            syntaxService.syntax.map { syntax ->
-                syntax?.run {
-                    val foldingRegions = foldingRegions.map { foldingRegion ->
-                        FoldingRegion.Expanded(range = foldingRegion.range)
-                    }
-
-                    val occurrences = occurrences.map { occurrence ->
-                        when (occurrence) {
-                            is SyntaxOccurrence.Definition -> Occurrence.Definition(range = occurrence.range)
-
-                            is SyntaxOccurrence.Reference -> Occurrence.Reference(range = occurrence.range)
-                        }
-                    }
-
-                    val tokensPerLine = tokensPerLine.mapValues { (_, tokens) ->
-                        tokens.map { token ->
-                            val type = when (token.type) {
-                                SyntaxToken.Type.KEYWORD -> Token.Type.KEYWORD
-
-                                SyntaxToken.Type.KEYWORD_CONDITIONAL -> Token.Type.KEYWORD_CONDITIONAL
-
-                                SyntaxToken.Type.KEYWORD_IMPORT -> Token.Type.KEYWORD_IMPORT
-
-                                SyntaxToken.Type.KEYWORD_REPEAT -> Token.Type.KEYWORD_REPEAT
-
-                                SyntaxToken.Type.KEYWORD_DIRECTIVE -> Token.Type.KEYWORD_DIRECTIVE
-
-                                SyntaxToken.Type.KEYWORD_EXCEPTION -> Token.Type.KEYWORD_EXCEPTION
-
-                                SyntaxToken.Type.KEYWORD_DEBUG -> Token.Type.KEYWORD_DEBUG
-
-                                SyntaxToken.Type.TYPE -> Token.Type.TYPE
-
-                                SyntaxToken.Type.CONSTRUCTOR -> Token.Type.CONSTRUCTOR
-
-                                SyntaxToken.Type.BOOLEAN -> Token.Type.BOOLEAN
-
-                                SyntaxToken.Type.FUNCTION -> Token.Type.FUNCTION
-
-                                SyntaxToken.Type.FUNCTION_CALL -> Token.Type.FUNCTION_CALL
-
-                                SyntaxToken.Type.VARIABLE -> Token.Type.VARIABLE
-
-                                SyntaxToken.Type.VARIABLE_PARAMETER -> Token.Type.VARIABLE_PARAMETER
-
-                                SyntaxToken.Type.VARIABLE_MEMBER -> Token.Type.VARIABLE_MEMBER
-
-                                SyntaxToken.Type.OPERATOR -> Token.Type.OPERATOR
-
-                                SyntaxToken.Type.NUMBER -> Token.Type.NUMBER
-
-                                SyntaxToken.Type.NUMBER_FLOAT -> Token.Type.NUMBER_FLOAT
-
-                                SyntaxToken.Type.STRING -> Token.Type.STRING
-
-                                SyntaxToken.Type.CHARACTER -> Token.Type.CHARACTER
-
-                                SyntaxToken.Type.STRING_SPECIAL_SYMBOL -> Token.Type.STRING_SPECIAL_SYMBOL
-
-                                SyntaxToken.Type.COMMENT -> Token.Type.COMMENT
-
-                                SyntaxToken.Type.COMMENT_DOCUMENTATION -> Token.Type.COMMENT_DOCUMENTATION
-
-                                SyntaxToken.Type.PUNCTUATION_BRACKET -> Token.Type.PUNCTUATION_BRACKET
-
-                                SyntaxToken.Type.PUNCTUATION_DELIMITER -> Token.Type.PUNCTUATION_DELIMITER
-
-                                SyntaxToken.Type.MODULE -> Token.Type.MODULE
-
-                                SyntaxToken.Type.SPELL -> Token.Type.SPELL
-
-                                SyntaxToken.Type.WILDCARD -> Token.Type.WILDCARD
-
-                                SyntaxToken.Type.LOCAL_DEFINITION -> Token.Type.LOCAL_DEFINITION
-
-                                SyntaxToken.Type.LOCAL_REFERENCE -> Token.Type.LOCAL_REFERENCE
-
-                                SyntaxToken.Type.UNKNOWN -> Token.Type.UNKNOWN
-                            }
-
-                            when (token) {
-                                is SyntaxToken.Region -> Token.Region(range = token.range, type = type)
-
-                                is SyntaxToken.Atom -> Token.Atom(
-                                    range = token.range, type = type, text = token.text
-                                )
-                            }
-                        }
-                    }
-
+            syntaxService.syntax.filterNotNull().distinctUntilChanged().map { syntax ->
+                syntax.run {
                     Syntax(
                         revision = revision,
-                        foldingRegions = foldingRegions,
-                        occurrences = occurrences,
-                        tokensPerLine = tokensPerLine
-                    )
+                        foldingRegions = foldingRegions.map { foldingRegion ->
+                            FoldingRegion.Expanded(range = foldingRegion.range)
+                        },
+                        occurrences = occurrences.map(SyntaxOccurrence::toOccurrence),
+                        tokensPerLine = tokensPerLine.mapValues { (_, tokens) ->
+                            tokens.map(SyntaxToken::toToken)
+                        })
                 }
-            }.filterNotNull().filter { syntax ->
-                syntax.tokensPerLine.isNotEmpty()
-            }.distinctUntilChanged().collect(::send)
+            }.collect(::send)
         }
 
-        else -> flowOf<Syntax?>(null)
+        else -> flowOf(null)
     }
 }

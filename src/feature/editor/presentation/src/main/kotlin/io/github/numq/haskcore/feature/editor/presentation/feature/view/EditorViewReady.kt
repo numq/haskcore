@@ -1,10 +1,12 @@
 package io.github.numq.haskcore.feature.editor.presentation.feature.view
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -13,10 +15,12 @@ import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.onKeyEvent
@@ -28,6 +32,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.LayoutDirection
 import io.github.numq.haskcore.common.presentation.font.Font
 import io.github.numq.haskcore.common.presentation.theme.editor.EditorTheme
+import io.github.numq.haskcore.feature.editor.presentation.documentation.DocumentationPopup
+import io.github.numq.haskcore.feature.editor.presentation.documentation.DocumentationState
 import io.github.numq.haskcore.feature.editor.presentation.feature.EditorCommand
 import io.github.numq.haskcore.feature.editor.presentation.feature.EditorState
 import io.github.numq.haskcore.feature.editor.presentation.layer.LayerFactory
@@ -35,6 +41,8 @@ import io.github.numq.haskcore.feature.editor.presentation.measurements.Measurem
 import io.github.numq.haskcore.feature.editor.presentation.menu.ContextMenu
 import io.github.numq.haskcore.feature.editor.presentation.mouse.EditorMouseHandler
 import io.github.numq.haskcore.feature.editor.presentation.scrollbar.ScrollbarContainer
+import io.github.numq.haskcore.feature.editor.presentation.suggestions.SuggestionPopup
+import io.github.numq.haskcore.feature.editor.presentation.suggestions.SuggestionState
 import io.github.numq.haskcore.feature.editor.presentation.viewport.ViewportCalculator
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -209,14 +217,24 @@ internal fun EditorViewReady(
 
             val density = LocalDensity.current
 
-            val playIconPainter = rememberVectorPainter(image = Icons.Rounded.PlayArrow)
+            val foldingRotation by animateFloatAsState(
+                when {
+                    true -> 90f // todo check is folding region
 
-            val gutterActionImage = remember(density, theme.gutterColorPalette.runActionColor) {
+                    else -> 0f
+                }
+            )
+
+            val foldingIconPainter = rememberVectorPainter(image = Icons.Rounded.ChevronRight)
+
+            val foldingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+
+            val gutterActionImage = remember(density, foldingIconColor, foldingRotation) {
                 val iconSizeDp = with(density) { (font.lineHeight * .9f).toDp() }
 
                 val iconSize = with(density) { iconSizeDp.toPx() }.toInt()
 
-                val iconColor = Color(theme.gutterColorPalette.runActionColor)
+                val iconColor = foldingIconColor
 
                 val bitmap = ImageBitmap(iconSize, iconSize)
 
@@ -230,11 +248,13 @@ internal fun EditorViewReady(
                     canvas = canvas,
                     size = Size(iconSize.toFloat(), iconSize.toFloat())
                 ) {
-                    with(playIconPainter) {
-                        draw(
-                            size = Size(iconSize.toFloat(), iconSize.toFloat()),
-                            colorFilter = ColorFilter.tint(iconColor)
-                        )
+                    with(foldingIconPainter) {
+                        rotate(foldingRotation) {
+                            draw(
+                                size = Size(iconSize.toFloat(), iconSize.toFloat()),
+                                colorFilter = ColorFilter.tint(iconColor)
+                            )
+                        }
                     }
                 }
 
@@ -260,7 +280,7 @@ internal fun EditorViewReady(
                 }
             }
 
-            val currentGutterActionLayers by rememberUpdatedState(gutterActionLayers)
+            val currentGutterActionLayers by rememberUpdatedState(gutterActionLayers) // todo
 
             val gutterSeparatorLayer by remember(gutterWidth, currentViewport.height, theme) {
                 derivedStateOf {
@@ -276,7 +296,7 @@ internal fun EditorViewReady(
                 state.editor.language, currentViewport.height, state.scrollbar.x, font, theme
             ) {
                 derivedStateOf {
-                    state.editor.language.column?.let { column ->
+                    state.editor.language.guidelineColumn?.let { column ->
                         layerFactory.createGuidelineLayer(
                             column = column,
                             height = currentViewport.height,
@@ -291,12 +311,18 @@ internal fun EditorViewReady(
             val currentGuidelineLayer by rememberUpdatedState(guidelineLayer)
 
             val contentLayers by remember(
-                currentViewport.viewportLines, state.syntax, state.scrollbar.x, font, theme
+                currentViewport.viewportLines,
+                state.analysis?.tokensPerLine,
+                state.syntax?.tokensPerLine,
+                state.scrollbar.x,
+                font,
+                theme
             ) {
                 derivedStateOf {
                     layerFactory.createCodeAreaContentLayers(
                         viewportLines = currentViewport.viewportLines,
-                        tokensPerLine = state.syntax?.tokensPerLine,
+                        semanticTokensPerLine = state.analysis?.tokensPerLine,
+                        syntaxTokensPerLine = state.syntax?.tokensPerLine,
                         scrollX = state.scrollbar.x,
                         font = font,
                         theme = theme
@@ -305,6 +331,16 @@ internal fun EditorViewReady(
             }
 
             val currentContentLayers by rememberUpdatedState(contentLayers)
+
+            LaunchedEffect(currentContentLayers) {
+                if (currentContentLayers.isNotEmpty()) {
+                    val start = currentContentLayers.firstOrNull()?.viewportLine?.line ?: 0
+
+                    val end = currentContentLayers.lastOrNull()?.viewportLine?.line ?: 0
+
+                    execute(EditorCommand.UpdateViewport(start = start, end = end))
+                }
+            }
 
             val occurrenceLayers by remember(
                 state.editor.caret, state.syntax, currentContentLayers, state.scrollbar.x, theme
@@ -325,10 +361,6 @@ internal fun EditorViewReady(
             }
 
             val currentOccurrenceLayers by rememberUpdatedState(occurrenceLayers)
-
-            LaunchedEffect(state.analysis){
-                println(state.analysis)
-            }
 
             val issueLayers by remember(currentContentLayers, state.analysis, state.scrollbar.x, theme) {
                 derivedStateOf {
@@ -372,14 +404,50 @@ internal fun EditorViewReady(
 
             val currentCaretLayer by rememberUpdatedState(caretLayer)
 
-            LaunchedEffect(currentContentLayers) {
-                if (currentContentLayers.isNotEmpty()) {
-                    val start = currentContentLayers.firstOrNull()?.viewportLine?.line ?: 0
+            val caretOffset by remember(
+                state.editor.caret, currentContentLayers, state.scrollbar.x, gutterWidth, font, density
+            ) {
+                derivedStateOf {
+                    val caretLineLayer = currentContentLayers.find { currentCaretLayer ->
+                        currentCaretLayer.viewportLine.line == state.editor.caret.position.line
+                    }
 
-                    val end = currentContentLayers.lastOrNull()?.viewportLine?.line ?: 0
+                    when (caretLineLayer) {
+                        null -> null
 
-                    execute(EditorCommand.UpdateViewport(start = start, end = end))
+                        else -> {
+                            val xOffset = caretLineLayer.getCoordinateAtOffset(
+                                offset = state.editor.caret.position.column
+                            ).takeIf { offset ->
+                                offset > 0f || state.editor.caret.position.column == 0
+                            } ?: (state.editor.caret.position.column * font.charWidth)
+
+                            val xPx = gutterWidth + xOffset - state.scrollbar.x + Measurements.EDITOR_PADDING_START
+
+                            val yPx = caretLineLayer.viewportLine.textBaselineY + font.descent + 2f
+
+                            with(density) {
+                                Offset(xPx.toDp().value, yPx.toDp().value)
+                            }
+                        }
+                    }
                 }
+            }
+
+            val suggestionPopupOffset = when (val completion = state.suggestionState) {
+                is SuggestionState.Visible -> completion.offset
+
+                else -> null
+            }
+
+            val documentationPopupOffset = when {
+                state.suggestionState is SuggestionState.Visible -> suggestionPopupOffset?.let { offset ->
+                    Offset(offset.x + 320f, offset.y)
+                }
+
+                state.documentationState is DocumentationState.Visible -> state.documentationState.position
+
+                else -> null
             }
 
             LaunchedEffect(
@@ -463,6 +531,55 @@ internal fun EditorViewReady(
                             when (keyEvent.type) {
                                 KeyEventType.KeyDown -> {
                                     keyEvent.awtEventOrNull?.let { awtEvent ->
+                                        val suggestionState = state.suggestionState
+
+                                        if (suggestionState is SuggestionState.Visible) {
+                                            val suggestions = suggestionState.suggestions
+
+                                            val selectedIndex = suggestionState.selectedIndex
+
+                                            when (awtEvent.keyCode) {
+                                                KeyEvent.VK_DOWN -> {
+                                                    val newIndex = (selectedIndex + 1) % suggestions.size
+
+                                                    scope.launch {
+                                                        execute(EditorCommand.UpdateSuggestionsSelection(index = newIndex))
+                                                    }
+
+                                                    return@onKeyEvent true
+                                                }
+
+                                                KeyEvent.VK_UP -> {
+                                                    val newIndex =
+                                                        (selectedIndex - 1 + suggestions.size) % suggestions.size
+
+                                                    scope.launch {
+                                                        execute(EditorCommand.UpdateSuggestionsSelection(index = newIndex))
+                                                    }
+
+                                                    return@onKeyEvent true
+                                                }
+
+                                                KeyEvent.VK_ENTER, KeyEvent.VK_TAB -> {
+                                                    suggestions.getOrNull(selectedIndex)?.let { suggestion ->
+                                                        scope.launch {
+                                                            execute(EditorCommand.ApplySuggestion(suggestion = suggestion))
+                                                        }
+                                                    }
+
+                                                    return@onKeyEvent true
+                                                }
+
+                                                KeyEvent.VK_ESCAPE -> {
+                                                    scope.launch {
+                                                        execute(EditorCommand.DismissSuggestions)
+                                                    }
+
+                                                    return@onKeyEvent true
+                                                }
+                                            }
+                                        }
+
                                         scope.launch {
                                             execute(
                                                 EditorCommand.ProcessKey(
@@ -507,9 +624,9 @@ internal fun EditorViewReady(
                                             lineLayer.render(canvas = nativeCanvas)
                                         }
 
-                                        currentGutterActionLayers.forEach { actionLayer ->
-                                            actionLayer.render(canvas = nativeCanvas)
-                                        }
+//                                    currentGutterActionLayers.forEach { actionLayer ->
+//                                        actionLayer.render(canvas = nativeCanvas) // todo implement folding action
+//                                    }
 
                                         currentGutterSeparatorLayer.render(canvas = nativeCanvas)
 
@@ -521,10 +638,6 @@ internal fun EditorViewReady(
                                             r = Rect.makeWH(w = bounds.width - gutterWidth, h = bounds.height)
                                         )
 
-                                        currentIssueLayers.forEach { issueLayer ->
-                                            issueLayer.render(canvas = nativeCanvas)
-                                        }
-
                                         currentGuidelineLayer?.render(canvas = nativeCanvas)
 
                                         currentOccurrenceLayers.forEach { occurrenceLayer ->
@@ -535,6 +648,10 @@ internal fun EditorViewReady(
 
                                         currentContentLayers.forEach { contentLayer ->
                                             contentLayer.render(canvas = nativeCanvas)
+                                        }
+
+                                        currentIssueLayers.forEach { issueLayer ->
+                                            issueLayer.render(canvas = nativeCanvas)
                                         }
 
                                         if (caretVisible) {
@@ -550,6 +667,53 @@ internal fun EditorViewReady(
                         }.pointerHoverIcon(PointerIcon(Cursor(Cursor.TEXT_CURSOR)))
                     )
                 })
+            }
+
+            if (isFocused && state.suggestionState is SuggestionState.Visible) {
+                val suggestionState = state.suggestionState
+
+                LaunchedEffect(caretOffset) {
+                    val offset = caretOffset
+
+                    if (offset != null && offset != suggestionState.offset) {
+                        execute(
+                            EditorCommand.ShowSuggestions(
+                                suggestions = suggestionState.suggestions,
+                                offset = offset,
+                                selectedIndex = suggestionState.selectedIndex
+                            )
+                        )
+                    }
+                }
+
+                SuggestionPopup(
+                    offset = suggestionState.offset,
+                    suggestions = suggestionState.suggestions,
+                    selectedIndex = suggestionState.selectedIndex,
+                    theme = theme,
+                    onSuggestionClick = { suggestion ->
+                        scope.launch {
+                            execute(EditorCommand.ApplySuggestion(suggestion = suggestion))
+                        }
+                    })
+            }
+
+            if (isFocused && state.documentationState is DocumentationState.Visible) {
+                val documentationState = state.documentationState
+
+                LaunchedEffect(state.scrollbar.x, state.scrollbar.y) {
+                    execute(EditorCommand.DismissDocumentation)
+                }
+
+                DocumentationPopup(
+                    offset = documentationState.position,
+                    documentation = documentationState.documentation,
+                    theme = theme,
+                    onDismissRequest = {
+                        scope.launch {
+                            execute(EditorCommand.DismissDocumentation)
+                        }
+                    })
             }
         })
 }

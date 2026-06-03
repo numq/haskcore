@@ -7,9 +7,7 @@ import com.github.difflib.patch.DeltaType
 import io.github.numq.haskcore.common.core.text.*
 import io.github.numq.haskcore.service.text.buffer.RopeTextBufferFactory
 import io.github.numq.haskcore.service.text.buffer.TextBuffer
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -24,20 +22,34 @@ internal class LocalTextService(
 
     private val _textBuffer = MutableStateFlow<TextBuffer?>(null)
 
-    @OptIn(ExperimentalCoroutinesApi::class)
-    override val snapshot: StateFlow<TextSnapshot?> = _textBuffer.flatMapLatest { textBuffer ->
-        flow {
-            textBuffer?.snapshot?.let { snapshots ->
-                emitAll(snapshots)
-            }
+    @OptIn(ExperimentalCoroutinesApi::class, ExperimentalForInheritanceCoroutinesApi::class)
+    override val snapshot: StateFlow<TextSnapshot?> = object : StateFlow<TextSnapshot?> {
+        override val value: TextSnapshot?
+            get() = _textBuffer.value?.snapshot?.value
+
+        override val replayCache: List<TextSnapshot?>
+            get() = listOf(value)
+
+        override suspend fun collect(collector: FlowCollector<TextSnapshot?>): Nothing {
+            _textBuffer.flatMapLatest { textBuffer ->
+                textBuffer?.snapshot ?: flowOf(null)
+            }.collect(collector)
+
+            suspendCancellableCoroutine<Nothing> {}
         }
-    }.stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = null)
+    }
 
     private val _edits = MutableSharedFlow<TextEdit>(replay = 0, extraBufferCapacity = EDITS_BUFFER_CAPACITY)
 
     override val edits = _edits.asSharedFlow()
 
-    override suspend fun initialize(initialText: String) = bufferFactory.create(text = initialText).map { textBuffer ->
+    override suspend fun initialize(
+        initialText: String,
+    ) = bufferFactory.create(
+        text = initialText,
+        encoding = TextEncoding.UTF8,
+        lineEnding = TextLineEnding.analyze(text = initialText).dominant
+    ).map { textBuffer ->
         _textBuffer.value = textBuffer
     }
 
@@ -71,16 +83,16 @@ internal class LocalTextService(
                         }
                     }
                 }.map { data ->
-                    if (data != null) {
+                    if (data != null && !data.isEffectivelyEmpty()) {
                         val edit = when (operation) {
-                            is TextOperation.User -> TextEdit.User(revision = revision, data = data)
+                            is TextOperation.User -> TextEdit.User(revision = operation.revision, data = data)
 
-                            is TextOperation.System -> TextEdit.System(revision = revision, data = data)
+                            is TextOperation.System -> TextEdit.System(
+                                revision = textBuffer.snapshot.value.revision, data = data
+                            )
                         }
 
-                        if (edit.revision == revision) {
-                            _edits.emit(edit)
-                        }
+                        _edits.emit(edit)
                     }
                 }
             }

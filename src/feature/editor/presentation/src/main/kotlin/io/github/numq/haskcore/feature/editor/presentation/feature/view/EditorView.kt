@@ -2,6 +2,7 @@ package io.github.numq.haskcore.feature.editor.presentation.feature.view
 
 import androidx.compose.runtime.*
 import io.github.numq.haskcore.common.core.di.ScopeQualifier
+import io.github.numq.haskcore.common.core.language.Language
 import io.github.numq.haskcore.common.presentation.font.Font
 import io.github.numq.haskcore.common.presentation.theme.editor.EditorTheme
 import io.github.numq.haskcore.feature.editor.presentation.feature.EditorEvent
@@ -10,6 +11,7 @@ import io.github.numq.haskcore.feature.editor.presentation.feature.EditorState
 import io.github.numq.haskcore.feature.editor.presentation.layer.LayerFactory
 import org.koin.compose.getKoin
 import org.koin.compose.koinInject
+import org.koin.core.parameter.parametersOf
 import org.koin.core.scope.Scope
 
 @Composable
@@ -17,21 +19,24 @@ fun EditorView(
     projectScope: Scope,
     handleError: (Throwable) -> Unit,
     path: String?,
+    language: Language?,
     font: Font,
     theme: EditorTheme,
     layerFactory: LayerFactory,
 ) {
-    when (path) {
-        null -> EditorViewEmpty()
-
-        else -> {
+    when {
+        path != null && language != null -> {
             val koin = getKoin()
 
             val documentScope = remember(projectScope.id, path) {
+                val projectPath = projectScope.get<String>(qualifier = ScopeQualifier.Project)
+
                 val qualifier = ScopeQualifier.Document
 
                 koin.getOrCreateScope(scopeId = path, qualifier = qualifier, source = path).apply {
                     linkTo(projectScope)
+
+                    declare(instance = projectPath, qualifier = ScopeQualifier.Project)
 
                     declare(instance = path, qualifier = qualifier)
                 }
@@ -44,7 +49,9 @@ fun EditorView(
             }
 
             key(documentScope.id) {
-                val feature = koinInject<EditorFeature>(scope = documentScope)
+                val feature = koinInject<EditorFeature>(scope = documentScope) {
+                    parametersOf(path, language)
+                }
 
                 val state by feature.state.collectAsState()
 
@@ -69,5 +76,7 @@ fun EditorView(
                 }
             }
         }
+
+        else -> EditorViewEmpty()
     }
 }

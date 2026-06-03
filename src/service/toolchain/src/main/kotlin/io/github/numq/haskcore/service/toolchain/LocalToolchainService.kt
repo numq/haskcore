@@ -105,10 +105,31 @@ internal class LocalToolchainService(
         ghcPath: String?, cabalPath: String?, stackPath: String?, hlsPath: String?,
     ) = toolchainDataSource.update { toolchainData ->
         toolchainData.copy(
-            ghcPath = ghcPath ?: toolchainData.ghcPath,
-            cabalPath = cabalPath ?: toolchainData.cabalPath,
-            stackPath = stackPath ?: toolchainData.stackPath,
-            hlsPath = hlsPath ?: toolchainData.hlsPath
+            ghcPath = when {
+                ghcPath == null -> toolchainData.ghcPath
+
+                ghcPath.isEmpty() -> null
+
+                else -> ghcPath
+            }, cabalPath = when {
+                cabalPath == null -> toolchainData.cabalPath
+
+                cabalPath.isEmpty() -> null
+
+                else -> cabalPath
+            }, stackPath = when {
+                stackPath == null -> toolchainData.stackPath
+
+                stackPath.isEmpty() -> null
+
+                else -> stackPath
+            }, hlsPath = when {
+                hlsPath == null -> toolchainData.hlsPath
+
+                hlsPath.isEmpty() -> null
+
+                else -> hlsPath
+            }
         )
     }.map {}
 

@@ -16,15 +16,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.rememberWindowState
-import io.github.numq.haskcore.common.presentation.container.Container
-import io.github.numq.haskcore.common.presentation.tab.CloseableTabs
+import io.github.numq.haskcore.common.core.language.Language
 import io.github.numq.haskcore.common.presentation.window.WindowDecoration
-import io.github.numq.haskcore.feature.workspace.core.WorkspaceDocument
 import io.github.numq.haskcore.feature.workspace.presentation.feature.WorkspaceCommand
 import io.github.numq.haskcore.feature.workspace.presentation.feature.WorkspaceState
 import io.github.numq.haskcore.feature.workspace.presentation.shelf.ShelfPanelContent
-import io.github.numq.haskcore.feature.workspace.presentation.shelf.ShelfPanelContentHandle
-import io.github.numq.haskcore.feature.workspace.presentation.shelf.ShelfToolContent
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.Channel
@@ -45,8 +41,8 @@ internal fun WorkspaceViewReady(
     execution: @Composable () -> Unit,
     explorer: @Composable (path: String?) -> Unit,
     log: @Composable () -> Unit,
-    editor: @Composable (path: String?) -> Unit,
-    output: @Composable () -> Unit,
+    editor: @Composable (path: String?, language: Language?) -> Unit,
+    output: (@Composable () -> Unit)?,
     status: @Composable () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -66,7 +62,7 @@ internal fun WorkspaceViewReady(
         }
     } ?: DpSize(800.dp, 600.dp))
 
-    DisposableEffect(windowState) {
+    DisposableEffect(Unit) {
         onDispose {
             val workspace = state.workspace
 
@@ -92,7 +88,7 @@ internal fun WorkspaceViewReady(
         }
     }
 
-    LaunchedEffect(windowState) {
+    LaunchedEffect(Unit) {
         snapshotFlow {
             Triple(windowState.position, windowState.size, windowState.placement)
         }.distinctUntilChanged().conflate().debounce(500.milliseconds).collect { (position, size, placement) ->
@@ -227,25 +223,37 @@ internal fun WorkspaceViewReady(
                 initialPositionPercentage = state.workspace.verticalRatio
             )
 
-            DisposableEffect(verticalSplitPaneState) {
-                onDispose {
-                    val ratio = verticalSplitPaneState.positionPercentage
+            var lastActiveVerticalRatio by remember { mutableFloatStateOf(state.workspace.verticalRatio) }
 
-                    if (ratio != state.workspace.verticalRatio) {
-                        scope.launch(NonCancellable) {
-                            execute(WorkspaceCommand.SaveVerticalRatio(ratio = verticalSplitPaneState.positionPercentage))
+            DisposableEffect(output) {
+                onDispose {
+                    if (output != null) {
+                        val ratio = verticalSplitPaneState.positionPercentage
+
+                        if (ratio != state.workspace.verticalRatio) {
+                            scope.launch(NonCancellable) {
+                                execute(WorkspaceCommand.SaveVerticalRatio(ratio = verticalSplitPaneState.positionPercentage))
+                            }
                         }
                     }
                 }
             }
 
-            LaunchedEffect(verticalSplitPaneState) {
-                snapshotFlow {
-                    verticalSplitPaneState.positionPercentage
-                }.distinctUntilChanged().conflate().debounce(500.milliseconds)
-                    .filterNot(state.workspace.verticalRatio::equals).collect { ratio ->
-                        execute(WorkspaceCommand.SaveVerticalRatio(ratio = ratio))
+            LaunchedEffect(output) {
+                when (output) {
+                    null -> verticalSplitPaneState.positionPercentage = 1f
+
+                    else -> {
+                        verticalSplitPaneState.positionPercentage = lastActiveVerticalRatio
+
+                        snapshotFlow {
+                            verticalSplitPaneState.positionPercentage
+                        }.distinctUntilChanged().conflate().debounce(500.milliseconds)
+                            .filterNot(state.workspace.verticalRatio::equals).collect { ratio ->
+                                execute(WorkspaceCommand.SaveVerticalRatio(ratio = ratio))
+                            }
                     }
+                }
             }
 
             val leftWeight by remember(localLeftRatio, state.workspace.shelf.leftPanel.activeTool) {
@@ -286,109 +294,34 @@ internal fun WorkspaceViewReady(
                             execute(WorkspaceCommand.SelectShelfTool(tool = tool))
                         }
                     })
-
-                    BoxWithConstraints(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                        val totalWidth = constraints.maxWidth.toFloat()
-
-                        VerticalSplitPane(
-                            modifier = Modifier.fillMaxSize(), splitPaneState = verticalSplitPaneState
-                        ) {
-                            first {
-                                Row(
-                                    modifier = Modifier.fillMaxSize(),
-                                    horizontalArrangement = Arrangement.Start,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    if (leftWeight > 0f) {
-                                        Box(modifier = Modifier.weight(leftWeight)) {
-                                            state.workspace.shelf.leftPanel.activeTool?.let { tool ->
-                                                ShelfToolContent(tool = tool, explorer = {
-                                                    explorer(state.workspace.activeDocument?.path)
-                                                }, log = log)
-                                            }
-                                        }
-
-                                        ShelfPanelContentHandle(
-                                            totalWidth = totalWidth, onPositionChange = { deltaX ->
-                                                if (totalWidth > 0f) {
-                                                    val currentRatio = localLeftRatio
-
-                                                    val delta = deltaX / totalWidth
-
-                                                    localLeftRatio = (localLeftRatio + delta).coerceIn(.05f, .4f)
-
-                                                    if (localLeftRatio != currentRatio) {
-                                                        scope.launch {
-                                                            leftRatioChannel.send(localLeftRatio)
-                                                        }
-                                                    }
-                                                }
-                                            })
+                    VerticalSplitPane(
+                        modifier = Modifier.weight(1f), splitPaneState = verticalSplitPaneState
+                    ) {
+                        first(minSize = 48.dp) {
+                            WorkspaceContent(
+                                workspace = state.workspace,
+                                execute = execute,
+                                leftWeight = leftWeight,
+                                localLeftRatio = localLeftRatio,
+                                changeLocalLeftRatio = { ratio ->
+                                    scope.launch {
+                                        leftRatioChannel.send(ratio)
                                     }
-
-                                    Box(modifier = Modifier.weight(centerWeight), contentAlignment = Alignment.Center) {
-                                        state.workspace.activeDocument?.let { activeDocument ->
-                                            Container {
-                                                Column(
-                                                    modifier = Modifier.fillMaxSize(),
-                                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                                    verticalArrangement = Arrangement.Top
-                                                ) {
-                                                    CloseableTabs(
-                                                        modifier = Modifier.fillMaxWidth(),
-                                                        items = state.workspace.documents,
-                                                        activeItem = state.workspace.activeDocument,
-                                                        getItemName = WorkspaceDocument::name,
-                                                        select = { document ->
-                                                            scope.launch {
-                                                                execute(WorkspaceCommand.OpenDocument(document = document))
-                                                            }
-                                                        },
-                                                        close = { document ->
-                                                            scope.launch {
-                                                                execute(WorkspaceCommand.CloseDocument(document = document))
-                                                            }
-                                                        })
-                                                    Box(
-                                                        modifier = Modifier.weight(1f),
-                                                        contentAlignment = Alignment.Center
-                                                    ) {
-                                                        editor(activeDocument.path)
-                                                    }
-                                                }
-                                            }
-                                        }
+                                },
+                                rightWeight = rightWeight,
+                                localRightRatio = localRightRatio,
+                                changeLocalRightRatio = { ratio ->
+                                    scope.launch {
+                                        rightRatioChannel.send(ratio)
                                     }
-
-                                    if (rightWeight > 0f) {
-                                        ShelfPanelContentHandle(
-                                            totalWidth = totalWidth, onPositionChange = { deltaX ->
-                                                if (totalWidth > 0f) {
-                                                    val currentRatio = localRightRatio
-
-                                                    val delta = -deltaX / totalWidth
-
-                                                    localRightRatio = (localRightRatio + delta).coerceIn(.05f, .4f)
-
-                                                    if (localRightRatio != currentRatio) {
-                                                        scope.launch {
-                                                            rightRatioChannel.send(localRightRatio)
-                                                        }
-                                                    }
-                                                }
-                                            })
-
-                                        Box(modifier = Modifier.weight(rightWeight)) {
-                                            state.workspace.shelf.rightPanel.activeTool?.let { tool ->
-                                                ShelfToolContent(tool = tool, explorer = {
-                                                    explorer(state.workspace.activeDocument?.path)
-                                                }, log = log)
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-
+                                },
+                                centerWeight = centerWeight,
+                                explorer = explorer,
+                                log = log,
+                                editor = editor
+                            )
+                        }
+                        if (output != null) {
                             splitter {
                                 handle {
                                     Box(
@@ -402,9 +335,12 @@ internal fun WorkspaceViewReady(
                                     )
                                 }
                             }
+                        }
+                        second(minSize = 48.dp) {
+                            when (output) {
+                                null -> Spacer(modifier = Modifier.height(0.dp))
 
-                            second(minSize = 48.dp) {
-                                output()
+                                else -> output()
                             }
                         }
                     }

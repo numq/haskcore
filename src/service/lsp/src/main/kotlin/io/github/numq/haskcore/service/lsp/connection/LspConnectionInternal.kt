@@ -6,11 +6,11 @@ import java.util.concurrent.Future
 import java.util.concurrent.TimeUnit
 
 internal sealed interface LspConnectionInternal : AutoCloseable {
-    data class Error(val throwable: Throwable) : LspConnectionInternal {
+    data object Disconnected : LspConnectionInternal {
         override fun close() = Unit
     }
 
-    data object Disconnected : LspConnectionInternal {
+    data class Error(val throwable: Throwable) : LspConnectionInternal {
         override fun close() = Unit
     }
 
@@ -19,7 +19,10 @@ internal sealed interface LspConnectionInternal : AutoCloseable {
     }
 
     data class Connected(
-        val process: Process, val future: Future<Void>, val server: LanguageServer, val tokenLegend: LspTokenLegend,
+        val process: Process,
+        val future: Future<Void>,
+        val server: LanguageServer,
+        val tokenLegend: LspTokenLegend,
     ) : LspConnectionInternal {
         private companion object {
             const val SERVER_SHUTDOWN_TIMEOUT_MILLIS = 500L

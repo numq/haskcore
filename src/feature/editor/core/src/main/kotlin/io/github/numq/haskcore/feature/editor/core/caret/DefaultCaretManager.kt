@@ -18,23 +18,37 @@ internal class DefaultCaretManager(private val scope: CoroutineScope) : CaretMan
 
     override val caret = _caret.asStateFlow()
 
-    private fun transformSingle(current: TextPosition, data: TextEdit.Data.Single) = when {
-        current < data.startPosition -> current
+    private fun transformSingle(current: TextPosition, data: TextEdit.Data.Single): TextPosition {
+        if (current < data.startPosition) return current
 
-        current <= data.oldEndPosition -> data.newEndPosition
+        val oldEnd = when (data) {
+            is TextEdit.Data.Single.Insert -> data.startPosition
 
-        else -> {
-            val lineDiff = data.newEndPosition.line - data.oldEndPosition.line
+            is TextEdit.Data.Single.Delete -> data.oldEndPosition
 
-            when (current.line) {
-                data.oldEndPosition.line -> {
-                    val columnDiff = data.newEndPosition.column - data.oldEndPosition.column
+            is TextEdit.Data.Single.Replace -> data.oldEndPosition
+        }
 
-                    TextPosition(line = current.line + lineDiff, column = current.column + columnDiff)
-                }
+        if (current <= oldEnd) {
+            return when (data) {
+                is TextEdit.Data.Single.Insert -> data.newEndPosition
 
-                else -> current.copy(line = current.line + lineDiff)
+                is TextEdit.Data.Single.Delete -> data.startPosition
+
+                is TextEdit.Data.Single.Replace -> data.newEndPosition
             }
+        }
+
+        val lineDiff = data.newEndPosition.line - oldEnd.line
+
+        return when (current.line) {
+            oldEnd.line -> {
+                val columnDiff = data.newEndPosition.column - oldEnd.column
+
+                TextPosition(line = current.line + lineDiff, column = current.column + columnDiff)
+            }
+
+            else -> TextPosition(line = current.line + lineDiff, column = current.column)
         }
     }
 
@@ -60,20 +74,12 @@ internal class DefaultCaretManager(private val scope: CoroutineScope) : CaretMan
         }
     }
 
-    private fun TextPosition.coerceIn(snapshot: TextSnapshot): TextPosition {
-        val line = line.coerceIn(0, snapshot.lines - 1)
-
-        val maxColumn = snapshot.getLineLength(line = line)
-
-        return TextPosition(line = line, column = column.coerceIn(0, maxColumn))
-    }
-
     override suspend fun handleTextEdit(snapshot: TextSnapshot, data: TextEdit.Data): Either<Throwable, Unit> = either {
         val currentPosition = _caret.value.position
 
         val nextPosition = transformPosition(current = currentPosition, data = data)
 
-        val validPosition = nextPosition.coerceIn(snapshot)
+        val validPosition = nextPosition.coerceIn(snapshot = snapshot)
 
         _caret.value = Caret(position = validPosition)
 
@@ -81,7 +87,7 @@ internal class DefaultCaretManager(private val scope: CoroutineScope) : CaretMan
     }
 
     override suspend fun moveTo(snapshot: TextSnapshot, position: TextPosition): Either<Throwable, Unit> = either {
-        val validPosition = position.coerceIn(snapshot)
+        val validPosition = position.coerceIn(snapshot = snapshot)
 
         updateCaretOnly(snapshot = snapshot, position = validPosition)
 
@@ -106,7 +112,7 @@ internal class DefaultCaretManager(private val scope: CoroutineScope) : CaretMan
         }
 
         if (next != current) {
-            val validPosition = next.coerceIn(snapshot)
+            val validPosition = next.coerceIn(snapshot = snapshot)
 
             updateCaretOnly(snapshot = snapshot, position = validPosition)
 
@@ -128,7 +134,7 @@ internal class DefaultCaretManager(private val scope: CoroutineScope) : CaretMan
         }
 
         if (next != current) {
-            val validPosition = next.coerceIn(snapshot)
+            val validPosition = next.coerceIn(snapshot = snapshot)
 
             updateCaretOnly(snapshot = snapshot, position = validPosition)
 

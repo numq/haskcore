@@ -1,15 +1,18 @@
 package io.github.numq.haskcore.service.syntax.folding
 
 import arrow.core.Either
+import io.github.numq.haskcore.common.core.text.TextRange
+import io.github.numq.haskcore.common.core.text.TextSnapshot
 import io.github.numq.haskcore.service.syntax.toTSPoint
 import io.github.numq.haskcore.service.syntax.toTextPosition
-import io.github.numq.haskcore.common.core.text.TextRange
 import org.treesitter.TSQuery
 import org.treesitter.TSQueryCursor
 import org.treesitter.TSTree
 
 internal class HaskellSyntaxFoldingProvider : SyntaxFoldingProvider {
-    override suspend fun getSyntaxFoldingRegions(tree: TSTree, localsQuery: TSQuery, range: TextRange) = Either.catch {
+    override suspend fun getSyntaxFoldingRegions(
+        tree: TSTree, localsQuery: TSQuery, snapshot: TextSnapshot, range: TextRange,
+    ) = Either.catch {
         val cursor = TSQueryCursor().apply {
             setPointRange(range.start.toTSPoint(), range.end.toTSPoint())
         }

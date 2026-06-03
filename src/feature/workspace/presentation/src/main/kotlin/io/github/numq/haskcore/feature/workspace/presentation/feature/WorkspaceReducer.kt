@@ -5,10 +5,10 @@ import io.github.numq.haskcore.feature.workspace.core.usecase.*
 import kotlinx.coroutines.flow.map
 
 internal class WorkspaceReducer(
-    private val closeWorkspaceDocument: CloseWorkspaceDocument,
+    private val closeDocument: CloseDocument,
     private val closeWorkspace: CloseWorkspace,
     private val observeWorkspace: ObserveWorkspace,
-    private val openWorkspaceDocument: OpenWorkspaceDocument,
+    private val openDocument: OpenDocument,
     private val saveDimensions: SaveDimensions,
     private val saveVerticalRatio: SaveVerticalRatio,
     private val selectShelfTool: SelectShelfTool,
@@ -56,7 +56,7 @@ internal class WorkspaceReducer(
         is WorkspaceCommand.OpenDocument -> transition(state).effect(
             action(
                 key = command.key, fallback = WorkspaceCommand::HandleFailure, block = {
-                    openWorkspaceDocument(input = OpenWorkspaceDocument.Input(path = command.document.path)).fold(
+                    openDocument(input = OpenDocument.Input(path = command.document.path)).fold(
                         ifLeft = WorkspaceCommand::HandleFailure, ifRight = { WorkspaceCommand.OpenDocumentSuccess })
                 })
         )
@@ -66,7 +66,7 @@ internal class WorkspaceReducer(
         is WorkspaceCommand.CloseDocument -> transition(state).effect(
             action(
                 key = command.key, fallback = WorkspaceCommand::HandleFailure, block = {
-                    closeWorkspaceDocument(input = CloseWorkspaceDocument.Input(path = command.document.path)).fold(
+                    closeDocument(input = CloseDocument.Input(path = command.document.path)).fold(
                         ifLeft = WorkspaceCommand::HandleFailure, ifRight = { WorkspaceCommand.CloseDocumentSuccess })
                 })
         )

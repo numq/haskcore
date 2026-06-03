@@ -10,7 +10,7 @@ import java.util.concurrent.TimeoutException
 
 internal class LocalProcessRunner : ProcessRunner {
     private companion object {
-        const val TIMEOUT_MILLIS = 5_000L
+        const val TIMEOUT_MILLIS = 30_000L
     }
 
     override suspend fun runCommand(path: String, vararg args: String) = either {

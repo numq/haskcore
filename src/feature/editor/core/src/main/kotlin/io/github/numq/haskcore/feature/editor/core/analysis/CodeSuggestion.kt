@@ -5,7 +5,7 @@ import io.github.numq.haskcore.common.core.text.TextRange
 data class CodeSuggestion(
     val label: String,
     val kind: Kind,
-    val insertText: String,
+    val text: String,
     val detail: String? = null,
     val documentation: String? = null,
     val range: TextRange? = null,

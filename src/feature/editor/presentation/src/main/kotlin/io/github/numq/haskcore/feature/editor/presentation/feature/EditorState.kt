@@ -3,6 +3,8 @@ package io.github.numq.haskcore.feature.editor.presentation.feature
 import io.github.numq.haskcore.feature.editor.core.Editor
 import io.github.numq.haskcore.feature.editor.core.analysis.Analysis
 import io.github.numq.haskcore.feature.editor.core.syntax.Syntax
+import io.github.numq.haskcore.feature.editor.presentation.suggestions.SuggestionState
+import io.github.numq.haskcore.feature.editor.presentation.documentation.DocumentationState
 import io.github.numq.haskcore.feature.editor.presentation.menu.EditorMenu
 import io.github.numq.haskcore.feature.editor.presentation.scrollbar.Scrollbar
 
@@ -16,5 +18,7 @@ internal sealed interface EditorState {
         val menu: EditorMenu = EditorMenu.Hidden,
         val analysis: Analysis? = null,
         val syntax: Syntax? = null,
+        val documentationState: DocumentationState = DocumentationState.Hidden,
+        val suggestionState: SuggestionState = SuggestionState.Hidden,
     ) : EditorState
 }

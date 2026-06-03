@@ -33,18 +33,20 @@ val editorFeatureCoreModule = module {
             LocalEditorService(scope = scope, caretManager = get(), selectionManager = get())
         } bind EditorService::class
 
+        scopedOwner { ApplyCodeSuggestion(editorService = get(), textService = get()) }
+
+        scopedOwner {
+            val documentPath = get<String>(qualifier = ScopeQualifier.Document)
+
+            DismissCodeDocumentation(path = documentPath, lspService = get())
+        }
+
         scopedOwner { ExtendSelection(editorService = get(), textService = get()) }
 
         scopedOwner { MoveCaret(editorService = get(), textService = get()) }
 
         scopedOwner {
-            ObserveAnalysis(
-                editorService = get(),
-                loggerService = get(),
-                lspService = get(),
-                textService = get(),
-                toolchainService = get()
-            )
+            ObserveAnalysis(editorService = get(), loggerService = get(), lspService = get(), textService = get())
         }
 
         scopedOwner {
@@ -53,7 +55,6 @@ val editorFeatureCoreModule = module {
                 documentService = get(),
                 journalService = get(),
                 loggerService = get(),
-                lspService = get(),
                 textService = get(),
                 vfsService = get()
             )
@@ -75,6 +76,12 @@ val editorFeatureCoreModule = module {
                 keymapService = get(),
                 textService = get()
             )
+        }
+
+        scopedOwner {
+            val documentPath = get<String>(qualifier = ScopeQualifier.Document)
+
+            RequestCodeDocumentation(path = documentPath, lspService = get())
         }
 
         scopedOwner { UpdateActiveLines(editorService = get()) }

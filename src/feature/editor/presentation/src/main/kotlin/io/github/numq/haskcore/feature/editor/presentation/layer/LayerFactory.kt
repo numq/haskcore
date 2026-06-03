@@ -6,7 +6,7 @@ import io.github.numq.haskcore.feature.editor.core.analysis.CodeIssue
 import io.github.numq.haskcore.feature.editor.core.caret.Caret
 import io.github.numq.haskcore.feature.editor.core.selection.Selection
 import io.github.numq.haskcore.feature.editor.core.syntax.Occurrence
-import io.github.numq.haskcore.feature.editor.core.syntax.Token
+import io.github.numq.haskcore.feature.editor.core.token.Token
 import io.github.numq.haskcore.feature.editor.presentation.background.BackgroundLayer
 import io.github.numq.haskcore.feature.editor.presentation.background.BackgroundOutlineLayer
 import io.github.numq.haskcore.feature.editor.presentation.background.HighlightedLineLayer
@@ -45,7 +45,8 @@ interface LayerFactory {
 
     fun createCodeAreaContentLayers(
         viewportLines: List<ViewportLine>,
-        tokensPerLine: Map<Int, List<Token>>?,
+        semanticTokensPerLine: Map<Int, List<Token>>?,
+        syntaxTokensPerLine: Map<Int, List<Token>>?,
         scrollX: Float,
         font: Font,
         theme: EditorTheme,

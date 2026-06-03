@@ -8,7 +8,7 @@ import io.github.numq.haskcore.feature.output.core.usecase.OpenOutputSession
 import io.github.numq.haskcore.feature.output.presentation.menu.OutputMenu
 import kotlinx.coroutines.flow.map
 
-internal class OutputReducer(
+class OutputReducer(
     private val closeOutputSession: CloseOutputSession,
     private val copySessionText: CopySessionText,
     private val observeOutput: ObserveOutput,

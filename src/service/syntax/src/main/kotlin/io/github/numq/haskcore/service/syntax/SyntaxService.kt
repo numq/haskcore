@@ -14,7 +14,7 @@ interface SyntaxService : AutoCloseable {
 
     suspend fun applyChange(snapshot: TextSnapshot, data: TextEdit.Data, range: TextRange): Either<Throwable, Unit>
 
-    suspend fun parseFoldingRegions(range: TextRange): Either<Throwable, Unit>
+    suspend fun parseFoldingRegions(snapshot: TextSnapshot, range: TextRange): Either<Throwable, Unit>
 
     suspend fun parseOccurrences(position: TextPosition): Either<Throwable, Unit>
 

@@ -7,6 +7,8 @@ internal object DraculaOverlayColorPalette : OverlayColorPalette {
 
     override val tooltipBorderColor = 0xFF6b7090.toInt()
 
+    override val unknownUnderlineColor = 0xFF6b7090.toInt()
+
     override val errorUnderlineColor = 0xFFff5555.toInt()
 
     override val warningUnderlineColor = 0xFFffb86c.toInt()
@@ -15,15 +17,15 @@ internal object DraculaOverlayColorPalette : OverlayColorPalette {
 
     override val hintUnderlineColor = 0xFF50fa7b.toInt()
 
-    override val autocompleteBackgroundColor = 0xFF3a3d4c.toInt()
+    override val suggestionsBackgroundColor = 0xFF3a3d4c.toInt()
 
-    override val autocompleteSelectedBackgroundColor = 0xFF242632.toInt()
+    override val suggestionsSelectedBackgroundColor = 0xFF242632.toInt()
 
-    override val autocompleteTextColor = 0xFFf8f8f2.toInt()
+    override val suggestionsTextColor = 0xFFf8f8f2.toInt()
 
-    override val autocompleteSelectedTextColor = 0xFFf8f8f2.toInt()
+    override val suggestionsSelectedTextColor = 0xFFf8f8f2.toInt()
 
-    override val autocompleteBorderColor = 0xFF6b7090.toInt()
+    override val suggestionsBorderColor = 0xFF6b7090.toInt()
 
     override val contextMenuBackgroundColor = 0xFF3a3d4c.toInt()
 

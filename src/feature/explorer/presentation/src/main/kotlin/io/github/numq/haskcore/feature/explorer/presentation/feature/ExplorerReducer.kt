@@ -6,7 +6,7 @@ import io.github.numq.haskcore.feature.explorer.core.ExplorerTree
 import io.github.numq.haskcore.feature.explorer.core.usecase.*
 import kotlinx.coroutines.flow.map
 
-internal class ExplorerReducer(
+class ExplorerReducer(
     private val collapseDirectory: CollapseDirectory,
     private val expandDirectory: ExpandDirectory,
     private val observeExplorerTree: ObserveExplorerTree,

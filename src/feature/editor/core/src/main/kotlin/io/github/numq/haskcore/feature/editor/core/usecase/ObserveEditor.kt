@@ -4,7 +4,6 @@ import arrow.core.flatMap
 import arrow.core.getOrElse
 import arrow.core.raise.Raise
 import arrow.core.raise.either
-import io.github.numq.haskcore.common.core.language.Language
 import io.github.numq.haskcore.common.core.text.TextEdit
 import io.github.numq.haskcore.common.core.text.TextOperation
 import io.github.numq.haskcore.common.core.text.TextSnapshot
@@ -15,7 +14,6 @@ import io.github.numq.haskcore.feature.editor.core.EditorService
 import io.github.numq.haskcore.service.document.DocumentService
 import io.github.numq.haskcore.service.journal.JournalService
 import io.github.numq.haskcore.service.logger.LoggerService
-import io.github.numq.haskcore.service.lsp.LspService
 import io.github.numq.haskcore.service.text.TextService
 import io.github.numq.haskcore.service.vfs.VfsService
 import kotlinx.atomicfu.atomic
@@ -28,7 +26,6 @@ class ObserveEditor(
     private val documentService: DocumentService,
     private val journalService: JournalService,
     private val loggerService: LoggerService, // todo
-    private val lspService: LspService,
     private val textService: TextService,
     private val vfsService: VfsService,
 ) : UseCase.Exchange<ObserveEditor.Input, Flow<Editor>> {
@@ -59,7 +56,7 @@ class ObserveEditor(
     @OptIn(FlowPreview::class)
     private suspend fun observeAutoSave(path: String) {
         textService.snapshot.filterNotNull().drop(1).sample(AUTO_SAVE_SAMPLE_MILLIS).collect { snapshot ->
-            documentService.saveDocument(path = path, content = snapshot.text).flatMap {
+            documentService.saveDocument(path = path, content = snapshot.text, encoding = snapshot.encoding).flatMap {
                 editorService.getLastModifiedTimestamp(path = path)
             }.onRight { lastModifiedTimestamp ->
                 lastWrite.value = lastModifiedTimestamp
@@ -68,12 +65,11 @@ class ObserveEditor(
     }
 
     private suspend fun observeEditing() {
-        combine(
-            flow = textService.snapshot.filterNotNull(),
-            flow2 = textService.edits.onStart { emit(null) },
-            transform = { snapshot, edit ->
-                editorService.handleEdit(snapshot = snapshot, edit = edit).getOrElse(::println) // todo
-            }).collect()
+        textService.edits.collect { edit ->
+            val snapshot = textService.snapshot.value ?: return@collect
+
+            editorService.handleEdit(snapshot = snapshot, edit = edit).getOrElse(::println) // todo
+        }
     }
 
     private suspend fun observeFileSystemChanges(path: String) {
@@ -100,7 +96,7 @@ class ObserveEditor(
 
     private suspend fun observeJournaling() {
         textService.edits.filterNotNull().collect { edit ->
-            if (edit is TextEdit.User) {
+            if (edit is TextEdit.User && !edit.data.isEffectivelyEmpty()) {
                 journalService.push(edit = edit).getOrElse(::println) // todo
             }
         }
@@ -111,28 +107,20 @@ class ObserveEditor(
             throw throwable // todo
         }
 
+        val language = document.metadata.language
+
         val text = document.content
 
-        textService.initialize(initialText = text).flatMap {
-            lspService.openDocument(path = path, text = text)
-        }.getOrElse { throwable ->
-            println(throwable) // todo
-        }
-
-        val language = when {
-            document.isHaskell -> Language.Haskell
-
-            else -> Language.Undefined
-        }
+        textService.initialize(initialText = text).getOrElse(::println) // todo
 
         channelFlow {
             launch { observeAutoSave(path = path) }
 
+            launch { observeEditing() }
+
             launch { observeFileSystemChanges(path = path) }
 
             launch { observeJournaling() }
-
-            launch { observeEditing() }
 
             try {
                 combine(
@@ -146,7 +134,9 @@ class ObserveEditor(
                 val snapshot = textService.snapshot.value
 
                 if (snapshot != null) {
-                    documentService.saveDocument(path = path, content = snapshot.text).getOrElse { throwable ->
+                    documentService.saveDocument(
+                        path = path, content = snapshot.text, encoding = snapshot.encoding
+                    ).getOrElse { throwable ->
                         throw throwable // todo
                     }
                 }

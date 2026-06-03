@@ -23,6 +23,10 @@ data class TextRange(val start: TextPosition, val end: TextPosition) {
 
     val isMultiLine: Boolean get() = start.line != end.line
 
+    fun coerceIn(snapshot: TextSnapshot) = TextRange(
+        start = start.coerceIn(snapshot), end = end.coerceIn(snapshot)
+    )
+
     fun contains(position: TextPosition): Boolean {
         if (position.line < start.line || position.line > end.line) return false
 

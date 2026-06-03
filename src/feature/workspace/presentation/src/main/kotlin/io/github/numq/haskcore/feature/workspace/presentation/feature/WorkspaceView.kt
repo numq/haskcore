@@ -5,6 +5,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.painter.Painter
+import io.github.numq.haskcore.common.core.language.Language
 import io.github.numq.haskcore.feature.workspace.presentation.feature.view.WorkspaceViewLoading
 import io.github.numq.haskcore.feature.workspace.presentation.feature.view.WorkspaceViewReady
 import org.koin.compose.koinInject
@@ -19,8 +20,8 @@ fun WorkspaceView(
     execution: @Composable () -> Unit,
     explorer: @Composable (path: String?) -> Unit,
     log: @Composable () -> Unit,
-    editor: @Composable (path: String?) -> Unit,
-    output: @Composable () -> Unit,
+    editor: @Composable (path: String?, language: Language?) -> Unit,
+    output: (@Composable () -> Unit)?,
     status: @Composable () -> Unit,
 ) {
     val feature = koinInject<WorkspaceFeature>(scope = projectScope)

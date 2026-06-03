@@ -10,6 +10,8 @@ val bootstrapFeatureCoreModule = module {
     scope<ScopeQualifier.Type.Application> {
         scopedOwner { DefaultBootstrapService() } bind BootstrapService::class
 
-        scopedOwner { Boot(sessionService = get(), bootstrapService = get(), highlightingServiceInitializer = get()) }
+        scopedOwner {
+            Boot(sessionService = get(), bootstrapService = get(), highlightingServiceInitializer = get())
+        }
     }
 }
