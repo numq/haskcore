@@ -15,6 +15,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import io.github.numq.haskcore.feature.execution.core.Execution
+import io.github.numq.haskcore.feature.execution.core.LaunchTarget
 import io.github.numq.haskcore.feature.execution.presentation.button.ExecutionButton
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
@@ -43,7 +44,19 @@ fun ExecutionView(projectScope: Scope, handleError: (Throwable) -> Unit) {
 
         is Execution.Synced.NotFound -> "Not found"
 
-        is Execution.Synced.Found -> execution.currentConfiguration.name
+        is Execution.Synced.Found -> {
+            val toolchain = when (execution.currentConfiguration.target) {
+                is LaunchTarget.File -> "GHC"
+
+                is LaunchTarget.Cabal -> "Cabal"
+
+                is LaunchTarget.Stack -> "Stack"
+            }
+
+            val name = execution.currentConfiguration.name
+
+            "$name [$toolchain]"
+        }
 
         is Execution.Error -> "Error"
     }
@@ -82,7 +95,19 @@ fun ExecutionView(projectScope: Scope, handleError: (Throwable) -> Unit) {
                     expanded = false
                 }) {
                     (state.execution as? Execution.Synced.Found)?.configurations?.forEach { configuration ->
-                        DropdownMenuItem(text = { Text(configuration.name) }, onClick = {
+                        DropdownMenuItem(text = {
+                            val toolchain = when (configuration.target) {
+                                is LaunchTarget.File -> "GHC"
+
+                                is LaunchTarget.Cabal -> "Cabal"
+
+                                is LaunchTarget.Stack -> "Stack"
+                            }
+
+                            val text = "${configuration.name} [$toolchain]"
+
+                            Text(text)
+                        }, onClick = {
                             scope.launch {
                                 feature.execute(ExecutionCommand.SelectConfiguration(configuration = configuration))
 

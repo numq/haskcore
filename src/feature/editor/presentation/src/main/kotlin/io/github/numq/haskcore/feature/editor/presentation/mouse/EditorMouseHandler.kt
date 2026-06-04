@@ -142,7 +142,12 @@ internal fun EditorMouseHandler(
                                     hoverJob = scope.launch {
                                         delay(500L)
 
-                                        execute(EditorCommand.RequestDocumentation(position = position))
+                                        execute(
+                                            EditorCommand.RequestDocumentation(
+                                                position = position,
+                                                offset = change.position
+                                            )
+                                        )
                                     }
                                 }
                             }

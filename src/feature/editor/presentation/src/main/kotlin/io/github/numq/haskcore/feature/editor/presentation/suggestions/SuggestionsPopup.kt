@@ -75,7 +75,7 @@ internal fun SuggestionPopup(
                 )
             ) {
                 Box(
-                    modifier = Modifier.sizeIn(maxWidth = 300.dp, maxHeight = 200.dp)
+                    modifier = Modifier.sizeIn(maxWidth = 512.dp, maxHeight = 256.dp)
                         .background(Color(theme.overlayColorPalette.suggestionsBackgroundColor))
                         .border(1.dp, Color(theme.overlayColorPalette.suggestionsBorderColor)).padding(vertical = 4.dp)
                 ) {

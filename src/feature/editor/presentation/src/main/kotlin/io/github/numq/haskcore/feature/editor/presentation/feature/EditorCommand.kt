@@ -49,9 +49,9 @@ internal sealed interface EditorCommand {
 
     data object UpdateViewportSuccess : EditorCommand
 
-    data class ShowDocumentation(val documentation: CodeDocumentation, val position: Offset) : EditorCommand
+    data class ShowDocumentation(val documentation: CodeDocumentation, val offset: Offset) : EditorCommand
 
-    data class RequestDocumentation(val position: TextPosition) : EditorCommand {
+    data class RequestDocumentation(val position: TextPosition, val offset: Offset) : EditorCommand {
         val key = Key.REQUEST_DOCUMENTATION
     }
 
@@ -61,7 +61,7 @@ internal sealed interface EditorCommand {
         val key = Key.DISMISS_DOCUMENTATION
     }
 
-    data class DismissDocumentationSuccess(val documentation: CodeDocumentation) : EditorCommand
+    data object DismissDocumentationSuccess : EditorCommand
 
     data class ShowSuggestions(
         val suggestions: List<CodeSuggestion>, val offset: Offset, val selectedIndex: Int = 0,

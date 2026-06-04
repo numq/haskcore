@@ -5,7 +5,7 @@ import io.github.numq.haskcore.common.presentation.feature.*
 import io.github.numq.haskcore.feature.editor.core.usecase.*
 import io.github.numq.haskcore.feature.editor.presentation.documentation.DocumentationState
 import io.github.numq.haskcore.feature.editor.presentation.menu.MenuReducer
-import io.github.numq.haskcore.feature.editor.presentation.suggestions.SuggestionState
+import io.github.numq.haskcore.feature.editor.presentation.suggestions.SuggestionsState
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 
@@ -73,10 +73,10 @@ internal class EditorReducer(
 
                 transition(
                     state.copy(
-                        editor = command.editor, suggestionState = when {
-                            isCaretChanged -> SuggestionState.Hidden
+                        editor = command.editor, suggestionsState = when {
+                            isCaretChanged -> SuggestionsState.Hidden
 
-                            else -> state.suggestionState
+                            else -> state.suggestionsState
                         }, documentationState = when {
                             isCaretChanged -> DocumentationState.Hidden
 
@@ -101,30 +101,36 @@ internal class EditorReducer(
 
                 val suggestions = command.analysis.suggestions
 
-                val updatedState = when {
-                    suggestions.isNotEmpty() -> when (state.suggestionState) {
-                        is SuggestionState.Visible -> {
-                            newState.copy(
-                                suggestionState = state.suggestionState.copy(
-                                    suggestions = suggestions,
-                                    selectedIndex = state.suggestionState.selectedIndex.coerceIn(
-                                        0, suggestions.size - 1
-                                    )
-                                )
-                            )
-                        }
+                val documentation = command.analysis.documentation
 
-                        is SuggestionState.Hidden -> newState.copy(
-                            suggestionState = SuggestionState.Visible(
-                                suggestions = suggestions, offset = Offset.Zero
+                val stateWithSuggestions = when {
+                    suggestions.isNotEmpty() -> when (state.suggestionsState) {
+                        is SuggestionsState.Visible -> newState.copy(
+                            suggestionsState = state.suggestionsState.copy(
+                                suggestions = suggestions,
+                                selectedIndex = state.suggestionsState.selectedIndex.coerceIn(0, suggestions.size - 1)
                             )
+                        )
+
+                        is SuggestionsState.Hidden -> newState.copy(
+                            suggestionsState = SuggestionsState.Visible(suggestions = suggestions, offset = Offset.Zero)
                         )
                     }
 
-                    else -> newState.copy(suggestionState = SuggestionState.Hidden)
+                    else -> newState.copy(suggestionsState = SuggestionsState.Hidden)
                 }
 
-                transition(updatedState)
+                val stateWithDocumentation = when {
+                    documentation != null && state.documentationState is DocumentationState.Visible -> stateWithSuggestions.copy(
+                        documentationState = DocumentationState.Visible(
+                            documentation = documentation, offset = state.documentationState.offset
+                        )
+                    )
+
+                    else -> stateWithSuggestions.copy(documentationState = DocumentationState.Hidden)
+                }
+
+                transition(stateWithDocumentation)
             }
 
             else -> transition(state)
@@ -163,7 +169,7 @@ internal class EditorReducer(
             is EditorState.Ready -> transition(
                 state.copy(
                     documentationState = DocumentationState.Visible(
-                        documentation = command.documentation, position = command.position
+                        documentation = command.documentation, offset = command.offset
                     )
                 )
             )
@@ -201,7 +207,7 @@ internal class EditorReducer(
         is EditorCommand.ShowSuggestions -> when (state) {
             is EditorState.Ready -> transition(
                 state.copy(
-                    suggestionState = SuggestionState.Visible(
+                    suggestionsState = SuggestionsState.Visible(
                         suggestions = command.suggestions, offset = command.offset
                     )
                 )
@@ -211,10 +217,10 @@ internal class EditorReducer(
         }
 
         is EditorCommand.UpdateSuggestionsSelection -> when (state) {
-            is EditorState.Ready -> when (val suggestionState = state.suggestionState) {
-                is SuggestionState.Visible -> transition(
+            is EditorState.Ready -> when (val suggestionState = state.suggestionsState) {
+                is SuggestionsState.Visible -> transition(
                     state.copy(
-                        suggestionState = suggestionState.copy(
+                        suggestionsState = suggestionState.copy(
                             selectedIndex = command.index.coerceIn(
                                 0, suggestionState.suggestions.size - 1
                             )
@@ -231,7 +237,7 @@ internal class EditorReducer(
         is EditorCommand.ApplySuggestion -> when (state) {
             is EditorState.Loading -> transition(state)
 
-            is EditorState.Ready -> transition(state.copy(suggestionState = SuggestionState.Hidden)).effect(
+            is EditorState.Ready -> transition(state.copy(suggestionsState = SuggestionsState.Hidden)).effect(
                 action(
                     key = command.key, fallback = EditorCommand::HandleFailure, block = {
                         applyCodeSuggestion(
@@ -253,7 +259,7 @@ internal class EditorReducer(
         is EditorCommand.DismissSuggestions -> when (state) {
             is EditorState.Loading -> transition(state)
 
-            is EditorState.Ready -> transition(state.copy(suggestionState = SuggestionState.Hidden))
+            is EditorState.Ready -> transition(state.copy(suggestionsState = SuggestionsState.Hidden))
         }
 
         is EditorCommand.ProcessKey -> transition(state).effect(
@@ -288,7 +294,7 @@ internal class EditorReducer(
             is EditorState.Loading -> transition(state)
 
             is EditorState.Ready -> transition(
-                state.copy(suggestionState = SuggestionState.Hidden, documentationState = DocumentationState.Hidden)
+                state.copy(suggestionsState = SuggestionsState.Hidden, documentationState = DocumentationState.Hidden)
             )
         }
 

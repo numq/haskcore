@@ -135,6 +135,7 @@ class ObserveAnalysis(
                     end = TextPosition(line = endLine, column = snapshot.getLineText(line = endLine).length)
 
                 )
+
                 lspService.requestTokens(path = path, snapshot = snapshot, range = range)
             }
         }
