@@ -3,11 +3,11 @@ package io.github.numq.haskcore.common.presentation.theme.editor.palette.overlay
 import io.github.numq.haskcore.common.presentation.theme.editor.palette.ColorPalette
 
 interface OverlayColorPalette : ColorPalette {
-    val tooltipBackgroundColor: Int
+    val documentationBackgroundColor: Int
 
-    val tooltipTextColor: Int
+    val documentationTextColor: Int
 
-    val tooltipBorderColor: Int
+    val documentationBorderColor: Int
 
     val unknownUnderlineColor: Int
 

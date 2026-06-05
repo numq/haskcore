@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.Flow
 
 internal sealed interface EditorCommand {
     enum class Key {
-        INITIALIZE_EDITOR, INITIALIZE_EDITOR_SUCCESS, INITIALIZE_ANALYSIS, INITIALIZE_ANALYSIS_SUCCESS, INITIALIZE_SYNTAX, INITIALIZE_SYNTAX_SUCCESS, UPDATE_VIEWPORT, REQUEST_DOCUMENTATION, DISMISS_DOCUMENTATION, COMPLETE_CODE, PROCESS_KEY, MOVE_CARET, START_SELECTION, EXTEND_SELECTION
+        INITIALIZE_EDITOR, INITIALIZE_EDITOR_SUCCESS, INITIALIZE_ANALYSIS, INITIALIZE_ANALYSIS_SUCCESS, INITIALIZE_SYNTAX, INITIALIZE_SYNTAX_SUCCESS, UPDATE_VIEWPORT, DOCUMENTATION_HOVER, SHOW_SUGGESTIONS, APPLY_SUGGESTION, PROCESS_KEY, MOVE_CARET, START_SELECTION, EXTEND_SELECTION
     }
 
     data class HandleFailure(val throwable: Throwable) : EditorCommand
@@ -49,39 +49,49 @@ internal sealed interface EditorCommand {
 
     data object UpdateViewportSuccess : EditorCommand
 
-    data class ShowDocumentation(val documentation: CodeDocumentation, val offset: Offset) : EditorCommand
+    sealed interface DocumentationHover : EditorCommand {
+        data class Enter(val position: TextPosition, val offset: Offset) : DocumentationHover {
+            val key = Key.DOCUMENTATION_HOVER
+        }
 
-    data class RequestDocumentation(val position: TextPosition, val offset: Offset) : EditorCommand {
-        val key = Key.REQUEST_DOCUMENTATION
+        data object Exit : DocumentationHover {
+            val key = Key.DOCUMENTATION_HOVER
+        }
     }
 
-    data object RequestDocumentationSuccess : EditorCommand
-
-    data object DismissDocumentation : EditorCommand {
-        val key = Key.DISMISS_DOCUMENTATION
-    }
-
-    data object DismissDocumentationSuccess : EditorCommand
-
-    data class ShowSuggestions(
-        val suggestions: List<CodeSuggestion>, val offset: Offset, val selectedIndex: Int = 0,
+    data class ShowDocumentationSuccess(
+        val position: TextPosition, val offset: Offset, val documentation: CodeDocumentation,
     ) : EditorCommand
+
+    data object DismissDocumentation : EditorCommand
+
+    data class ShowSuggestions(val position: TextPosition, val offset: Offset) : EditorCommand {
+        val key = Key.SHOW_SUGGESTIONS
+    }
+
+    data class ShowSuggestionsSuccess(val suggestions: List<CodeSuggestion>, val offset: Offset) : EditorCommand
 
     data class UpdateSuggestionsSelection(val index: Int) : EditorCommand
 
     data class ApplySuggestion(val suggestion: CodeSuggestion) : EditorCommand {
-        val key = Key.COMPLETE_CODE
+        val key = Key.APPLY_SUGGESTION
     }
-
-    data object ApplySuggestionSuccess : EditorCommand
 
     data object DismissSuggestions : EditorCommand
 
-    data class ProcessKey(val keyCode: Int, val modifiers: Int, val utf16CodePoint: Int) : EditorCommand {
+    data class ProcessKey(
+        val keyCode: Int,
+        val modifiers: Int,
+        val utf16CodePoint: Int,
+        val position: TextPosition? = null,
+        val offset: Offset? = null,
+    ) : EditorCommand {
         val key = Key.PROCESS_KEY
     }
 
-    data object ProcessKeySuccess : EditorCommand
+    data class ProcessKeySuccess(
+        val utf16CodePoint: Int, val position: TextPosition?, val offset: Offset?,
+    ) : EditorCommand
 
     data class MoveCaret(val position: TextPosition) : EditorCommand {
         val key = Key.MOVE_CARET

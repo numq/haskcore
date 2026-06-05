@@ -11,6 +11,7 @@ import java.awt.datatransfer.ClipboardOwner
 import java.awt.datatransfer.DataFlavor
 import java.awt.datatransfer.StringSelection
 import java.awt.datatransfer.Transferable
+import kotlin.time.Duration.Companion.milliseconds
 import java.awt.datatransfer.Clipboard as SystemClipboard
 
 internal class DefaultClipboardService(
@@ -29,7 +30,7 @@ internal class DefaultClipboardService(
                     _clipboard.value = Clipboard(text = text)
                 }
 
-                delay(500L)
+                delay(500.milliseconds)
             }
         }
     }

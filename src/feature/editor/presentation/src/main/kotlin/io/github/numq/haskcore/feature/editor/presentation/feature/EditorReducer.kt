@@ -1,13 +1,15 @@
 package io.github.numq.haskcore.feature.editor.presentation.feature
 
-import androidx.compose.ui.geometry.Offset
 import io.github.numq.haskcore.common.presentation.feature.*
+import io.github.numq.haskcore.feature.editor.core.token.Token
 import io.github.numq.haskcore.feature.editor.core.usecase.*
 import io.github.numq.haskcore.feature.editor.presentation.documentation.DocumentationState
 import io.github.numq.haskcore.feature.editor.presentation.menu.MenuReducer
 import io.github.numq.haskcore.feature.editor.presentation.suggestions.SuggestionsState
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlin.time.Duration.Companion.milliseconds
 
 internal class EditorReducer(
     private val menuReducer: MenuReducer,
@@ -15,8 +17,8 @@ internal class EditorReducer(
     private val observeEditor: ObserveEditor,
     private val observeSyntax: ObserveSyntax,
     private val updateActiveLines: UpdateActiveLines,
-    private val requestCodeDocumentation: RequestCodeDocumentation,
-    private val dismissCodeDocumentation: DismissCodeDocumentation,
+    private val getCodeDocumentation: GetCodeDocumentation,
+    private val getCodeSuggestions: GetCodeSuggestions,
     private val applyCodeSuggestion: ApplyCodeSuggestion,
     private val processKey: ProcessKey,
     private val moveCaret: MoveCaret,
@@ -68,23 +70,7 @@ internal class EditorReducer(
         is EditorCommand.UpdateEditor -> when (state) {
             is EditorState.Loading -> transition(EditorState.Ready(editor = command.editor))
 
-            is EditorState.Ready -> {
-                val isCaretChanged = command.editor.caret.position != state.editor.caret.position
-
-                transition(
-                    state.copy(
-                        editor = command.editor, suggestionsState = when {
-                            isCaretChanged -> SuggestionsState.Hidden
-
-                            else -> state.suggestionsState
-                        }, documentationState = when {
-                            isCaretChanged -> DocumentationState.Hidden
-
-                            else -> state.documentationState
-                        }
-                    )
-                )
-            }
+            is EditorState.Ready -> transition(state.copy(editor = command.editor))
         }
 
         is EditorCommand.InitializeAnalysisSuccess -> transition(state).effect(
@@ -96,42 +82,9 @@ internal class EditorReducer(
         )
 
         is EditorCommand.UpdateAnalysis -> when (state) {
-            is EditorState.Ready if command.analysis?.revision == state.editor.snapshot.revision -> {
-                val newState = state.copy(analysis = command.analysis)
-
-                val suggestions = command.analysis.suggestions
-
-                val documentation = command.analysis.documentation
-
-                val stateWithSuggestions = when {
-                    suggestions.isNotEmpty() -> when (state.suggestionsState) {
-                        is SuggestionsState.Visible -> newState.copy(
-                            suggestionsState = state.suggestionsState.copy(
-                                suggestions = suggestions,
-                                selectedIndex = state.suggestionsState.selectedIndex.coerceIn(0, suggestions.size - 1)
-                            )
-                        )
-
-                        is SuggestionsState.Hidden -> newState.copy(
-                            suggestionsState = SuggestionsState.Visible(suggestions = suggestions, offset = Offset.Zero)
-                        )
-                    }
-
-                    else -> newState.copy(suggestionsState = SuggestionsState.Hidden)
-                }
-
-                val stateWithDocumentation = when {
-                    documentation != null && state.documentationState is DocumentationState.Visible -> stateWithSuggestions.copy(
-                        documentationState = DocumentationState.Visible(
-                            documentation = documentation, offset = state.documentationState.offset
-                        )
-                    )
-
-                    else -> stateWithSuggestions.copy(documentationState = DocumentationState.Hidden)
-                }
-
-                transition(stateWithDocumentation)
-            }
+            is EditorState.Ready if command.analysis?.revision == state.editor.snapshot.revision -> transition(
+                state.copy(analysis = command.analysis)
+            )
 
             else -> transition(state)
         }
@@ -165,46 +118,110 @@ internal class EditorReducer(
 
         is EditorCommand.UpdateViewportSuccess -> transition(state)
 
-        is EditorCommand.ShowDocumentation -> when (state) {
+        is EditorCommand.DocumentationHover.Enter -> when (state) {
+            is EditorState.Loading -> transition(state)
+
+            is EditorState.Ready -> transition(state).effect(
+                action(
+                    key = command.key, fallback = EditorCommand::HandleFailure, block = {
+                        val lineTokens = state.syntax?.tokensPerLine?.get(command.position.line) ?: emptyList()
+
+                        val tokenUnderCursor = lineTokens.find { token ->
+                            command.position.column >= token.range.start.column && command.position.column < token.range.end.column
+                        }
+
+                        val isMeaningfulToken = tokenUnderCursor != null && tokenUnderCursor.type !in listOf(
+                            Token.Type.UNKNOWN,
+                            Token.Type.PUNCTUATION_BRACKET,
+                            Token.Type.PUNCTUATION_DELIMITER,
+                            Token.Type.COMMENT,
+                            Token.Type.COMMENT_DOCUMENTATION
+                        )
+
+                        when {
+                            !isMeaningfulToken -> EditorCommand.DismissDocumentation
+
+                            else -> {
+                                delay(500.milliseconds)
+
+                                getCodeDocumentation(input = GetCodeDocumentation.Input(position = command.position)).fold(
+                                    ifLeft = EditorCommand::HandleFailure, ifRight = { documentation ->
+                                        when (documentation) {
+                                            null -> EditorCommand.DismissDocumentation
+
+                                            else -> EditorCommand.ShowDocumentationSuccess(
+                                                position = command.position,
+                                                offset = command.offset,
+                                                documentation = documentation,
+                                            )
+                                        }
+                                    })
+                            }
+                        }
+                    })
+            )
+        }
+
+        is EditorCommand.DocumentationHover.Exit -> when (state) {
+            is EditorState.Loading -> transition(state)
+
+            is EditorState.Ready -> transition(state).effect(
+                action(
+                    key = command.key, fallback = EditorCommand::HandleFailure, block = {
+                        delay(250.milliseconds)
+
+                        EditorCommand.DismissDocumentation
+                    })
+            )
+        }
+
+        is EditorCommand.ShowDocumentationSuccess -> when (state) {
+            is EditorState.Loading -> transition(state)
+
             is EditorState.Ready -> transition(
                 state.copy(
                     documentationState = DocumentationState.Visible(
-                        documentation = command.documentation, offset = command.offset
+                        documentation = command.documentation, offset = command.offset, position = command.position
                     )
                 )
             )
-
-            else -> transition(state)
         }
 
-        is EditorCommand.RequestDocumentation -> transition(state).effect(
-            action(
-                key = command.key, fallback = EditorCommand::HandleFailure, block = {
-                    requestCodeDocumentation(input = RequestCodeDocumentation.Input(position = command.position)).fold(
-                        ifLeft = EditorCommand::HandleFailure, ifRight = {
-                            EditorCommand.RequestDocumentationSuccess
-                        })
-                })
-        )
-
-        is EditorCommand.RequestDocumentationSuccess -> transition(state)
-
-        is EditorCommand.DismissDocumentation -> transition(state).effect(
-            action(
-                key = command.key, fallback = EditorCommand::HandleFailure, block = {
-                    dismissCodeDocumentation(input = Unit).fold(ifLeft = EditorCommand::HandleFailure, ifRight = {
-                        EditorCommand.ProcessKeySuccess
-                    })
-                })
-        )
-
-        is EditorCommand.DismissDocumentationSuccess -> when (state) {
+        is EditorCommand.DismissDocumentation -> when (state) {
             is EditorState.Loading -> transition(state)
 
-            is EditorState.Ready -> transition(state.copy(documentationState = DocumentationState.Hidden))
+            is EditorState.Ready -> when (state.documentationState) {
+                is DocumentationState.Hidden -> transition(state)
+
+                is DocumentationState.Visible -> transition(state.copy(documentationState = DocumentationState.Hidden))
+            }
         }
 
         is EditorCommand.ShowSuggestions -> when (state) {
+            is EditorState.Loading -> transition(state)
+
+            is EditorState.Ready -> transition(state).effect(
+                action(
+                    key = command.key, fallback = EditorCommand::HandleFailure, block = {
+                        delay(150.milliseconds)
+
+                        getCodeSuggestions(input = GetCodeSuggestions.Input(position = command.position)).fold(
+                            ifLeft = EditorCommand::HandleFailure, ifRight = { suggestions ->
+                                when {
+                                    suggestions.isEmpty() -> EditorCommand.DismissSuggestions
+
+                                    else -> EditorCommand.ShowSuggestionsSuccess(
+                                        suggestions = suggestions, offset = command.offset
+                                    )
+                                }
+                            })
+                    })
+            )
+        }
+
+        is EditorCommand.ShowSuggestionsSuccess -> when (state) {
+            is EditorState.Loading -> transition(state)
+
             is EditorState.Ready -> transition(
                 state.copy(
                     suggestionsState = SuggestionsState.Visible(
@@ -212,12 +229,14 @@ internal class EditorReducer(
                     )
                 )
             )
-
-            else -> transition(state)
         }
 
         is EditorCommand.UpdateSuggestionsSelection -> when (state) {
+            is EditorState.Loading -> transition(state)
+
             is EditorState.Ready -> when (val suggestionState = state.suggestionsState) {
+                is SuggestionsState.Hidden -> transition(state)
+
                 is SuggestionsState.Visible -> transition(
                     state.copy(
                         suggestionsState = suggestionState.copy(
@@ -227,17 +246,13 @@ internal class EditorReducer(
                         )
                     )
                 )
-
-                else -> transition(state)
             }
-
-            else -> transition(state)
         }
 
         is EditorCommand.ApplySuggestion -> when (state) {
             is EditorState.Loading -> transition(state)
 
-            is EditorState.Ready -> transition(state.copy(suggestionsState = SuggestionsState.Hidden)).effect(
+            is EditorState.Ready -> transition(state).effect(
                 action(
                     key = command.key, fallback = EditorCommand::HandleFailure, block = {
                         applyCodeSuggestion(
@@ -247,14 +262,10 @@ internal class EditorReducer(
                                 suggestion = command.suggestion
                             )
                         ).fold(
-                            ifLeft = EditorCommand::HandleFailure, ifRight = {
-                                EditorCommand.ApplySuggestionSuccess
-                            })
+                            ifLeft = EditorCommand::HandleFailure, ifRight = { EditorCommand.DismissSuggestions })
                     })
             )
         }
-
-        is EditorCommand.ApplySuggestionSuccess -> transition(state)
 
         is EditorCommand.DismissSuggestions -> when (state) {
             is EditorState.Loading -> transition(state)
@@ -262,7 +273,11 @@ internal class EditorReducer(
             is EditorState.Ready -> transition(state.copy(suggestionsState = SuggestionsState.Hidden))
         }
 
-        is EditorCommand.ProcessKey -> transition(state).effect(
+        is EditorCommand.ProcessKey -> when (state) {
+            is EditorState.Loading -> transition(state)
+
+            is EditorState.Ready -> transition(state.copy(documentationState = DocumentationState.Hidden))
+        }.effect(
             action(
                 key = command.key, fallback = EditorCommand::HandleFailure, block = {
                     processKey(
@@ -273,14 +288,40 @@ internal class EditorReducer(
                         )
                     ).fold(
                         ifLeft = EditorCommand::HandleFailure, ifRight = {
-                            EditorCommand.ProcessKeySuccess
+                            EditorCommand.ProcessKeySuccess(
+                                utf16CodePoint = command.utf16CodePoint,
+                                position = command.position,
+                                offset = command.offset
+                            )
                         })
                 })
         )
 
-        is EditorCommand.ProcessKeySuccess -> transition(state)
+        is EditorCommand.ProcessKeySuccess -> when (command.offset) {
+            null -> transition(state)
 
-        is EditorCommand.MoveCaret -> transition(state).effect(
+            else -> {
+                val char = command.utf16CodePoint.toChar()
+
+                when {
+                    command.position == null || char.isWhitespace() -> reduce(state, EditorCommand.DismissSuggestions)
+
+                    else -> reduce(
+                        state, EditorCommand.ShowSuggestions(position = command.position, offset = command.offset)
+                    )
+                }
+            }
+        }
+
+        is EditorCommand.MoveCaret -> when (state) {
+            is EditorState.Loading -> transition(state)
+
+            is EditorState.Ready -> transition(
+                state.copy(
+                    documentationState = DocumentationState.Hidden, suggestionsState = SuggestionsState.Hidden
+                )
+            )
+        }.effect(
             action(
                 key = command.key, fallback = EditorCommand::HandleFailure, block = {
                     moveCaret(input = MoveCaret.Input(position = command.position)).fold(
@@ -290,18 +331,16 @@ internal class EditorReducer(
                 })
         )
 
-        is EditorCommand.MoveCaretSuccess -> when (state) {
-            is EditorState.Loading -> transition(state)
-
-            is EditorState.Ready -> transition(
-                state.copy(suggestionsState = SuggestionsState.Hidden, documentationState = DocumentationState.Hidden)
-            )
-        }
+        is EditorCommand.MoveCaretSuccess -> transition(state)
 
         is EditorCommand.TextSelection.Start -> when (state) {
             is EditorState.Loading -> transition(state)
 
-            is EditorState.Ready -> transition(state).effect(
+            is EditorState.Ready -> transition(
+                state.copy(
+                    documentationState = DocumentationState.Hidden, suggestionsState = SuggestionsState.Hidden
+                )
+            ).effect(
                 action(key = command.key, fallback = EditorCommand::HandleFailure) {
                     startSelection(input = StartSelection.Input(position = command.position)).fold(
                         ifLeft = EditorCommand::HandleFailure, ifRight = { EditorCommand.TextSelection.StartSuccess })

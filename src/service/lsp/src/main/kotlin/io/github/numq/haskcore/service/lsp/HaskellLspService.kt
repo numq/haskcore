@@ -10,7 +10,6 @@ import io.github.numq.haskcore.common.core.text.TextPosition
 import io.github.numq.haskcore.common.core.text.TextRange
 import io.github.numq.haskcore.common.core.text.TextRevision
 import io.github.numq.haskcore.common.core.text.TextSnapshot
-import io.github.numq.haskcore.service.lsp.completion.LspCompletion
 import io.github.numq.haskcore.service.lsp.connection.LspConnectionInternal
 import io.github.numq.haskcore.service.lsp.diagnostic.LspDiagnostic
 import io.github.numq.haskcore.service.lsp.hover.LspHover
@@ -55,14 +54,6 @@ internal class HaskellLspService(
     override val connection = _connection.map(LspConnectionInternal::toLspConnection).stateIn(
         scope = scope, started = SharingStarted.Eagerly, initialValue = _connection.value.toLspConnection()
     )
-
-    private val _hover = MutableStateFlow<LspHover?>(null)
-
-    override val hover = _hover.asStateFlow()
-
-    private val _completions = MutableStateFlow(emptyList<LspCompletion>())
-
-    override val completions = _completions.asStateFlow()
 
     private val _references = MutableStateFlow(emptyList<LspReference>())
 
@@ -412,7 +403,7 @@ internal class HaskellLspService(
         else -> Unit.right()
     }
 
-    override suspend fun requestHover(path: String, position: TextPosition) = try {
+    override suspend fun getHover(path: String, position: TextPosition) = try {
         when (val currentConnection = _connection.value) {
             is LspConnectionInternal.Connected -> {
                 val uri = buildUri(path = path)
@@ -422,7 +413,7 @@ internal class HaskellLspService(
                     this.position = Position(position.line, position.column)
                 }
 
-                _hover.value = currentConnection.server.textDocumentService?.hover(params)?.awaitWithoutServerCancel()
+                currentConnection.server.textDocumentService?.hover(params)?.awaitWithoutServerCancel()
                     ?.let { response ->
                         val contentsString = response.extractContentsString()
 
@@ -433,27 +424,21 @@ internal class HaskellLspService(
                             )
                         }
 
-                        LspHover(content = contentsString, range = textRange)
+                        contentsString.takeUnless(String::isEmpty)?.let { content ->
+                            LspHover(content = contentsString, range = textRange)
+                        }
                     }
             }
 
-            else -> _hover.value = null
-        }
-
-        Unit.right()
+            else -> null
+        }.right()
     } catch (exception: CancellationException) {
         throw exception
     } catch (throwable: Throwable) {
-        _hover.value = null
-
         throwable.left()
     }
 
-    override suspend fun dismissHover(path: String) = Either.catch {
-        _hover.value = null
-    }
-
-    override suspend fun requestCompletions(path: String, position: TextPosition) = try {
+    override suspend fun getCompletions(path: String, position: TextPosition) = try {
         when (val currentConnection = _connection.value) {
             is LspConnectionInternal.Connected -> {
                 val uri = buildUri(path = path)
@@ -479,18 +464,14 @@ internal class HaskellLspService(
                     else -> emptyList()
                 }
 
-                _completions.value = items.map(CompletionItem::toLspCompletion)
+                items.map(CompletionItem::toLspCompletion)
             }
 
-            else -> _completions.value = emptyList()
-        }
-
-        Unit.right()
+            else -> emptyList()
+        }.right()
     } catch (exception: CancellationException) {
         throw exception
     } catch (throwable: Throwable) {
-        _completions.value = emptyList()
-
         throwable.left()
     }
 
@@ -599,10 +580,6 @@ internal class HaskellLspService(
         _reconnectAttempts.value = 0
 
         _connection.getAndUpdate { LspConnectionInternal.Disconnected }.close()
-
-        _hover.value = null
-
-        _completions.value = emptyList()
 
         _references.value = emptyList()
 

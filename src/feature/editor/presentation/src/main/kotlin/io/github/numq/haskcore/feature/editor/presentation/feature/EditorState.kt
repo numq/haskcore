@@ -3,10 +3,10 @@ package io.github.numq.haskcore.feature.editor.presentation.feature
 import io.github.numq.haskcore.feature.editor.core.Editor
 import io.github.numq.haskcore.feature.editor.core.analysis.Analysis
 import io.github.numq.haskcore.feature.editor.core.syntax.Syntax
-import io.github.numq.haskcore.feature.editor.presentation.suggestions.SuggestionsState
 import io.github.numq.haskcore.feature.editor.presentation.documentation.DocumentationState
 import io.github.numq.haskcore.feature.editor.presentation.menu.EditorMenu
 import io.github.numq.haskcore.feature.editor.presentation.scrollbar.Scrollbar
+import io.github.numq.haskcore.feature.editor.presentation.suggestions.SuggestionsState
 
 internal sealed interface EditorState {
     data object Loading : EditorState

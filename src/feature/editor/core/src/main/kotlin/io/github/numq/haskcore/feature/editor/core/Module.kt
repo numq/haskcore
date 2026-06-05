@@ -35,12 +35,6 @@ val editorFeatureCoreModule = module {
 
         scopedOwner { ApplyCodeSuggestion(editorService = get(), textService = get()) }
 
-        scopedOwner {
-            val documentPath = get<String>(qualifier = ScopeQualifier.Document)
-
-            DismissCodeDocumentation(path = documentPath, lspService = get())
-        }
-
         scopedOwner { ExtendSelection(editorService = get(), textService = get()) }
 
         scopedOwner { MoveCaret(editorService = get(), textService = get()) }
@@ -81,7 +75,13 @@ val editorFeatureCoreModule = module {
         scopedOwner {
             val documentPath = get<String>(qualifier = ScopeQualifier.Document)
 
-            RequestCodeDocumentation(path = documentPath, lspService = get())
+            GetCodeDocumentation(path = documentPath, lspService = get())
+        }
+
+        scopedOwner {
+            val documentPath = get<String>(qualifier = ScopeQualifier.Document)
+
+            GetCodeSuggestions(path = documentPath, lspService = get())
         }
 
         scopedOwner { UpdateActiveLines(editorService = get()) }

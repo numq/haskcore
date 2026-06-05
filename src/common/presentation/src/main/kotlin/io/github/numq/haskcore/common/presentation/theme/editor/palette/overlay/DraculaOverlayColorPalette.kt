@@ -1,11 +1,11 @@
 package io.github.numq.haskcore.common.presentation.theme.editor.palette.overlay
 
 internal object DraculaOverlayColorPalette : OverlayColorPalette {
-    override val tooltipBackgroundColor = 0xFF3a3d4c.toInt()
+    override val documentationBackgroundColor = 0xFF3a3d4c.toInt()
 
-    override val tooltipTextColor = 0xFFf8f8f2.toInt()
+    override val documentationTextColor = 0xFFf8f8f2.toInt()
 
-    override val tooltipBorderColor = 0xFF6b7090.toInt()
+    override val documentationBorderColor = 0xFF6b7090.toInt()
 
     override val unknownUnderlineColor = 0xFF6b7090.toInt()
 

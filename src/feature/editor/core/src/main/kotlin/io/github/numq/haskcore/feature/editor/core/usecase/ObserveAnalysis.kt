@@ -6,13 +6,13 @@ import io.github.numq.haskcore.common.core.text.TextPosition
 import io.github.numq.haskcore.common.core.text.TextRange
 import io.github.numq.haskcore.common.core.text.TextSnapshot
 import io.github.numq.haskcore.common.core.usecase.UseCase
-import io.github.numq.haskcore.feature.editor.core.*
+import io.github.numq.haskcore.feature.editor.core.EditorService
 import io.github.numq.haskcore.feature.editor.core.analysis.Analysis
+import io.github.numq.haskcore.feature.editor.core.toCodeIssue
+import io.github.numq.haskcore.feature.editor.core.toToken
 import io.github.numq.haskcore.service.logger.LoggerService
 import io.github.numq.haskcore.service.lsp.LspService
-import io.github.numq.haskcore.service.lsp.completion.LspCompletion
 import io.github.numq.haskcore.service.lsp.diagnostic.LspDiagnostic
-import io.github.numq.haskcore.service.lsp.hover.LspHover
 import io.github.numq.haskcore.service.lsp.token.LspToken
 import io.github.numq.haskcore.service.text.TextService
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -57,19 +57,10 @@ class ObserveAnalysis(
             launch { observeEdits(path = path).collect() }
 
             combine(
-                flow = currentSnapshot,
-                flow2 = currentFileDiagnostics,
-                flow3 = lspService.hover,
-                flow4 = lspService.completions,
-                flow5 = lspService.tokens
-            ) { snapshot, diagnostics, hover, completions, tokens ->
+                flow = currentSnapshot, flow2 = currentFileDiagnostics, flow3 = lspService.tokens
+            ) { snapshot, diagnostics, tokens ->
                 createAnalysis(
-                    snapshot = snapshot,
-                    hover = hover,
-                    diagnostics = diagnostics,
-                    completions = completions,
-                    tokens = tokens,
-                    normalizedPath = normalizedPath
+                    snapshot = snapshot, diagnostics = diagnostics, tokens = tokens, normalizedPath = normalizedPath
                 )
             }.distinctUntilChanged().collect(::send)
         }
@@ -77,31 +68,17 @@ class ObserveAnalysis(
 
     private fun createAnalysis(
         snapshot: TextSnapshot,
-        hover: LspHover?,
         diagnostics: List<LspDiagnostic>,
-        completions: List<LspCompletion>,
         tokens: Map<String, List<LspToken>>,
         normalizedPath: String,
     ): Analysis {
-        val documentation = hover?.toDocumentation()
-
         val issues = diagnostics.map(LspDiagnostic::toCodeIssue)
-
-        val suggestions = completions.map(LspCompletion::toCodeSuggestion).distinctBy { suggestion ->
-            suggestion.label to suggestion.kind
-        }
 
         val tokensPerLine = tokens[normalizedPath].orEmpty().groupBy { token ->
             token.range.start.line
         }.mapValues { (_, lineTokens) -> lineTokens.map(LspToken::toToken) }
 
-        return Analysis(
-            revision = snapshot.revision,
-            documentation = documentation,
-            issues = issues,
-            suggestions = suggestions,
-            tokensPerLine = tokensPerLine
-        )
+        return Analysis(revision = snapshot.revision, issues = issues, tokensPerLine = tokensPerLine)
     }
 
     private fun normalizePath(path: String): String = runCatching {
@@ -121,8 +98,6 @@ class ObserveAnalysis(
         Triple(snapshot, caret, activeLines)
     }.map { (snapshot, caret, activeLines) ->
         coroutineScope {
-            launch { lspService.requestCompletions(path = path, position = caret.position) }
-
             launch { lspService.requestReferences(path = path, position = caret.position) }
 
             launch {

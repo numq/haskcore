@@ -7,6 +7,6 @@ internal sealed interface SuggestionsState {
     data object Hidden : SuggestionsState
 
     data class Visible(
-        val suggestions: List<CodeSuggestion>, val selectedIndex: Int = 0, val offset: Offset,
+        val suggestions: List<CodeSuggestion>, val offset: Offset, val selectedIndex: Int = 0,
     ) : SuggestionsState
 }

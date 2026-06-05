@@ -8,6 +8,7 @@ plugins {
 dependencies {
     implementation(projects.common.presentation)
     implementation(projects.feature.editor.core)
+    implementation(libs.compose.rich.editor)
 }
 
 tasks.withType<Test>().configureEach {

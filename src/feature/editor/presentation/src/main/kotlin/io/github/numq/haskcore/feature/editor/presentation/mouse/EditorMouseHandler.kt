@@ -12,8 +12,11 @@ import io.github.numq.haskcore.feature.editor.presentation.feature.EditorCommand
 import io.github.numq.haskcore.feature.editor.presentation.scrollbar.Scrollbar
 import io.github.numq.haskcore.feature.editor.presentation.text.TextContentLayer
 import io.github.numq.haskcore.feature.editor.presentation.viewport.Viewport
-import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -26,6 +29,7 @@ internal fun EditorMouseHandler(
     snapshot: TextSnapshot,
     gutterWidth: Float,
     scrollbar: Scrollbar,
+    charWidth: Float,
     focusRequester: FocusRequester,
     execute: suspend (EditorCommand) -> Unit,
     content: @Composable (Modifier) -> Unit,
@@ -109,8 +113,6 @@ internal fun EditorMouseHandler(
     val mouseModifier = Modifier.pointerInput(enabled) {
         if (enabled) {
             coroutineScope {
-                var hoverJob: Job? = null
-
                 var lastHoverPosition: TextPosition? = null
 
                 awaitPointerEventScope {
@@ -123,41 +125,53 @@ internal fun EditorMouseHandler(
                             PointerEventType.Move -> {
                                 if (draggingMousePosition != null) continue
 
-                                val position = calculatePositionAtOffset(
-                                    offset = change.position,
-                                    viewport = currentViewport,
-                                    contentLayers = currentContentLayers,
-                                    gutterWidth = gutterWidth,
-                                    scrollX = currentScrollbar.x,
-                                    snapshot = currentSnapshot
-                                )
+                                val clickedViewportLine = currentViewport.viewportLines.find { viewportLine ->
+                                    change.position.y >= viewportLine.y && change.position.y <= (viewportLine.y + viewportLine.height)
+                                }
 
-                                if (position != lastHoverPosition) {
-                                    hoverJob?.cancel()
+                                val targetX = change.position.x - gutterWidth + currentScrollbar.x
 
-                                    lastHoverPosition = position
+                                val isOverText =
+                                    clickedViewportLine != null && targetX >= 0f && targetX <= (currentSnapshot.getLineLength(
+                                        clickedViewportLine.line
+                                    ) * charWidth)
 
-                                    scope.launch { execute(EditorCommand.DismissDocumentation) }
-
-                                    hoverJob = scope.launch {
-                                        delay(500L)
-
-                                        execute(
-                                            EditorCommand.RequestDocumentation(
-                                                position = position,
-                                                offset = change.position
-                                            )
+                                when {
+                                    isOverText -> {
+                                        val position = calculatePositionAtOffset(
+                                            offset = change.position,
+                                            viewport = currentViewport,
+                                            contentLayers = currentContentLayers,
+                                            gutterWidth = gutterWidth,
+                                            scrollX = currentScrollbar.x,
+                                            snapshot = currentSnapshot
                                         )
+
+                                        if (position != lastHoverPosition) {
+                                            lastHoverPosition = position
+
+                                            scope.launch {
+                                                execute(
+                                                    EditorCommand.DocumentationHover.Enter(
+                                                        position = position, offset = change.position
+                                                    )
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    lastHoverPosition != null -> {
+                                        lastHoverPosition = null
+
+                                        scope.launch {
+                                            execute(EditorCommand.DocumentationHover.Exit)
+                                        }
                                     }
                                 }
                             }
 
                             PointerEventType.Press -> {
-                                hoverJob?.cancel()
-
                                 lastHoverPosition = null
-
-                                scope.launch { execute(EditorCommand.DismissDocumentation) }
 
                                 if (change.changedToDown()) {
                                     focusRequester.requestFocus()
@@ -213,11 +227,11 @@ internal fun EditorMouseHandler(
                             }
 
                             PointerEventType.Exit -> {
-                                hoverJob?.cancel()
-
                                 lastHoverPosition = null
 
-                                scope.launch { execute(EditorCommand.DismissDocumentation) }
+                                scope.launch {
+                                    execute(EditorCommand.DismissDocumentation)
+                                }
                             }
                         }
                     }

@@ -1,11 +1,11 @@
 package io.github.numq.haskcore.common.presentation.theme.editor.palette.overlay
 
 internal object AlucardOverlayColorPalette : OverlayColorPalette {
-    override val tooltipBackgroundColor = 0xFFdedccf.toInt()
+    override val documentationBackgroundColor = 0xFFdedccf.toInt()
 
-    override val tooltipTextColor = 0xFF1f1f1f.toInt()
+    override val documentationTextColor = 0xFF1f1f1f.toInt()
 
-    override val tooltipBorderColor = 0xFFbcbab3.toInt()
+    override val documentationBorderColor = 0xFFbcbab3.toInt()
 
     override val unknownUnderlineColor = 0xFF706e67.toInt()
 

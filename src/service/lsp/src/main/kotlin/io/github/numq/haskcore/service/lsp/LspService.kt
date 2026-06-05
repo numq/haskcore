@@ -15,10 +15,6 @@ import kotlinx.coroutines.flow.StateFlow
 interface LspService : AutoCloseable {
     val connection: StateFlow<LspConnection>
 
-    val hover: StateFlow<LspHover?>
-
-    val completions: StateFlow<List<LspCompletion>>
-
     val references: StateFlow<List<LspReference>>
 
     val diagnostics: StateFlow<Map<String, List<LspDiagnostic>>>
@@ -33,11 +29,9 @@ interface LspService : AutoCloseable {
 
     suspend fun applyEdit(path: String, revision: TextRevision, edit: TextEdit): Either<Throwable, Unit>
 
-    suspend fun requestHover(path: String, position: TextPosition): Either<Throwable, Unit>
+    suspend fun getHover(path: String, position: TextPosition): Either<Throwable, LspHover?>
 
-    suspend fun dismissHover(path: String): Either<Throwable, Unit>
-
-    suspend fun requestCompletions(path: String, position: TextPosition): Either<Throwable, Unit>
+    suspend fun getCompletions(path: String, position: TextPosition): Either<Throwable, List<LspCompletion>>
 
     suspend fun requestReferences(path: String, position: TextPosition): Either<Throwable, Unit>
 

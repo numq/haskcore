@@ -47,6 +47,7 @@ import io.github.numq.haskcore.feature.editor.presentation.viewport.ViewportCalc
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import org.jetbrains.skia.Image
 import org.jetbrains.skia.Rect
@@ -137,7 +138,7 @@ internal fun EditorViewReady(
         content = { viewportWidth, viewportHeight ->
             var caretVisible by remember { mutableStateOf(true) }
 
-            LaunchedEffect(isFocused, state.editor.caret.position) {
+            LaunchedEffect(state.editor.caret.position, isFocused) {
                 if (!isFocused) {
                     caretVisible = false
 
@@ -153,7 +154,7 @@ internal fun EditorViewReady(
                 }
             }
 
-            val viewport by remember(state.editor.snapshot, viewportWidth, viewportHeight, state.scrollbar.y, font) {
+            val viewport by remember(state.editor.snapshot, state.scrollbar.y, viewportWidth, viewportHeight, font) {
                 derivedStateOf {
                     ViewportCalculator.calculate(
                         snapshot = state.editor.snapshot,
@@ -282,7 +283,7 @@ internal fun EditorViewReady(
 
             val currentGutterActionLayers by rememberUpdatedState(gutterActionLayers) // todo
 
-            val gutterSeparatorLayer by remember(gutterWidth, currentViewport.height, theme) {
+            val gutterSeparatorLayer by remember(currentViewport.height, gutterWidth, theme) {
                 derivedStateOf {
                     layerFactory.createGutterSeparatorLayer(
                         x = gutterWidth, height = currentViewport.height, theme = theme
@@ -332,18 +333,30 @@ internal fun EditorViewReady(
 
             val currentContentLayers by rememberUpdatedState(contentLayers)
 
-            LaunchedEffect(currentContentLayers) {
-                if (currentContentLayers.isNotEmpty()) {
-                    val start = currentContentLayers.firstOrNull()?.viewportLine?.line ?: 0
+            val viewportRange by remember {
+                derivedStateOf {
+                    when {
+                        currentContentLayers.isEmpty() -> null
 
-                    val end = currentContentLayers.lastOrNull()?.viewportLine?.line ?: 0
+                        else -> {
+                            val start = currentContentLayers.firstOrNull()?.viewportLine?.line ?: 0
 
+                            val end = currentContentLayers.lastOrNull()?.viewportLine?.line ?: 0
+
+                            start to end
+                        }
+                    }
+                }
+            }
+
+            LaunchedEffect(viewportRange) {
+                viewportRange?.let { (start, end) ->
                     execute(EditorCommand.UpdateViewport(start = start, end = end))
                 }
             }
 
             val occurrenceLayers by remember(
-                state.editor.caret, state.syntax, currentContentLayers, state.scrollbar.x, theme
+                state.editor.caret, state.syntax, state.scrollbar.x, currentContentLayers, theme
             ) {
                 derivedStateOf {
                     when (val highlighting = state.syntax) {
@@ -362,7 +375,7 @@ internal fun EditorViewReady(
 
             val currentOccurrenceLayers by rememberUpdatedState(occurrenceLayers)
 
-            val issueLayers by remember(currentContentLayers, state.analysis, state.scrollbar.x, theme) {
+            val issueLayers by remember(state.analysis, state.scrollbar.x, currentContentLayers, theme) {
                 derivedStateOf {
                     state.analysis?.let { analysis ->
                         layerFactory.createIssueLayers(
@@ -377,7 +390,7 @@ internal fun EditorViewReady(
 
             val currentIssueLayers by rememberUpdatedState(issueLayers)
 
-            val selectionLayer by remember(state.editor.selection, currentContentLayers, state.scrollbar.x, theme) {
+            val selectionLayer by remember(state.editor.selection, state.scrollbar.x, currentContentLayers, theme) {
                 derivedStateOf {
                     layerFactory.createSelectionLayer(
                         selection = state.editor.selection,
@@ -390,7 +403,7 @@ internal fun EditorViewReady(
 
             val currentSelectionLayer by rememberUpdatedState(selectionLayer)
 
-            val caretLayer by remember(state.editor.caret, currentContentLayers, state.scrollbar.x, font, theme) {
+            val caretLayer by remember(state.editor.caret, state.scrollbar.x, currentContentLayers, font, theme) {
                 derivedStateOf {
                     layerFactory.createCaretLayer(
                         caret = state.editor.caret,
@@ -405,53 +418,31 @@ internal fun EditorViewReady(
             val currentCaretLayer by rememberUpdatedState(caretLayer)
 
             val caretOffset by remember(
-                state.editor.caret, currentContentLayers, state.scrollbar.x, gutterWidth, font, density
+                state.editor.caret, state.scrollbar.x, currentContentLayers, gutterWidth, font, density
             ) {
                 derivedStateOf {
-                    val caretLineLayer = currentContentLayers.find { currentCaretLayer ->
+                    currentContentLayers.find { currentCaretLayer ->
                         currentCaretLayer.viewportLine.line == state.editor.caret.position.line
-                    }
+                    }?.let { caretLineLayer ->
+                        val xOffset = caretLineLayer.getCoordinateAtOffset(
+                            offset = state.editor.caret.position.column
+                        ).takeIf { offset ->
+                            offset > 0f || state.editor.caret.position.column == 0
+                        } ?: (state.editor.caret.position.column * font.charWidth)
 
-                    when (caretLineLayer) {
-                        null -> null
+                        val xPx = gutterWidth + xOffset - state.scrollbar.x + Measurements.EDITOR_PADDING_START
 
-                        else -> {
-                            val xOffset = caretLineLayer.getCoordinateAtOffset(
-                                offset = state.editor.caret.position.column
-                            ).takeIf { offset ->
-                                offset > 0f || state.editor.caret.position.column == 0
-                            } ?: (state.editor.caret.position.column * font.charWidth)
+                        val yPx = caretLineLayer.viewportLine.textBaselineY + font.descent + 2f
 
-                            val xPx = gutterWidth + xOffset - state.scrollbar.x + Measurements.EDITOR_PADDING_START
-
-                            val yPx = caretLineLayer.viewportLine.textBaselineY + font.descent + 2f
-
-                            with(density) {
-                                Offset(xPx.toDp().value, yPx.toDp().value)
-                            }
+                        with(density) {
+                            Offset(xPx, yPx)
                         }
                     }
                 }
             }
 
-            val suggestionPopupOffset = when (val suggestionsState = state.suggestionsState) {
-                is SuggestionsState.Visible -> suggestionsState.offset
-
-                else -> null
-            }
-
-            val documentationPopupOffset = when {
-                state.suggestionsState is SuggestionsState.Visible -> suggestionPopupOffset?.let { offset ->
-                    Offset(offset.x + 512f, offset.y)
-                }
-
-                state.documentationState is DocumentationState.Visible -> state.documentationState.offset
-
-                else -> null
-            }
-
             LaunchedEffect(
-                state.editor.caret.position, font, currentViewport.width, currentViewport.height, gutterWidth
+                state.editor.caret.position, currentViewport.width, currentViewport.height, gutterWidth, font
             ) {
                 val newScrollbar = state.scrollbar.calculateScrollOffset(
                     position = state.editor.caret.position,
@@ -485,6 +476,7 @@ internal fun EditorViewReady(
                 gutterWidth = gutterWidth,
                 scrollbar = state.scrollbar,
                 execute = execute,
+                charWidth = font.charWidth,
                 focusRequester = focusRequester
             ) { mouseModifier ->
                 ContextMenu(menu = state.menu, openMenu = { (x, y) ->
@@ -526,186 +518,198 @@ internal fun EditorViewReady(
                 }, content = {
                     Box(
                         modifier = Modifier.fillMaxSize().focusRequester(focusRequester).onFocusChanged { focusState ->
-                        isFocused = focusState.isFocused
-                    }.focusable().onKeyEvent { keyEvent ->
-                        when (keyEvent.type) {
-                            KeyEventType.KeyDown -> {
-                                keyEvent.awtEventOrNull?.let { awtEvent ->
-                                    val suggestionState = state.suggestionsState
+                            isFocused = focusState.isFocused
+                        }.focusable().onKeyEvent { keyEvent ->
+                            when (keyEvent.type) {
+                                KeyEventType.KeyDown -> {
+                                    keyEvent.awtEventOrNull?.let { awtEvent ->
+                                        val suggestionState = state.suggestionsState
 
-                                    if (suggestionState is SuggestionsState.Visible) {
-                                        val suggestions = suggestionState.suggestions
+                                        if (suggestionState is SuggestionsState.Visible) {
+                                            val suggestions = suggestionState.suggestions
 
-                                        val selectedIndex = suggestionState.selectedIndex
+                                            val selectedIndex = suggestionState.selectedIndex
 
-                                        when (awtEvent.keyCode) {
-                                            KeyEvent.VK_DOWN -> {
-                                                val newIndex = (selectedIndex + 1) % suggestions.size
-
-                                                scope.launch {
-                                                    execute(EditorCommand.UpdateSuggestionsSelection(index = newIndex))
-                                                }
-
-                                                return@onKeyEvent true
-                                            }
-
-                                            KeyEvent.VK_UP -> {
-                                                val newIndex = (selectedIndex - 1 + suggestions.size) % suggestions.size
-
-                                                scope.launch {
-                                                    execute(EditorCommand.UpdateSuggestionsSelection(index = newIndex))
-                                                }
-
-                                                return@onKeyEvent true
-                                            }
-
-                                            KeyEvent.VK_ENTER, KeyEvent.VK_TAB -> {
-                                                suggestions.getOrNull(selectedIndex)?.let { suggestion ->
+                                            when (awtEvent.keyCode) {
+                                                KeyEvent.VK_LEFT, KeyEvent.VK_RIGHT -> {
                                                     scope.launch {
-                                                        execute(EditorCommand.ApplySuggestion(suggestion = suggestion))
+                                                        execute(EditorCommand.DismissSuggestions)
                                                     }
+
+                                                    return@onKeyEvent false
                                                 }
 
-                                                return@onKeyEvent true
-                                            }
+                                                KeyEvent.VK_DOWN -> {
+                                                    val newIndex = (selectedIndex + 1) % suggestions.size
 
-                                            KeyEvent.VK_ESCAPE -> {
-                                                scope.launch {
-                                                    execute(EditorCommand.DismissSuggestions)
+                                                    scope.launch {
+                                                        execute(EditorCommand.UpdateSuggestionsSelection(index = newIndex))
+                                                    }
+
+                                                    return@onKeyEvent true
                                                 }
 
-                                                return@onKeyEvent true
+                                                KeyEvent.VK_UP -> {
+                                                    val newIndex =
+                                                        (selectedIndex - 1 + suggestions.size) % suggestions.size
+
+                                                    scope.launch {
+                                                        execute(EditorCommand.UpdateSuggestionsSelection(index = newIndex))
+                                                    }
+
+                                                    return@onKeyEvent true
+                                                }
+
+                                                KeyEvent.VK_ENTER, KeyEvent.VK_TAB -> {
+                                                    suggestions.getOrNull(selectedIndex)?.let { suggestion ->
+                                                        scope.launch {
+                                                            execute(EditorCommand.ApplySuggestion(suggestion = suggestion))
+                                                        }
+                                                    }
+
+                                                    return@onKeyEvent true
+                                                }
+
+                                                KeyEvent.VK_ESCAPE -> {
+                                                    scope.launch {
+                                                        joinAll(launch {
+                                                            execute(EditorCommand.DismissDocumentation)
+                                                        }, launch {
+                                                            execute(EditorCommand.DismissSuggestions)
+                                                        })
+                                                    }
+
+                                                    return@onKeyEvent true
+                                                }
                                             }
+                                        }
+
+                                        scope.launch {
+                                            execute(
+                                                EditorCommand.ProcessKey(
+                                                    keyCode = awtEvent.keyCode,
+                                                    modifiers = awtEvent.modifiersEx and (KeyEvent.SHIFT_DOWN_MASK or KeyEvent.CTRL_DOWN_MASK or KeyEvent.META_DOWN_MASK or KeyEvent.ALT_DOWN_MASK or KeyEvent.ALT_GRAPH_DOWN_MASK),
+                                                    utf16CodePoint = keyEvent.utf16CodePoint,
+                                                    offset = caretOffset
+                                                )
+                                            )
                                         }
                                     }
 
-                                    scope.launch {
-                                        execute(
-                                            EditorCommand.ProcessKey(
-                                                keyCode = awtEvent.keyCode,
-                                                modifiers = awtEvent.modifiersEx and (KeyEvent.SHIFT_DOWN_MASK or KeyEvent.CTRL_DOWN_MASK or KeyEvent.META_DOWN_MASK or KeyEvent.ALT_DOWN_MASK or KeyEvent.ALT_GRAPH_DOWN_MASK),
-                                                utf16CodePoint = keyEvent.utf16CodePoint
-                                            )
-                                        )
-                                    }
+                                    true
                                 }
 
-                                true
+                                else -> false
                             }
+                        }.then(mouseModifier).drawWithCache {
+                            val bounds = Rect.makeWH(w = size.width, h = size.height)
 
-                            else -> false
-                        }
-                    }.then(mouseModifier).drawWithCache {
-                        val bounds = Rect.makeWH(w = size.width, h = size.height)
+                            onDrawBehind {
+                                if (!bounds.isEmpty) {
+                                    drawIntoCanvas { canvas ->
+                                        val nativeCanvas = canvas.nativeCanvas
 
-                        onDrawBehind {
-                            if (!bounds.isEmpty) {
-                                drawIntoCanvas { canvas ->
-                                    val nativeCanvas = canvas.nativeCanvas
+                                        nativeCanvas.save()
 
-                                    nativeCanvas.save()
+                                        nativeCanvas.clipRect(r = Rect.makeWH(w = bounds.width, h = bounds.height))
 
-                                    nativeCanvas.clipRect(r = Rect.makeWH(w = bounds.width, h = bounds.height))
+                                        nativeCanvas.clear(color = theme.backgroundColorPalette.backgroundColor)
 
-                                    nativeCanvas.clear(color = theme.backgroundColorPalette.backgroundColor)
+                                        currentBackgroundLayer.render(canvas = nativeCanvas)
 
-                                    currentBackgroundLayer.render(canvas = nativeCanvas)
+                                        currentBackgroundOutlineLayer.render(canvas = nativeCanvas)
 
-                                    currentBackgroundOutlineLayer.render(canvas = nativeCanvas)
+                                        currentHighlightedLineLayer?.render(canvas = nativeCanvas)
 
-                                    currentHighlightedLineLayer?.render(canvas = nativeCanvas)
-
-                                    currentGutterLineLayers.forEach { lineLayer ->
-                                        lineLayer.render(canvas = nativeCanvas)
-                                    }
+                                        currentGutterLineLayers.forEach { lineLayer ->
+                                            lineLayer.render(canvas = nativeCanvas)
+                                        }
 
 //                                    currentGutterActionLayers.forEach { actionLayer ->
 //                                        actionLayer.render(canvas = nativeCanvas) // todo implement folding action
 //                                    }
 
-                                    currentGutterSeparatorLayer.render(canvas = nativeCanvas)
+                                        currentGutterSeparatorLayer.render(canvas = nativeCanvas)
 
-                                    nativeCanvas.save()
+                                        nativeCanvas.save()
 
-                                    nativeCanvas.translate(dx = gutterWidth, dy = 0f)
+                                        nativeCanvas.translate(dx = gutterWidth, dy = 0f)
 
-                                    nativeCanvas.clipRect(
-                                        r = Rect.makeWH(w = bounds.width - gutterWidth, h = bounds.height)
-                                    )
+                                        nativeCanvas.clipRect(
+                                            r = Rect.makeWH(w = bounds.width - gutterWidth, h = bounds.height)
+                                        )
 
-                                    currentGuidelineLayer?.render(canvas = nativeCanvas)
+                                        currentGuidelineLayer?.render(canvas = nativeCanvas)
 
-                                    currentOccurrenceLayers.forEach { occurrenceLayer ->
-                                        occurrenceLayer.render(canvas = nativeCanvas)
+                                        if (state.editor.selection.range.isEmpty) {
+                                            currentOccurrenceLayers.forEach { occurrenceLayer ->
+                                                occurrenceLayer.render(canvas = nativeCanvas)
+                                            }
+                                        }
+
+                                        currentSelectionLayer.render(canvas = nativeCanvas)
+
+                                        currentContentLayers.forEach { contentLayer ->
+                                            contentLayer.render(canvas = nativeCanvas)
+                                        }
+
+                                        currentIssueLayers.forEach { issueLayer ->
+                                            issueLayer.render(canvas = nativeCanvas)
+                                        }
+
+                                        if (caretVisible) {
+                                            currentCaretLayer?.render(canvas = nativeCanvas)
+                                        }
+
+                                        nativeCanvas.restore()
+
+                                        nativeCanvas.restore()
                                     }
-
-                                    currentSelectionLayer.render(canvas = nativeCanvas)
-
-                                    currentContentLayers.forEach { contentLayer ->
-                                        contentLayer.render(canvas = nativeCanvas)
-                                    }
-
-                                    currentIssueLayers.forEach { issueLayer ->
-                                        issueLayer.render(canvas = nativeCanvas)
-                                    }
-
-                                    if (caretVisible) {
-                                        currentCaretLayer?.render(canvas = nativeCanvas)
-                                    }
-
-                                    nativeCanvas.restore()
-
-                                    nativeCanvas.restore()
                                 }
                             }
-                        }
-                    }.pointerHoverIcon(PointerIcon(Cursor(Cursor.TEXT_CURSOR)))
+                        }.pointerHoverIcon(PointerIcon(Cursor(Cursor.TEXT_CURSOR)))
                     )
                 })
             }
 
-            if (isFocused && state.suggestionsState is SuggestionsState.Visible) {
-                val suggestionState = state.suggestionsState
-
-                LaunchedEffect(caretOffset) {
-                    val offset = caretOffset
-
-                    if (offset != null && offset != suggestionState.offset) {
-                        execute(
-                            EditorCommand.ShowSuggestions(
-                                suggestions = suggestionState.suggestions,
-                                offset = offset,
-                                selectedIndex = suggestionState.selectedIndex
-                            )
-                        )
-                    }
+            if (isFocused) {
+                (state.suggestionsState as? SuggestionsState.Visible)?.let { suggestionsState ->
+                    SuggestionPopup(
+                        suggestionsState = suggestionsState,
+                        theme = theme,
+                        applySuggestion = { suggestion ->
+                            scope.launch {
+                                execute(EditorCommand.ApplySuggestion(suggestion = suggestion))
+                            }
+                        },
+                        dismiss = {
+                            scope.launch {
+                                execute(EditorCommand.DismissSuggestions)
+                            }
+                        })
                 }
 
-                SuggestionPopup(
-                    offset = suggestionState.offset,
-                    suggestions = suggestionState.suggestions,
-                    selectedIndex = suggestionState.selectedIndex,
-                    theme = theme,
-                    onSuggestionClick = { suggestion ->
-                        scope.launch {
-                            execute(EditorCommand.ApplySuggestion(suggestion = suggestion))
+                (state.documentationState as? DocumentationState.Visible)?.let { documentationState ->
+                    val offset by remember(currentViewport.viewportLines, documentationState.position.line) {
+                        derivedStateOf {
+                            val viewportLine = currentViewport.viewportLines.find { viewportLine ->
+                                viewportLine.line == documentationState.position.line
+                            }
+
+                            val x = gutterWidth
+
+                            val y = when (viewportLine) {
+                                null -> documentationState.offset.y
+
+                                else -> viewportLine.y + viewportLine.height
+                            }
+
+                            Offset(x = x, y = y)
                         }
-                    })
-            }
-
-            documentationPopupOffset?.let { offset ->
-                if (isFocused && state.documentationState is DocumentationState.Visible) {
-                    val documentationState = state.documentationState
-
-                    LaunchedEffect(state.scrollbar.x, state.scrollbar.y) {
-                        execute(EditorCommand.DismissDocumentation)
                     }
 
                     DocumentationPopup(
-                        offset = offset,
-                        documentation = documentationState.documentation,
-                        theme = theme,
-                        onDismissRequest = {
+                        documentationState = documentationState.copy(offset = offset), theme = theme, dismiss = {
                             scope.launch {
                                 execute(EditorCommand.DismissDocumentation)
                             }
