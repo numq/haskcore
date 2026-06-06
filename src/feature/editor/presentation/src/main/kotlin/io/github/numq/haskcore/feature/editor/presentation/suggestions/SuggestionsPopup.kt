@@ -15,9 +15,9 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
+import io.github.numq.haskcore.common.presentation.overlay.popup.PopupBox
 import io.github.numq.haskcore.common.presentation.theme.editor.EditorTheme
 import io.github.numq.haskcore.feature.editor.core.analysis.CodeSuggestion
-import io.github.numq.haskcore.feature.editor.presentation.overlay.OverlayBox
 import kotlin.math.roundToInt
 
 @Composable
@@ -34,7 +34,7 @@ internal fun SuggestionPopup(
         ),
         onDismissRequest = dismiss
     ) {
-        OverlayBox(
+        PopupBox(
             modifier = Modifier.sizeIn(maxWidth = 512.dp, maxHeight = 256.dp),
             backgroundColor = Color(theme.overlayColorPalette.suggestionsBackgroundColor),
             borderColor = Color(theme.overlayColorPalette.suggestionsBorderColor)

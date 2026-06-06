@@ -160,13 +160,7 @@ internal fun EditorMouseHandler(
                                         }
                                     }
 
-                                    lastHoverPosition != null -> {
-                                        lastHoverPosition = null
-
-                                        scope.launch {
-                                            execute(EditorCommand.DocumentationHover.Exit)
-                                        }
-                                    }
+                                    lastHoverPosition != null -> lastHoverPosition = null
                                 }
                             }
 
@@ -230,7 +224,7 @@ internal fun EditorMouseHandler(
                                 lastHoverPosition = null
 
                                 scope.launch {
-                                    execute(EditorCommand.DismissDocumentation)
+                                    execute(EditorCommand.DocumentationHover.Exit)
                                 }
                             }
                         }

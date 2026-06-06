@@ -168,7 +168,7 @@ internal class EditorReducer(
             is EditorState.Ready -> transition(state).effect(
                 action(
                     key = command.key, fallback = EditorCommand::HandleFailure, block = {
-                        delay(250.milliseconds)
+                        delay(300.milliseconds)
 
                         EditorCommand.DismissDocumentation
                     })
