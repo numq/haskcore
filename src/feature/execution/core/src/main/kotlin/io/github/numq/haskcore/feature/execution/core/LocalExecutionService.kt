@@ -22,8 +22,10 @@ internal class LocalExecutionService(
         }?.toExecutionConfiguration()
     }.stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = null)
 
-    override suspend fun addConfiguration(configuration: ExecutionConfiguration) = executionDataSource.update { data ->
-        data.copy(configurations = data.configurations + configuration.toExecutionConfigurationData())
+    override suspend fun setConfigurations(
+        configurations: List<ExecutionConfiguration>,
+    ) = executionDataSource.update { data ->
+        data.copy(configurations = configurations.map(ExecutionConfiguration::toExecutionConfigurationData))
     }.map {}
 
     override suspend fun updateConfiguration(

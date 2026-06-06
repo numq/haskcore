@@ -10,7 +10,7 @@ interface ExecutionService : AutoCloseable {
 
     val selectedConfiguration: StateFlow<ExecutionConfiguration?>
 
-    suspend fun addConfiguration(configuration: ExecutionConfiguration): Either<Throwable, Unit>
+    suspend fun setConfigurations(configurations: List<ExecutionConfiguration>): Either<Throwable, Unit>
 
     suspend fun updateConfiguration(configuration: ExecutionConfiguration): Either<Throwable, Unit>
 

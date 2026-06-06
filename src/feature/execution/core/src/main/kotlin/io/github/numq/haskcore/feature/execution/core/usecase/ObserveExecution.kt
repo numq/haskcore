@@ -41,14 +41,32 @@ class ObserveExecution(
 
             val events = runtimeService.execute(request = request).getOrElse { emptyFlow() }.toList()
 
-            val targets = events.filterIsInstance<RuntimeEvent.Stdout>().map { event ->
-                event.text.trim()
-            }.filter { line ->
-                line.isNotEmpty() && !line.contains(executionService.fileSeparator) && line.contains(":")
+            val targets = events.filter { event ->
+                event is RuntimeEvent.Stdout || event is RuntimeEvent.Stderr
+            }.flatMap { event ->
+                when (event) {
+                    is RuntimeEvent.Stdout -> event.text
+
+                    is RuntimeEvent.Stderr -> event.text
+
+                    else -> ""
+                }.trim().lines()
+            }.map(String::trim).filter { line ->
+                line.isNotEmpty() && !line.startsWith("#") && line.contains(":")
             }.map { targetInfo ->
-                LaunchTarget.Stack(
-                    name = targetInfo.split(":").last(), workingDir = rootPath, componentName = targetInfo
-                )
+                val parts = targetInfo.split(":")
+
+                val name = when {
+                    parts.size >= 3 && parts[1] == "exe" -> parts[2]
+
+                    parts.size >= 2 -> parts[1]
+
+                    else -> parts.last()
+                }
+
+                LaunchTarget.Stack(name = name, workingDir = rootPath, componentName = targetInfo)
+            }.filter { target ->
+                target.name.isNotEmpty()
             }
 
             if (targets.isNotEmpty()) return targets
@@ -110,6 +128,8 @@ class ObserveExecution(
                     beforeRun = listOf(BeforeRunTask.Build())
                 )
             }
+        }.onEach { configurations ->
+            executionService.setConfigurations(configurations = configurations).bind()
         }
 
         return configsFlow.flatMapLatest { discoveredConfigs ->
