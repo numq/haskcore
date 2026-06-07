@@ -34,13 +34,8 @@ class ObserveExplorerTree(
             fun fill(path: String, level: Int, parentSegments: List<String>) {
                 val segments = parentSegments + path
 
-                val files = cache[path]?.filterNot { file ->
-                    val isMetaDir = file.isDirectory && file.name == ".haskcore"
-
-                    val isMetaFile = !file.isDirectory && (file.name.endsWith(".pb") || file.name.endsWith(".tmp"))
-
-                    isMetaDir || isMetaFile
-                }?.sortedWith(compareByDescending(VirtualFile::isDirectory).thenBy(VirtualFile::path)) ?: return
+                val files = cache[path]?.filterNot(VirtualFile::isMetadata)
+                    ?.sortedWith(compareByDescending(VirtualFile::isDirectory).thenBy(VirtualFile::path)) ?: return
 
                 files.forEach { file ->
                     val isExpanded = expandedPath.contains(file.path)

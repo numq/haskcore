@@ -96,7 +96,17 @@ fun ExplorerView(
                             }
 
                             if (index != -1) {
-                                listState.animateScrollToItem(index)
+                                val layoutInfo = listState.layoutInfo
+
+                                val visibleItems = layoutInfo.visibleItemsInfo
+
+                                val isAlreadyVisible = visibleItems.any { visibleItem ->
+                                    visibleItem.index == index
+                                }
+
+                                if (!isAlreadyVisible) {
+                                    listState.animateScrollToItem(index)
+                                }
                             }
                         }
                     }
