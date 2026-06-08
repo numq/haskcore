@@ -48,7 +48,7 @@ internal class LocalExplorerService(
 
     override suspend fun saveExplorerPosition(position: ExplorerPosition) = explorerDataSource.update { explorerData ->
         with(position) {
-            explorerData.copy(index = index, offset = offset)
+            explorerData.copy(position = ExplorerPositionData(index = index, offset = offset))
         }
     }.map {}
 }

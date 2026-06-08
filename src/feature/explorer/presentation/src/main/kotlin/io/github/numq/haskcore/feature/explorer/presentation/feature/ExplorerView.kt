@@ -62,7 +62,7 @@ fun ExplorerView(
 
                     val scrollbarAdapter = rememberScrollbarAdapter(listState)
 
-                    DisposableEffect(explorerTree) {
+                    DisposableEffect(Unit) {
                         onDispose {
                             val position = ExplorerPosition(
                                 index = listState.firstVisibleItemIndex, offset = listState.firstVisibleItemScrollOffset
@@ -76,7 +76,7 @@ fun ExplorerView(
                         }
                     }
 
-                    LaunchedEffect(explorerTree) {
+                    LaunchedEffect(Unit) {
                         snapshotFlow {
                             ExplorerPosition(
                                 index = listState.firstVisibleItemIndex, offset = listState.firstVisibleItemScrollOffset

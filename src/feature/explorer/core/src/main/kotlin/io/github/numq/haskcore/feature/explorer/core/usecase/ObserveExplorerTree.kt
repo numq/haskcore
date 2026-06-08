@@ -75,9 +75,7 @@ class ObserveExplorerTree(
             isRootExpanded && nodes.size == 1 && !cache.containsKey(rootPath) -> ExplorerTree.Loading(root = root)
 
             else -> ExplorerTree.Loaded(
-                root = root,
-                nodes = nodes.distinctBy(ExplorerNode::path),
-                position = ExplorerPosition(index = explorer.index, offset = explorer.offset)
+                root = root, nodes = nodes.distinctBy(ExplorerNode::path), position = explorer.position
             )
         }
     }
