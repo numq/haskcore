@@ -82,6 +82,8 @@ internal class HaskellLspService(
             }
         }
 
+    private fun String.removeAnsi() = replace(Regex("\u001b\\[[0-9;]*[a-zA-Z]"), "")
+
     internal fun Hover.extractContentsString(): String {
         val contents = this.contents ?: return ""
 
@@ -110,7 +112,7 @@ internal class HaskellLspService(
         File(path).absolutePath
     }
 
-    fun buildUri(path: String): String {
+    private fun buildUri(path: String): String {
         val normalized = path.replace("\\", "/")
 
         return if (normalized.startsWith("/")) {
@@ -171,7 +173,7 @@ internal class HaskellLspService(
         scope.launch(Dispatchers.IO) {
             process.errorStream.bufferedReader().use { reader ->
                 reader.forEachLine { line ->
-//                    println("HLS stderr: $line") // todo
+//                    println("HLS stderr: ${line.removeAnsi()}") // todo
                 }
             }
         }

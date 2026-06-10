@@ -67,7 +67,11 @@ internal sealed interface WorkspaceCommand {
     data object SaveVerticalRatioSuccess : WorkspaceCommand
 
     data class SaveDimensions(
-        val x: Float, val y: Float, val width: Float, val height: Float, val isFullscreen: Boolean,
+        val x: Float? = null,
+        val y: Float? = null,
+        val width: Float? = null,
+        val height: Float? = null,
+        val isFullscreen: Boolean,
     ) : WorkspaceCommand {
         val key = Key.SAVE_DIMENSIONS
     }

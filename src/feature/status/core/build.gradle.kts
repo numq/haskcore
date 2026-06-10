@@ -4,6 +4,7 @@ plugins {
 
 dependencies {
     implementation(projects.common.core)
+    implementation(projects.service.text)
     implementation(projects.service.project)
     implementation(projects.service.toolchain)
 }

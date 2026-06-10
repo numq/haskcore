@@ -60,17 +60,26 @@ internal class DefaultCaretManager(private val scope: CoroutineScope) : CaretMan
         }
     }
 
-    private fun updateCaretOnly(snapshot: TextSnapshot, position: TextPosition) {
+    private fun updateCaretOnly(snapshot: TextSnapshot, position: TextPosition): Caret? {
         val totalLines = snapshot.lines
 
-        if (totalLines > 0) {
-            val line = position.line.coerceIn(0, totalLines - 1)
+        return when {
+            totalLines > 0 -> {
 
-            val lineLength = snapshot.getLineLength(line = line)
+                val line = position.line.coerceIn(0, totalLines - 1)
 
-            val column = position.column.coerceIn(0, lineLength)
+                val lineLength = snapshot.getLineLength(line = line)
 
-            _caret.value = Caret(position = TextPosition(line = line, column = column))
+                val column = position.column.coerceIn(0, lineLength)
+
+                val caret = Caret(position = TextPosition(line = line, column = column))
+
+                _caret.value = caret
+
+                caret
+            }
+
+            else -> null
         }
     }
 

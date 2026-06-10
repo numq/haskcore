@@ -63,7 +63,7 @@ internal fun OutputSessionItem(
             )
         }, content = {
             LazyColumn(modifier = modifier.padding(4.dp), state = listState) {
-                items(items = session.lines, key = OutputLine::id, contentType = { it::class }) { line ->
+                items(items = session.lines, key = OutputLine::id) { line ->
                     OutputLineItem(line = line)
                 }
             }

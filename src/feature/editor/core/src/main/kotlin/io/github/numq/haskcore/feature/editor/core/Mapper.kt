@@ -12,6 +12,14 @@ import io.github.numq.haskcore.service.lsp.token.LspToken
 import io.github.numq.haskcore.service.syntax.occurrence.SyntaxOccurrence
 import io.github.numq.haskcore.service.syntax.token.SyntaxToken
 
+internal fun EditorPositionData.toEditorPosition() = EditorPosition(
+    horizontalOffset = horizontalOffset, verticalOffset = verticalOffset
+)
+
+internal fun EditorPosition.toEditorPositionData() = EditorPositionData(
+    horizontalOffset = horizontalOffset, verticalOffset = verticalOffset
+)
+
 internal fun LspHover.toDocumentation() = CodeDocumentation(content = content, range = range)
 
 internal fun LspCompletion.toCodeSuggestion(): CodeSuggestion {

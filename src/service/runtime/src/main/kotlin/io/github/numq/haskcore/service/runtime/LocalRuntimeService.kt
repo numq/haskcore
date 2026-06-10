@@ -18,6 +18,8 @@ internal class LocalRuntimeService(private val scope: CoroutineScope) : RuntimeS
 
     override val events = _events.asSharedFlow()
 
+    private fun String.removeAnsi() = replace(Regex("\u001b\\[[0-9;]*[a-zA-Z]"), "")
+
     override suspend fun isActive(id: String) = Either.catch {
         jobs[id]?.isActive == true
     }
@@ -36,20 +38,28 @@ internal class LocalRuntimeService(private val scope: CoroutineScope) : RuntimeS
         }
 
         val stdoutJob = launch {
-            process.inputStream.bufferedReader(Charsets.UTF_8).use { reader ->
+            process.inputStream.bufferedReader().use { reader ->
                 reader.useLines { lines ->
                     lines.forEach { line ->
-                        send(RuntimeEvent.Stdout(request = request, text = line, timestamp = Timestamp.now()))
+                        send(
+                            RuntimeEvent.Stdout(
+                                request = request, text = line.removeAnsi(), timestamp = Timestamp.now()
+                            )
+                        )
                     }
                 }
             }
         }
 
         val stderrJob = launch {
-            process.errorStream.bufferedReader(Charsets.UTF_8).use { reader ->
+            process.errorStream.bufferedReader().use { reader ->
                 reader.useLines { lines ->
                     lines.forEach { line ->
-                        send(RuntimeEvent.Stderr(request = request, text = line, timestamp = Timestamp.now()))
+                        send(
+                            RuntimeEvent.Stderr(
+                                request = request, text = line.removeAnsi(), timestamp = Timestamp.now()
+                            )
+                        )
                     }
                 }
             }

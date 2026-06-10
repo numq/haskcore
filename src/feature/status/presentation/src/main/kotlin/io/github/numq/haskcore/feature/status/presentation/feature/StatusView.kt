@@ -8,9 +8,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import io.github.numq.haskcore.common.core.text.TextEncoding
+import io.github.numq.haskcore.common.core.text.TextLineEnding
+import io.github.numq.haskcore.common.core.text.TextPosition
 import io.github.numq.haskcore.common.presentation.overlay.dialog.file.FileDialog
 import io.github.numq.haskcore.feature.status.presentation.breadcrumbs.Breadcrumbs
-import io.github.numq.haskcore.feature.status.presentation.tool.StatusToolItem
+import io.github.numq.haskcore.feature.status.presentation.item.StatusTextItem
+import io.github.numq.haskcore.feature.status.presentation.item.StatusToolItem
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import org.koin.core.scope.Scope
@@ -19,6 +23,9 @@ import org.koin.core.scope.Scope
 fun StatusView(
     projectScope: Scope,
     handleError: (Throwable) -> Unit,
+    textPosition: TextPosition?,
+    textLineEnding: TextLineEnding?,
+    textEncoding: TextEncoding?,
     navigateToPath: suspend (path: String) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -50,9 +57,18 @@ fun StatusView(
             })
         Row(
             modifier = Modifier.weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(space = 4.dp, alignment = Alignment.End),
+            horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            textPosition?.let { position ->
+                StatusTextItem(text = "Ln ${position.line + 1}, Col ${position.column + 1}")
+            }
+            textEncoding?.let { encoding ->
+                StatusTextItem(text = encoding.charset.name())
+            }
+            textLineEnding?.let { lineEnding ->
+                StatusTextItem(text = lineEnding.name)
+            }
             StatusToolItem(name = "GHC", tool = state.status.ghc, selectPath = {
                 scope.launch {
                     fileDialog.pickDirectory(title = "Select GHC directory")?.let { path ->

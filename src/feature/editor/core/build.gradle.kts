@@ -1,9 +1,12 @@
 plugins {
     alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.kotlinx.atomicfu)
 }
 
 dependencies {
+    implementation(libs.kotlinx.serialization.protobuf)
+    implementation(libs.datastore)
     implementation(projects.common.core)
     implementation(projects.service.clipboard)
     implementation(projects.service.document)

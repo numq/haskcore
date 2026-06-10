@@ -42,6 +42,7 @@ val editorFeaturePresentationModule = module {
                 applyCodeSuggestion = get(),
                 processKey = get(),
                 moveCaret = get(),
+                saveEditorPosition = get(),
                 startSelection = get(),
                 extendSelection = get()
             )

@@ -5,7 +5,13 @@ import io.github.numq.haskcore.common.core.usecase.UseCase
 import io.github.numq.haskcore.feature.workspace.core.WorkspaceService
 
 class SaveDimensions(private val workspaceService: WorkspaceService) : UseCase.Command<SaveDimensions.Input> {
-    data class Input(val x: Float, val y: Float, val width: Float, val height: Float, val isFullscreen: Boolean)
+    data class Input(
+        val x: Float? = null,
+        val y: Float? = null,
+        val width: Float? = null,
+        val height: Float? = null,
+        val isFullscreen: Boolean,
+    )
 
     override suspend fun Raise<Throwable>.command(input: Input) = with(input) {
         workspaceService.saveDimensions(

@@ -10,4 +10,5 @@ data class Editor(
     val snapshot: TextSnapshot,
     val caret: Caret,
     val selection: Selection,
+    val position: EditorPosition,
 )

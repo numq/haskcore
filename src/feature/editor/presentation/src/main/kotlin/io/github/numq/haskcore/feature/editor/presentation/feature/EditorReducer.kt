@@ -5,6 +5,7 @@ import io.github.numq.haskcore.feature.editor.core.token.Token
 import io.github.numq.haskcore.feature.editor.core.usecase.*
 import io.github.numq.haskcore.feature.editor.presentation.documentation.DocumentationState
 import io.github.numq.haskcore.feature.editor.presentation.menu.MenuReducer
+import io.github.numq.haskcore.feature.editor.presentation.scrollbar.Scrollbar
 import io.github.numq.haskcore.feature.editor.presentation.suggestions.SuggestionsState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -22,6 +23,7 @@ internal class EditorReducer(
     private val applyCodeSuggestion: ApplyCodeSuggestion,
     private val processKey: ProcessKey,
     private val moveCaret: MoveCaret,
+    private val saveEditorPosition: SaveEditorPosition,
     private val startSelection: StartSelection,
     private val extendSelection: ExtendSelection,
 ) : Reducer<EditorState, EditorCommand, EditorEvent> {
@@ -68,7 +70,13 @@ internal class EditorReducer(
         )
 
         is EditorCommand.UpdateEditor -> when (state) {
-            is EditorState.Loading -> transition(EditorState.Ready(editor = command.editor))
+            is EditorState.Loading -> transition(
+                EditorState.Ready(
+                    editor = command.editor, scrollbar = Scrollbar(
+                        x = command.editor.position.horizontalOffset, y = command.editor.position.verticalOffset
+                    )
+                )
+            )
 
             is EditorState.Ready -> transition(state.copy(editor = command.editor))
         }
@@ -144,7 +152,11 @@ internal class EditorReducer(
                             else -> {
                                 delay(500.milliseconds)
 
-                                getCodeDocumentation(input = GetCodeDocumentation.Input(position = command.position)).fold(
+                                getCodeDocumentation(
+                                    input = GetCodeDocumentation.Input(
+                                        language = state.editor.language, position = command.position
+                                    )
+                                ).fold(
                                     ifLeft = EditorCommand::HandleFailure, ifRight = { documentation ->
                                         when (documentation) {
                                             null -> EditorCommand.DismissDocumentation
@@ -205,7 +217,11 @@ internal class EditorReducer(
                     key = command.key, fallback = EditorCommand::HandleFailure, block = {
                         delay(150.milliseconds)
 
-                        getCodeSuggestions(input = GetCodeSuggestions.Input(position = command.position)).fold(
+                        getCodeSuggestions(
+                            input = GetCodeSuggestions.Input(
+                                language = state.editor.language, position = state.editor.caret.position
+                            )
+                        ).fold(
                             ifLeft = EditorCommand::HandleFailure, ifRight = { suggestions ->
                                 when {
                                     suggestions.isEmpty() -> EditorCommand.DismissSuggestions
@@ -289,9 +305,7 @@ internal class EditorReducer(
                     ).fold(
                         ifLeft = EditorCommand::HandleFailure, ifRight = {
                             EditorCommand.ProcessKeySuccess(
-                                utf16CodePoint = command.utf16CodePoint,
-                                position = command.position,
-                                offset = command.offset
+                                utf16CodePoint = command.utf16CodePoint, offset = command.offset
                             )
                         })
                 })
@@ -304,10 +318,10 @@ internal class EditorReducer(
                 val char = command.utf16CodePoint.toChar()
 
                 when {
-                    command.position == null || char.isWhitespace() -> reduce(state, EditorCommand.DismissSuggestions)
+                    char.isWhitespace() -> reduce(state, EditorCommand.DismissSuggestions)
 
                     else -> reduce(
-                        state, EditorCommand.ShowSuggestions(position = command.position, offset = command.offset)
+                        state, EditorCommand.ShowSuggestions(offset = command.offset)
                     )
                 }
             }
@@ -376,5 +390,18 @@ internal class EditorReducer(
                 )
             }
         }
+
+        is EditorCommand.SaveEditorPosition -> transition(state).effect(
+            action(
+                key = command.key, fallback = EditorCommand::HandleFailure, block = {
+                    saveEditorPosition(
+                        input = SaveEditorPosition.Input(position = command.position)
+                    ).fold(ifLeft = EditorCommand::HandleFailure, ifRight = {
+                        EditorCommand.SaveEditorPositionSuccess
+                    })
+                })
+        )
+
+        is EditorCommand.SaveEditorPositionSuccess -> transition(state)
     }
 }

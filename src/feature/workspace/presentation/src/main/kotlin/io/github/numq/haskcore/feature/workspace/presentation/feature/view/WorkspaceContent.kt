@@ -26,7 +26,7 @@ internal fun WorkspaceContent(
     localRightRatio: Float,
     changeLocalRightRatio: (Float) -> Unit,
     centerWeight: Float,
-    explorer: @Composable (path: String?) -> Unit,
+    explorer: @Composable () -> Unit,
     log: @Composable () -> Unit,
     editor: @Composable (path: String?, language: Language?) -> Unit,
 ) {
@@ -43,9 +43,7 @@ internal fun WorkspaceContent(
             if (leftWeight > 0f) {
                 Box(modifier = Modifier.weight(leftWeight)) {
                     workspace.shelf.leftPanel.activeTool?.let { tool ->
-                        ShelfToolContent(tool = tool, explorer = {
-                            explorer(workspace.activeDocument?.path)
-                        }, log = log)
+                        ShelfToolContent(tool = tool, explorer = explorer, log = log)
                     }
                 }
 
@@ -116,9 +114,7 @@ internal fun WorkspaceContent(
 
                 Box(modifier = Modifier.weight(rightWeight)) {
                     workspace.shelf.rightPanel.activeTool?.let { tool ->
-                        ShelfToolContent(tool = tool, explorer = {
-                            explorer(workspace.activeDocument?.path)
-                        }, log = log)
+                        ShelfToolContent(tool = tool, explorer = explorer, log = log)
                     }
                 }
             }

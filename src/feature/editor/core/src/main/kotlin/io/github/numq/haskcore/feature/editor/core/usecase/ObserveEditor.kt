@@ -17,6 +17,8 @@ import io.github.numq.haskcore.service.logger.LoggerService
 import io.github.numq.haskcore.service.text.TextService
 import io.github.numq.haskcore.service.vfs.VfsService
 import kotlinx.atomicfu.atomic
+import kotlinx.atomicfu.update
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -59,7 +61,9 @@ class ObserveEditor(
             documentService.saveDocument(path = path, content = snapshot.text, encoding = snapshot.encoding).flatMap {
                 editorService.getLastModifiedTimestamp(path = path)
             }.onRight { lastModifiedTimestamp ->
-                lastWrite.value = lastModifiedTimestamp
+                lastWrite.update {
+                    lastModifiedTimestamp
+                }
             }.getOrElse(::println) // todo
         }
     }
@@ -75,19 +79,19 @@ class ObserveEditor(
     private suspend fun observeFileSystemChanges(path: String) {
         editorService.getParentPath(path = path).flatMap { parentPath ->
             vfsService.observeVisibleFiles(path = parentPath)
-        }.map { virtualFiles ->
-            virtualFiles.mapNotNull { virtualFiles ->
+        }.onRight { flow ->
+            flow.map { virtualFiles ->
                 virtualFiles.find { virtualFile ->
                     virtualFile.path == path
                 }
-            }.conflate().filter { virtualFile ->
+            }.filterNotNull().conflate().filter { virtualFile ->
                 virtualFile.lastModifiedTimestamp > lastWrite.value
-            }.mapNotNull { virtualFile ->
-                when (val snapshot = textService.snapshot.value) {
-                    null -> Unit
-
-                    else -> reloadFromDisk(path = path, snapshot = snapshot).onRight {
-                        lastWrite.value = virtualFile.lastModifiedTimestamp
+            }.collect { virtualFile ->
+                textService.snapshot.value?.let { snapshot ->
+                    reloadFromDisk(path = path, snapshot = snapshot).onRight {
+                        lastWrite.update {
+                            virtualFile.lastModifiedTimestamp
+                        }
                     }.getOrElse(::println) // todo
                 }
             }
@@ -102,6 +106,7 @@ class ObserveEditor(
         }
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     override suspend fun Raise<Throwable>.exchange(input: Input) = with(input) {
         val document = documentService.readDocument(path = path).getOrElse { throwable ->
             throw throwable // todo
@@ -127,8 +132,15 @@ class ObserveEditor(
                     flow = textService.snapshot.filterNotNull(),
                     flow2 = editorService.caret,
                     flow3 = editorService.selection,
-                    transform = { snapshot, caret, selection ->
-                        Editor(language = language, snapshot = snapshot, caret = caret, selection = selection)
+                    flow4 = editorService.position,
+                    transform = { snapshot, caret, selection, position ->
+                        Editor(
+                            language = language,
+                            snapshot = snapshot,
+                            caret = caret,
+                            selection = selection,
+                            position = position
+                        )
                     }).collect(::send)
             } finally {
                 val snapshot = textService.snapshot.value

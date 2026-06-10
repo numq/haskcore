@@ -48,7 +48,7 @@ fun LogView(projectScope: Scope, handleError: (Throwable) -> Unit) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(top = 4.dp, bottom = 4.dp)
     ) {
-        items(items = state.logs, key = Log::timestamp, contentType = { it::class }) { log ->
+        items(items = state.logs, key = Log::timestamp) { log ->
             val (markerColor, level) = when (log) {
                 is Log.Info -> MaterialTheme.colorScheme.primary to "INFO"
 

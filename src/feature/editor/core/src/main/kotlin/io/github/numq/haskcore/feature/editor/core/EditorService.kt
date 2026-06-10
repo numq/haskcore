@@ -14,6 +14,8 @@ interface EditorService : AutoCloseable {
 
     val selection: StateFlow<Selection>
 
+    val position: StateFlow<EditorPosition>
+
     val activeLines: StateFlow<IntRange>
 
     suspend fun getParentPath(path: String): Either<Throwable, String>
@@ -21,6 +23,8 @@ interface EditorService : AutoCloseable {
     suspend fun getName(path: String): Either<Throwable, String>
 
     suspend fun getLastModifiedTimestamp(path: String): Either<Throwable, Timestamp>
+
+    suspend fun saveEditorPosition(position: EditorPosition): Either<Throwable, Unit>
 
     suspend fun updateActiveLines(start: Int, end: Int): Either<Throwable, Unit>
 

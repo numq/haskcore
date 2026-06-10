@@ -4,6 +4,9 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.res.painterResource
 import io.github.numq.haskcore.common.core.di.ScopeQualifier
+import io.github.numq.haskcore.common.core.text.TextEncoding
+import io.github.numq.haskcore.common.core.text.TextLineEnding
+import io.github.numq.haskcore.common.core.text.TextPosition
 import io.github.numq.haskcore.common.presentation.theme.application.ApplicationTheme
 import io.github.numq.haskcore.common.presentation.theme.editor.EditorTheme
 import io.github.numq.haskcore.feature.bootstrap.presentation.feature.BootstrapView
@@ -130,6 +133,12 @@ object Entrypoint {
                                 }
                             }
 
+                            val (textPosition, setTextPosition) = remember { mutableStateOf<TextPosition?>(null) }
+
+                            val (textEncoding, setTextEncoding) = remember { mutableStateOf<TextEncoding?>(null) }
+
+                            val (textLineEnding, setTextLineEnding) = remember { mutableStateOf<TextLineEnding?>(null) }
+
                             WorkspaceView(
                                 projectScope = projectScope,
                                 handleError = Throwable::printStackTrace,
@@ -138,12 +147,8 @@ object Entrypoint {
                                 execution = {
                                     ExecutionView(projectScope = projectScope, handleError = Throwable::printStackTrace)
                                 },
-                                explorer = { path ->
-                                    ExplorerView(
-                                        feature = explorerFeature,
-                                        handleError = Throwable::printStackTrace,
-                                        selectedPath = path
-                                    )
+                                explorer = {
+                                    ExplorerView(feature = explorerFeature, handleError = Throwable::printStackTrace)
                                 },
                                 log = {
                                     LogView(projectScope = projectScope, handleError = Throwable::printStackTrace)
@@ -157,6 +162,9 @@ object Entrypoint {
                                         font = editorMonoFont,
                                         theme = editorTheme,
                                         layerFactory = layerFactory,
+                                        onTextPosition = setTextPosition,
+                                        onTextLineEnding = setTextLineEnding,
+                                        onTextEncoding = setTextEncoding,
                                     )
                                 },
                                 output = when {
@@ -174,6 +182,9 @@ object Entrypoint {
                                     StatusView(
                                         projectScope = projectScope,
                                         handleError = Throwable::printStackTrace,
+                                        textPosition = textPosition,
+                                        textLineEnding = textLineEnding,
+                                        textEncoding = textEncoding,
                                         navigateToPath = { path ->
                                             explorerFeature.execute(ExplorerCommand.OpenPath(path = path))
                                         })

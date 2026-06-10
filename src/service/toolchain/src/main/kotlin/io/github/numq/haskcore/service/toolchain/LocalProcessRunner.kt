@@ -13,6 +13,8 @@ internal class LocalProcessRunner : ProcessRunner {
         const val TIMEOUT_MILLIS = 30_000L
     }
 
+    private fun String.removeAnsi() = replace(Regex("\u001b\\[[0-9;]*[a-zA-Z]"), "")
+
     override suspend fun runCommand(path: String, vararg args: String) = either {
         withTimeoutOrNull(TIMEOUT_MILLIS) {
             withContext(Dispatchers.IO) {
@@ -23,7 +25,7 @@ internal class LocalProcessRunner : ProcessRunner {
                 }
 
                 try {
-                    val output = process.inputStream.bufferedReader().use(BufferedReader::readText).trim()
+                    val output = process.inputStream.bufferedReader().use(BufferedReader::readText).trim().removeAnsi()
 
                     val exitCode = runInterruptible(Dispatchers.IO) { process.waitFor() }
 

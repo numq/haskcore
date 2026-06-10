@@ -1,4 +1,4 @@
-package io.github.numq.haskcore.feature.status.presentation.tool
+package io.github.numq.haskcore.feature.status.presentation.item
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.ExperimentalFoundationApi

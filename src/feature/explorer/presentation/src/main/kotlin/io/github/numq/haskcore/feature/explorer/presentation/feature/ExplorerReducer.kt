@@ -13,9 +13,7 @@ class ExplorerReducer(
     private val saveExplorerPosition: SaveExplorerPosition,
     private val openFile: OpenFile,
 ) : Reducer<ExplorerState, ExplorerCommand, ExplorerEvent> {
-    override fun reduce(
-        state: ExplorerState, command: ExplorerCommand,
-    ): Transition<ExplorerState, ExplorerEvent> = when (command) {
+    override fun reduce(state: ExplorerState, command: ExplorerCommand) = when (command) {
         is ExplorerCommand.HandleFailure -> transition(state).event(ExplorerEvent.HandleFailure(throwable = command.throwable))
 
         is ExplorerCommand.Initialize -> transition(state).effect(

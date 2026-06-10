@@ -1,9 +1,9 @@
 package io.github.numq.haskcore.feature.editor.presentation.documentation
 
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.sizeIn
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -52,17 +52,17 @@ internal fun DocumentationPopup(
 
         PopupBox(
             modifier = Modifier.onPointerEvent(PointerEventType.Enter) {
-            mouseEnter()
-        }.onPointerEvent(PointerEventType.Exit) {
-            mouseExit()
-        }.sizeIn(maxWidth = 512.dp, maxHeight = 256.dp),
+                mouseEnter()
+            }.onPointerEvent(PointerEventType.Exit) {
+                mouseExit()
+            }.widthIn(max = 512.dp).heightIn(max = 256.dp),
             backgroundColor = Color(theme.overlayColorPalette.documentationBackgroundColor),
             borderColor = Color(theme.overlayColorPalette.documentationBorderColor)
         ) {
-            Column(modifier = Modifier.fillMaxWidth().verticalScroll(scrollState).padding(8.dp)) {
+            Column(modifier = Modifier.widthIn(max = 512.dp).verticalScroll(scrollState).padding(8.dp)) {
                 RichText(
                     state = richTextState,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.widthIn(max = 496.dp),
                     color = Color(theme.overlayColorPalette.documentationTextColor),
                     fontSize = 13.sp,
                     fontFamily = FontFamily.Monospace,

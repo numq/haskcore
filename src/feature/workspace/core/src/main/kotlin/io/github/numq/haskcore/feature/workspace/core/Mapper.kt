@@ -22,11 +22,11 @@ internal fun ShelfPanelData.toShelfPanel() = ShelfPanel(
 internal fun ShelfData.toShelf() = Shelf(leftPanel = leftPanel.toShelfPanel(), rightPanel = rightPanel.toShelfPanel())
 
 internal fun WorkspaceData.toWorkspace() = Workspace(
-    x = x,
-    y = y,
-    width = width,
-    height = height,
+    x = x ?: Workspace.DEFAULT_X,
+    y = y ?: Workspace.DEFAULT_Y,
+    width = width ?: Workspace.DEFAULT_WIDTH,
+    height = height ?: Workspace.DEFAULT_HEIGHT,
     isFullscreen = isFullscreen,
+    verticalRatio = verticalRatio ?: Workspace.DEFAULT_VERTICAL_RATIO,
     shelf = shelfData?.toShelf() ?: Shelf(),
-    verticalRatio = verticalRatio ?: Workspace.DEFAULT_VERTICAL_RATIO
 )

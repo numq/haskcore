@@ -142,10 +142,7 @@ fun WelcomeView(
                                     )
                                 }
 
-                                items(
-                                    items = state.recentProjects,
-                                    key = RecentProject::path,
-                                    contentType = { it::class }) { recentProject ->
+                                items(items = state.recentProjects, key = RecentProject::path) { recentProject ->
                                     RecentProjectItem(recentProject = recentProject, openProject = {
                                         scope.launch {
                                             feature.execute(

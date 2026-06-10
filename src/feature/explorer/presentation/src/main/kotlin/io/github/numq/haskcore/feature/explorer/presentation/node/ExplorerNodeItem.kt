@@ -1,11 +1,11 @@
 package io.github.numq.haskcore.feature.explorer.presentation.node
 
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Description
@@ -14,12 +14,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.numq.haskcore.feature.explorer.core.ExplorerNode
@@ -44,41 +45,59 @@ internal fun ExplorerNodeItem(
         else -> MaterialTheme.colorScheme.onSurface
     }
 
-    Row(
-        modifier = Modifier.fillMaxWidth().height(24.dp).background(backgroundColor)
-            .combinedClickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onDoubleClick = {
-                    when (node) {
+    val tapHandler = remember {
+        object {
+            private var lastTapNanos = 0L
+
+            private val doubleTapGapNanos = 300_000_000L
+
+            fun onTap(node: ExplorerNode) {
+                val now = System.nanoTime()
+
+                when {
+                    now - lastTapNanos < doubleTapGapNanos -> when (node) {
                         is ExplorerNode.Directory -> toggleDirectoryExpansion(node)
 
                         else -> openDocument(node)
                     }
-                },
-                onClick = { select(node) }).padding(start = (node.level * 12f).dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(modifier = Modifier.size(20.dp).clickable(interactionSource = remember {
-            MutableInteractionSource()
-        }, indication = null, onClick = {
-            if (node is ExplorerNode.Directory) {
-                toggleDirectoryExpansion(node)
+
+                    else -> select(node)
+                }
+
+                lastTapNanos = now
             }
-        }), contentAlignment = Alignment.Center) {
-            if (node is ExplorerNode.Directory) {
-                val rotation by animateFloatAsState(
-                    when {
-                        node.isExpanded -> 90f
+        }
+    }
 
-                        else -> 0f
+    val interactionSource = remember { MutableInteractionSource() }
+
+    Row(
+        modifier = Modifier.fillMaxWidth().height(24.dp).clip(RoundedCornerShape(4.dp)).background(backgroundColor)
+            .pointerInput(node) {
+                detectTapGestures(onTap = {
+                    tapHandler.onTap(node = node)
+                })
+            }.padding(start = (node.level * 12f).dp), verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier.size(20.dp).clickable(
+                interactionSource = interactionSource, indication = null, onClick = {
+                    if (node is ExplorerNode.Directory) {
+                        toggleDirectoryExpansion(node)
                     }
-                )
-
+                }), contentAlignment = Alignment.Center
+        ) {
+            if (node is ExplorerNode.Directory) {
                 Icon(
                     imageVector = Icons.Default.ChevronRight,
                     contentDescription = null,
-                    modifier = Modifier.size(14.dp).rotate(rotation),
+                    modifier = Modifier.size(14.dp).rotate(
+                        degrees = when {
+                            node.isExpanded -> 90f
+
+                            else -> 0f
+                        }
+                    ),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }

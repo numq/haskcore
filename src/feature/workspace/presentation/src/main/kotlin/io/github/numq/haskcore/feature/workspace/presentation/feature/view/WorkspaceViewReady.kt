@@ -39,7 +39,7 @@ internal fun WorkspaceViewReady(
     execute: suspend (WorkspaceCommand) -> Unit,
     icon: Painter,
     execution: @Composable () -> Unit,
-    explorer: @Composable (path: String?) -> Unit,
+    explorer: @Composable () -> Unit,
     log: @Composable () -> Unit,
     editor: @Composable (path: String?, language: Language?) -> Unit,
     output: (@Composable () -> Unit)?,
@@ -49,111 +49,58 @@ internal fun WorkspaceViewReady(
 
     val windowState = rememberWindowState(
         placement = when {
-            state.workspace.isFullscreen == true -> WindowPlacement.Fullscreen
+            state.workspace.isFullscreen -> WindowPlacement.Maximized
 
             else -> WindowPlacement.Floating
-        }, position = state.workspace.x?.let { x ->
-            state.workspace.y?.let { y ->
-                WindowPosition(x = x.dp, y = y.dp)
-            }
-        } ?: WindowPosition.PlatformDefault, size = state.workspace.width?.dp?.let { width ->
-            state.workspace.height?.dp?.let { height ->
-                DpSize(width = width, height = height)
-            }
-        } ?: DpSize(800.dp, 600.dp))
+        },
+        position = WindowPosition.Absolute(x = state.workspace.x.dp, y = state.workspace.y.dp),
+        size = DpSize(width = state.workspace.width.dp, height = state.workspace.height.dp)
+    )
 
     DisposableEffect(Unit) {
         onDispose {
-            val workspace = state.workspace
-
-            val isFullscreen = windowState.placement == WindowPlacement.Fullscreen
-
-            val x = when {
-                isFullscreen -> windowState.position.x.value
-
-                else -> workspace.x ?: windowState.position.x.value
-            }
-
-            val y = when {
-                isFullscreen -> windowState.position.y.value
-
-                else -> workspace.y ?: windowState.position.y.value
-            }
-
-            val width = when {
-                isFullscreen -> windowState.size.width.value
-
-                else -> workspace.width ?: windowState.size.width.value
-            }
-
-            val height = when {
-                isFullscreen -> windowState.size.height.value
-
-                else -> workspace.height ?: windowState.size.height.value
-            }
-
             scope.launch(NonCancellable) {
-                if (x != workspace.x || y != workspace.y || width != workspace.width || height != workspace.height || isFullscreen != workspace.isFullscreen) {
-                    execute(
-                        WorkspaceCommand.SaveDimensions(
-                            x = x, y = y, width = width, height = height, isFullscreen = isFullscreen
-                        )
+                val isFullscreen = windowState.placement == WindowPlacement.Maximized
+
+                execute(
+                    WorkspaceCommand.SaveDimensions(
+                        x = when {
+                            isFullscreen -> state.workspace.x
+
+                            else -> windowState.position.x.value
+                        }, y = when {
+                            isFullscreen -> state.workspace.y
+
+                            else -> windowState.position.y.value
+                        }, width = when {
+                            isFullscreen -> state.workspace.width
+
+                            else -> windowState.size.width.value
+                        }, height = when {
+                            isFullscreen -> state.workspace.height
+
+                            else -> windowState.size.height.value
+                        }, isFullscreen = isFullscreen
                     )
-                }
+                )
             }
         }
     }
 
-    LaunchedEffect(Unit) {
-        snapshotFlow {
-            Triple(windowState.position, windowState.size, windowState.placement)
-        }.distinctUntilChanged().conflate().debounce(500.milliseconds).collect { (position, size, placement) ->
-            val workspace = state.workspace
+    LaunchedEffect(
+        state.workspace.x,
+        state.workspace.y,
+        state.workspace.width,
+        state.workspace.height,
+        state.workspace.isFullscreen
+    ) {
+        when {
+            state.workspace.isFullscreen -> windowState.placement = WindowPlacement.Maximized
 
-            val isFullscreen = placement == WindowPlacement.Fullscreen
+            else -> {
+                windowState.position = WindowPosition(state.workspace.x.dp, state.workspace.y.dp)
 
-            val placementChanged = isFullscreen != workspace.isFullscreen
-
-            when {
-                isFullscreen && placementChanged -> execute(
-                    WorkspaceCommand.SaveDimensions(
-                        x = position.x.value,
-                        y = position.y.value,
-                        width = size.width.value,
-                        height = size.height.value,
-                        isFullscreen = true
-                    )
-                )
-
-                !isFullscreen -> when {
-                    placementChanged -> execute(
-                        WorkspaceCommand.SaveDimensions(
-                            x = workspace.x ?: position.x.value,
-                            y = workspace.y ?: position.y.value,
-                            width = workspace.width ?: size.width.value,
-                            height = workspace.height ?: size.height.value,
-                            isFullscreen = false
-                        )
-                    )
-
-                    else -> {
-                        val x = position.x.value
-
-                        val y = position.y.value
-
-                        val width = size.width.value
-
-                        val height = size.height.value
-
-                        if (x != workspace.x || y != workspace.y || width != workspace.width || height != workspace.height) {
-                            execute(
-                                WorkspaceCommand.SaveDimensions(
-                                    x = x, y = y, width = width, height = height, isFullscreen = false
-                                )
-                            )
-                        }
-                    }
-                }
+                windowState.size = DpSize(state.workspace.width.dp, state.workspace.height.dp)
             }
         }
     }

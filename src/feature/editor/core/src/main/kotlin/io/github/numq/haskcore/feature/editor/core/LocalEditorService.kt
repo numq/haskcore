@@ -12,8 +12,7 @@ import io.github.numq.haskcore.feature.editor.core.selection.SelectionManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.withContext
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
@@ -24,10 +23,15 @@ internal class LocalEditorService(
     private val scope: CoroutineScope,
     private val caretManager: CaretManager,
     private val selectionManager: SelectionManager,
+    private val editorDataSource: EditorDataSource,
 ) : EditorService {
     override val caret = caretManager.caret
 
     override val selection = selectionManager.selection
+
+    override val position = editorDataSource.editorData.map { editorData ->
+        editorData.position.toEditorPosition()
+    }.stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = EditorPosition())
 
     private val _activeLines = MutableStateFlow(IntRange.EMPTY)
 
@@ -51,6 +55,10 @@ internal class LocalEditorService(
         }
     }
 
+    override suspend fun saveEditorPosition(position: EditorPosition) = editorDataSource.update { editorData ->
+        editorData.copy(position = position.toEditorPositionData())
+    }.map { }
+
     override suspend fun updateActiveLines(start: Int, end: Int): Either<Throwable, Unit> {
         _activeLines.value = start..end
 
@@ -67,9 +75,9 @@ internal class LocalEditorService(
         Unit
     }
 
-    override suspend fun moveCaret(snapshot: TextSnapshot, position: TextPosition) = caretManager.moveTo(
-        snapshot = snapshot, position = position
-    )
+    override suspend fun moveCaret(
+        snapshot: TextSnapshot, position: TextPosition,
+    ) = caretManager.moveTo(snapshot = snapshot, position = position)
 
     override suspend fun moveCaretLeft(snapshot: TextSnapshot) = caretManager.moveLeft(snapshot = snapshot)
 
@@ -79,11 +87,13 @@ internal class LocalEditorService(
 
     override suspend fun moveCaretDown(snapshot: TextSnapshot) = caretManager.moveDown(snapshot = snapshot)
 
-    override suspend fun startSelection(snapshot: TextSnapshot, position: TextPosition) =
-        selectionManager.startSelection(position = position)
+    override suspend fun startSelection(
+        snapshot: TextSnapshot, position: TextPosition,
+    ) = selectionManager.startSelection(position = position)
 
-    override suspend fun extendSelection(snapshot: TextSnapshot, position: TextPosition) =
-        selectionManager.extendSelection(position = position)
+    override suspend fun extendSelection(
+        snapshot: TextSnapshot, position: TextPosition,
+    ) = selectionManager.extendSelection(position = position)
 
     override suspend fun selectAll(snapshot: TextSnapshot) = selectionManager.selectAll(snapshot = snapshot)
 

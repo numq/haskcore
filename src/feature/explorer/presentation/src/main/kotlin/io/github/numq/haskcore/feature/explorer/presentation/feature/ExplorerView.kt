@@ -31,9 +31,7 @@ import kotlin.time.Duration.Companion.milliseconds
 @OptIn(FlowPreview::class)
 @Composable
 fun ExplorerView(
-    feature: Feature<ExplorerState, ExplorerCommand, ExplorerEvent>,
-    handleError: (Throwable) -> Unit,
-    selectedPath: String?,
+    feature: Feature<ExplorerState, ExplorerCommand, ExplorerEvent>, handleError: (Throwable) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
 
@@ -87,37 +85,12 @@ fun ExplorerView(
                             }
                     }
 
-                    val nodes = explorerTree.nodes
-
-                    LaunchedEffect(selectedPath, nodes) {
-                        if (selectedPath != null) {
-                            val index = nodes.indexOfFirst { node ->
-                                node.path == selectedPath
-                            }
-
-                            if (index != -1) {
-                                val layoutInfo = listState.layoutInfo
-
-                                val visibleItems = layoutInfo.visibleItemsInfo
-
-                                val isAlreadyVisible = visibleItems.any { visibleItem ->
-                                    visibleItem.index == index
-                                }
-
-                                if (!isAlreadyVisible) {
-                                    listState.animateScrollToItem(index)
-                                }
-                            }
-                        }
-                    }
-
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         state = listState,
                         contentPadding = PaddingValues(all = 12.dp)
                     ) {
-                        items(
-                            items = explorerTree.nodes, key = ExplorerNode::path, contentType = { it::class }) { node ->
+                        items(items = explorerTree.nodes, key = ExplorerNode::path) { node ->
                             ExplorerNodeItem(
                                 node = node,
                                 isSelected = node.path == state.selectedPath,

@@ -18,7 +18,7 @@ fun WorkspaceView(
     logo: Painter,
     exitApplication: () -> Unit,
     execution: @Composable () -> Unit,
-    explorer: @Composable (path: String?) -> Unit,
+    explorer: @Composable () -> Unit,
     log: @Composable () -> Unit,
     editor: @Composable (path: String?, language: Language?) -> Unit,
     output: (@Composable () -> Unit)?,

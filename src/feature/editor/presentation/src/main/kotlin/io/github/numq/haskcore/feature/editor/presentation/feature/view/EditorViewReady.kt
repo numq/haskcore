@@ -32,6 +32,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.LayoutDirection
 import io.github.numq.haskcore.common.presentation.font.Font
 import io.github.numq.haskcore.common.presentation.theme.editor.EditorTheme
+import io.github.numq.haskcore.feature.editor.core.EditorPosition
 import io.github.numq.haskcore.feature.editor.presentation.documentation.DocumentationPopup
 import io.github.numq.haskcore.feature.editor.presentation.documentation.DocumentationState
 import io.github.numq.haskcore.feature.editor.presentation.feature.EditorCommand
@@ -44,11 +45,12 @@ import io.github.numq.haskcore.feature.editor.presentation.scrollbar.ScrollbarCo
 import io.github.numq.haskcore.feature.editor.presentation.suggestions.SuggestionPopup
 import io.github.numq.haskcore.feature.editor.presentation.suggestions.SuggestionsState
 import io.github.numq.haskcore.feature.editor.presentation.viewport.ViewportCalculator
+import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.joinAll
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNot
 import org.jetbrains.skia.Image
 import org.jetbrains.skia.Rect
 import java.awt.Cursor
@@ -56,7 +58,7 @@ import java.awt.event.KeyEvent
 import kotlin.math.absoluteValue
 import kotlin.time.Duration.Companion.milliseconds
 
-@OptIn(ExperimentalComposeUiApi::class)
+@OptIn(ExperimentalComposeUiApi::class, FlowPreview::class)
 @Composable
 internal fun EditorViewReady(
     state: EditorState.Ready,
@@ -111,6 +113,28 @@ internal fun EditorViewReady(
         onDispose {
             selectionCommands.close()
         }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            val position = EditorPosition(horizontalOffset = state.scrollbar.x, verticalOffset = state.scrollbar.y)
+
+            if (position != state.editor.position) {
+                scope.launch(NonCancellable) {
+                    execute(EditorCommand.SaveEditorPosition(position = position))
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        snapshotFlow {
+            EditorPosition(horizontalOffset = state.scrollbar.x, verticalOffset = state.scrollbar.y)
+        }.distinctUntilChanged().conflate().debounce(500.milliseconds).filterNot(state.editor.position::equals)
+            .collect { position ->
+                println(position)
+                execute(EditorCommand.SaveEditorPosition(position = position))
+            }
     }
 
     ScrollbarContainer(
@@ -518,155 +542,156 @@ internal fun EditorViewReady(
                 }, content = {
                     Box(
                         modifier = Modifier.fillMaxSize().focusRequester(focusRequester).onFocusChanged { focusState ->
-                        isFocused = focusState.isFocused
-                    }.focusable().onKeyEvent { keyEvent ->
-                        when (keyEvent.type) {
-                            KeyEventType.KeyDown -> {
-                                keyEvent.awtEventOrNull?.let { awtEvent ->
-                                    val suggestionState = state.suggestionsState
+                            isFocused = focusState.isFocused
+                        }.focusable().onKeyEvent { keyEvent ->
+                            when (keyEvent.type) {
+                                KeyEventType.KeyDown -> {
+                                    keyEvent.awtEventOrNull?.let { awtEvent ->
+                                        val suggestionState = state.suggestionsState
 
-                                    if (suggestionState is SuggestionsState.Visible) {
-                                        val suggestions = suggestionState.suggestions
+                                        if (suggestionState is SuggestionsState.Visible) {
+                                            val suggestions = suggestionState.suggestions
 
-                                        val selectedIndex = suggestionState.selectedIndex
+                                            val selectedIndex = suggestionState.selectedIndex
 
-                                        when (awtEvent.keyCode) {
-                                            KeyEvent.VK_LEFT, KeyEvent.VK_RIGHT -> {
-                                                scope.launch {
-                                                    execute(EditorCommand.DismissSuggestions)
-                                                }
-
-                                                return@onKeyEvent false
-                                            }
-
-                                            KeyEvent.VK_DOWN -> {
-                                                val newIndex = (selectedIndex + 1) % suggestions.size
-
-                                                scope.launch {
-                                                    execute(EditorCommand.UpdateSuggestionsSelection(index = newIndex))
-                                                }
-
-                                                return@onKeyEvent true
-                                            }
-
-                                            KeyEvent.VK_UP -> {
-                                                val newIndex = (selectedIndex - 1 + suggestions.size) % suggestions.size
-
-                                                scope.launch {
-                                                    execute(EditorCommand.UpdateSuggestionsSelection(index = newIndex))
-                                                }
-
-                                                return@onKeyEvent true
-                                            }
-
-                                            KeyEvent.VK_ENTER, KeyEvent.VK_TAB -> {
-                                                suggestions.getOrNull(selectedIndex)?.let { suggestion ->
+                                            when (awtEvent.keyCode) {
+                                                KeyEvent.VK_LEFT, KeyEvent.VK_RIGHT -> {
                                                     scope.launch {
-                                                        execute(EditorCommand.ApplySuggestion(suggestion = suggestion))
-                                                    }
-                                                }
-
-                                                return@onKeyEvent true
-                                            }
-
-                                            KeyEvent.VK_ESCAPE -> {
-                                                scope.launch {
-                                                    joinAll(launch {
-                                                        execute(EditorCommand.DismissDocumentation)
-                                                    }, launch {
                                                         execute(EditorCommand.DismissSuggestions)
-                                                    })
+                                                    }
+
+                                                    return@onKeyEvent false
                                                 }
 
-                                                return@onKeyEvent true
+                                                KeyEvent.VK_DOWN -> {
+                                                    val newIndex = (selectedIndex + 1) % suggestions.size
+
+                                                    scope.launch {
+                                                        execute(EditorCommand.UpdateSuggestionsSelection(index = newIndex))
+                                                    }
+
+                                                    return@onKeyEvent true
+                                                }
+
+                                                KeyEvent.VK_UP -> {
+                                                    val newIndex =
+                                                        (selectedIndex - 1 + suggestions.size) % suggestions.size
+
+                                                    scope.launch {
+                                                        execute(EditorCommand.UpdateSuggestionsSelection(index = newIndex))
+                                                    }
+
+                                                    return@onKeyEvent true
+                                                }
+
+                                                KeyEvent.VK_ENTER, KeyEvent.VK_TAB -> {
+                                                    suggestions.getOrNull(selectedIndex)?.let { suggestion ->
+                                                        scope.launch {
+                                                            execute(EditorCommand.ApplySuggestion(suggestion = suggestion))
+                                                        }
+                                                    }
+
+                                                    return@onKeyEvent true
+                                                }
+
+                                                KeyEvent.VK_ESCAPE -> {
+                                                    scope.launch {
+                                                        joinAll(launch {
+                                                            execute(EditorCommand.DismissDocumentation)
+                                                        }, launch {
+                                                            execute(EditorCommand.DismissSuggestions)
+                                                        })
+                                                    }
+
+                                                    return@onKeyEvent true
+                                                }
                                             }
+                                        }
+
+                                        scope.launch {
+                                            execute(
+                                                EditorCommand.ProcessKey(
+                                                    keyCode = awtEvent.keyCode,
+                                                    modifiers = awtEvent.modifiersEx and (KeyEvent.SHIFT_DOWN_MASK or KeyEvent.CTRL_DOWN_MASK or KeyEvent.META_DOWN_MASK or KeyEvent.ALT_DOWN_MASK or KeyEvent.ALT_GRAPH_DOWN_MASK),
+                                                    utf16CodePoint = keyEvent.utf16CodePoint,
+                                                    offset = caretOffset
+                                                )
+                                            )
                                         }
                                     }
 
-                                    scope.launch {
-                                        execute(
-                                            EditorCommand.ProcessKey(
-                                                keyCode = awtEvent.keyCode,
-                                                modifiers = awtEvent.modifiersEx and (KeyEvent.SHIFT_DOWN_MASK or KeyEvent.CTRL_DOWN_MASK or KeyEvent.META_DOWN_MASK or KeyEvent.ALT_DOWN_MASK or KeyEvent.ALT_GRAPH_DOWN_MASK),
-                                                utf16CodePoint = keyEvent.utf16CodePoint,
-                                                offset = caretOffset
-                                            )
-                                        )
-                                    }
+                                    true
                                 }
 
-                                true
+                                else -> false
                             }
+                        }.then(mouseModifier).drawWithCache {
+                            val bounds = Rect.makeWH(w = size.width, h = size.height)
 
-                            else -> false
-                        }
-                    }.then(mouseModifier).drawWithCache {
-                        val bounds = Rect.makeWH(w = size.width, h = size.height)
+                            onDrawBehind {
+                                if (!bounds.isEmpty) {
+                                    drawIntoCanvas { canvas ->
+                                        val nativeCanvas = canvas.nativeCanvas
 
-                        onDrawBehind {
-                            if (!bounds.isEmpty) {
-                                drawIntoCanvas { canvas ->
-                                    val nativeCanvas = canvas.nativeCanvas
+                                        nativeCanvas.save()
 
-                                    nativeCanvas.save()
+                                        nativeCanvas.clipRect(r = Rect.makeWH(w = bounds.width, h = bounds.height))
 
-                                    nativeCanvas.clipRect(r = Rect.makeWH(w = bounds.width, h = bounds.height))
+                                        nativeCanvas.clear(color = theme.backgroundColorPalette.backgroundColor)
 
-                                    nativeCanvas.clear(color = theme.backgroundColorPalette.backgroundColor)
+                                        currentBackgroundLayer.render(canvas = nativeCanvas)
 
-                                    currentBackgroundLayer.render(canvas = nativeCanvas)
+                                        currentBackgroundOutlineLayer.render(canvas = nativeCanvas)
 
-                                    currentBackgroundOutlineLayer.render(canvas = nativeCanvas)
+                                        currentHighlightedLineLayer?.render(canvas = nativeCanvas)
 
-                                    currentHighlightedLineLayer?.render(canvas = nativeCanvas)
-
-                                    currentGutterLineLayers.forEach { lineLayer ->
-                                        lineLayer.render(canvas = nativeCanvas)
-                                    }
+                                        currentGutterLineLayers.forEach { lineLayer ->
+                                            lineLayer.render(canvas = nativeCanvas)
+                                        }
 
 //                                    currentGutterActionLayers.forEach { actionLayer ->
 //                                        actionLayer.render(canvas = nativeCanvas) // todo implement folding action
 //                                    }
 
-                                    currentGutterSeparatorLayer.render(canvas = nativeCanvas)
+                                        currentGutterSeparatorLayer.render(canvas = nativeCanvas)
 
-                                    nativeCanvas.save()
+                                        nativeCanvas.save()
 
-                                    nativeCanvas.translate(dx = gutterWidth, dy = 0f)
+                                        nativeCanvas.translate(dx = gutterWidth, dy = 0f)
 
-                                    nativeCanvas.clipRect(
-                                        r = Rect.makeWH(w = bounds.width - gutterWidth, h = bounds.height)
-                                    )
+                                        nativeCanvas.clipRect(
+                                            r = Rect.makeWH(w = bounds.width - gutterWidth, h = bounds.height)
+                                        )
 
-                                    currentGuidelineLayer?.render(canvas = nativeCanvas)
+                                        currentGuidelineLayer?.render(canvas = nativeCanvas)
 
-                                    if (state.editor.selection.range.isEmpty) {
-                                        currentOccurrenceLayers.forEach { occurrenceLayer ->
-                                            occurrenceLayer.render(canvas = nativeCanvas)
+                                        if (state.editor.selection.range.isEmpty) {
+                                            currentOccurrenceLayers.forEach { occurrenceLayer ->
+                                                occurrenceLayer.render(canvas = nativeCanvas)
+                                            }
                                         }
+
+                                        currentSelectionLayer.render(canvas = nativeCanvas)
+
+                                        currentContentLayers.forEach { contentLayer ->
+                                            contentLayer.render(canvas = nativeCanvas)
+                                        }
+
+                                        currentIssueLayers.forEach { issueLayer ->
+                                            issueLayer.render(canvas = nativeCanvas)
+                                        }
+
+                                        if (caretVisible) {
+                                            currentCaretLayer?.render(canvas = nativeCanvas)
+                                        }
+
+                                        nativeCanvas.restore()
+
+                                        nativeCanvas.restore()
                                     }
-
-                                    currentSelectionLayer.render(canvas = nativeCanvas)
-
-                                    currentContentLayers.forEach { contentLayer ->
-                                        contentLayer.render(canvas = nativeCanvas)
-                                    }
-
-                                    currentIssueLayers.forEach { issueLayer ->
-                                        issueLayer.render(canvas = nativeCanvas)
-                                    }
-
-                                    if (caretVisible) {
-                                        currentCaretLayer?.render(canvas = nativeCanvas)
-                                    }
-
-                                    nativeCanvas.restore()
-
-                                    nativeCanvas.restore()
                                 }
                             }
-                        }
-                    }.pointerHoverIcon(PointerIcon(Cursor(Cursor.TEXT_CURSOR)))
+                        }.pointerHoverIcon(PointerIcon(Cursor(Cursor.TEXT_CURSOR)))
                     )
                 })
             }

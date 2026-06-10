@@ -4,6 +4,7 @@ import androidx.compose.ui.geometry.Offset
 import io.github.numq.haskcore.common.core.language.Language
 import io.github.numq.haskcore.common.core.text.TextPosition
 import io.github.numq.haskcore.feature.editor.core.Editor
+import io.github.numq.haskcore.feature.editor.core.EditorPosition
 import io.github.numq.haskcore.feature.editor.core.analysis.Analysis
 import io.github.numq.haskcore.feature.editor.core.analysis.CodeDocumentation
 import io.github.numq.haskcore.feature.editor.core.analysis.CodeSuggestion
@@ -12,7 +13,7 @@ import kotlinx.coroutines.flow.Flow
 
 internal sealed interface EditorCommand {
     enum class Key {
-        INITIALIZE_EDITOR, INITIALIZE_EDITOR_SUCCESS, INITIALIZE_ANALYSIS, INITIALIZE_ANALYSIS_SUCCESS, INITIALIZE_SYNTAX, INITIALIZE_SYNTAX_SUCCESS, UPDATE_VIEWPORT, DOCUMENTATION_HOVER, SHOW_SUGGESTIONS, APPLY_SUGGESTION, PROCESS_KEY, MOVE_CARET, START_SELECTION, EXTEND_SELECTION
+        INITIALIZE_EDITOR, INITIALIZE_EDITOR_SUCCESS, INITIALIZE_ANALYSIS, INITIALIZE_ANALYSIS_SUCCESS, INITIALIZE_SYNTAX, INITIALIZE_SYNTAX_SUCCESS, UPDATE_VIEWPORT, DOCUMENTATION_HOVER, SHOW_SUGGESTIONS, APPLY_SUGGESTION, PROCESS_KEY, MOVE_CARET, START_SELECTION, EXTEND_SELECTION, SAVE_EDITOR_POSITION
     }
 
     data class HandleFailure(val throwable: Throwable) : EditorCommand
@@ -65,7 +66,7 @@ internal sealed interface EditorCommand {
 
     data object DismissDocumentation : EditorCommand
 
-    data class ShowSuggestions(val position: TextPosition, val offset: Offset) : EditorCommand {
+    data class ShowSuggestions(val offset: Offset) : EditorCommand {
         val key = Key.SHOW_SUGGESTIONS
     }
 
@@ -83,15 +84,12 @@ internal sealed interface EditorCommand {
         val keyCode: Int,
         val modifiers: Int,
         val utf16CodePoint: Int,
-        val position: TextPosition? = null,
         val offset: Offset? = null,
     ) : EditorCommand {
         val key = Key.PROCESS_KEY
     }
 
-    data class ProcessKeySuccess(
-        val utf16CodePoint: Int, val position: TextPosition?, val offset: Offset?,
-    ) : EditorCommand
+    data class ProcessKeySuccess(val utf16CodePoint: Int, val offset: Offset?) : EditorCommand
 
     data class MoveCaret(val position: TextPosition) : EditorCommand {
         val key = Key.MOVE_CARET
@@ -121,6 +119,12 @@ internal sealed interface EditorCommand {
         val viewportWidth: Float,
         val viewportHeight: Float,
     ) : EditorCommand
+
+    data class SaveEditorPosition(val position: EditorPosition) : EditorCommand {
+        val key = Key.SAVE_EDITOR_POSITION
+    }
+
+    data object SaveEditorPositionSuccess : EditorCommand
 
     sealed interface Menu : EditorCommand {
         data class Open(val x: Float, val y: Float) : Menu
