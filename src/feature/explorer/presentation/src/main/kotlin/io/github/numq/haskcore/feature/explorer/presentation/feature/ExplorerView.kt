@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNot
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(FlowPreview::class)
@@ -67,8 +68,10 @@ fun ExplorerView(
                             )
 
                             if (position != explorerTree.position) {
-                                scope.launch(NonCancellable) {
-                                    feature.execute(ExplorerCommand.SaveExplorerPosition(position = position))
+                                scope.launch {
+                                    withContext(NonCancellable) {
+                                        feature.execute(ExplorerCommand.SaveExplorerPosition(position = position))
+                                    }
                                 }
                             }
                         }
