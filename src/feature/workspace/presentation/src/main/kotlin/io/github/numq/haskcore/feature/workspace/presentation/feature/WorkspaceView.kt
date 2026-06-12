@@ -33,7 +33,7 @@ fun WorkspaceView(
             when (event) {
                 is WorkspaceEvent.HandleFailure -> handleError(event.throwable)
 
-                is WorkspaceEvent.ExitApplication -> exitApplication()
+                is WorkspaceEvent.Close -> exitApplication()
             }
         }
     }

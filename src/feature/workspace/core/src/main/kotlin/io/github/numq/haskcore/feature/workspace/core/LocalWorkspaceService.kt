@@ -54,16 +54,13 @@ internal class LocalWorkspaceService(
         workspaceData.copy(verticalRatio = ratio)
     }.map {}
 
-    override suspend fun saveDimensions(
-        x: Float?, y: Float?, width: Float?, height: Float?, isFullscreen: Boolean,
-    ) = workspaceDataSource.update { workspaceData ->
-        when {
-            isFullscreen -> workspaceData.copy(isFullscreen = true)
+    override suspend fun saveDimensions(x: Float, y: Float, width: Float, height: Float) =
+        workspaceDataSource.update { workspaceData ->
+            workspaceData.copy(x = x, y = y, width = width, height = height)
+        }.map {}
 
-            else -> workspaceData.copy(
-                x = x, y = y, width = width, height = height, isFullscreen = false
-            )
-        }
+    override suspend fun toggleFullscreen() = workspaceDataSource.update { workspaceData ->
+        workspaceData.copy(isFullscreen = !workspaceData.isFullscreen)
     }.map {}
 
     override fun close() {

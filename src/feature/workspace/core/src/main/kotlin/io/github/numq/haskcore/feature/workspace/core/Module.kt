@@ -62,5 +62,7 @@ val workspaceFeatureCoreModule = module {
         scopedOwner { SaveLeftShelfPanelRatio(workspaceService = get()) }
 
         scopedOwner { SaveRightShelfPanelRatio(workspaceService = get()) }
+
+        scopedOwner { ToggleFullscreen(workspaceService = get()) }
     }
 }

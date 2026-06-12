@@ -14,7 +14,7 @@ interface WorkspaceService : AutoCloseable {
 
     suspend fun saveVerticalRatio(ratio: Float): Either<Throwable, Unit>
 
-    suspend fun saveDimensions(
-        x: Float?, y: Float?, width: Float?, height: Float?, isFullscreen: Boolean,
-    ): Either<Throwable, Unit>
+    suspend fun saveDimensions(x: Float, y: Float, width: Float, height: Float): Either<Throwable, Unit>
+
+    suspend fun toggleFullscreen(): Either<Throwable, Unit>
 }

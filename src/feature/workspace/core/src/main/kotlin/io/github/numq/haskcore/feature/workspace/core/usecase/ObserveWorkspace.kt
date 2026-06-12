@@ -37,7 +37,7 @@ class ObserveWorkspace(
                 try {
                     awaitCancellation()
                 } finally {
-                    lspService.stop().getOrElse(::println)
+                    lspService.stop().getOrElse(::println) // todo
                 }
             }
         }
@@ -63,7 +63,7 @@ class ObserveWorkspace(
                             val text = documentService.readDocument(path = path).getOrNull()?.content
 
                             if (text != null) {
-                                lspService.openDocument(path = path, text = text).getOrElse(::println)
+                                lspService.openDocument(path = path, text = text).getOrElse(::println) // todo
 
                                 syncedPathsForCurrentConnection.add(path)
                             }

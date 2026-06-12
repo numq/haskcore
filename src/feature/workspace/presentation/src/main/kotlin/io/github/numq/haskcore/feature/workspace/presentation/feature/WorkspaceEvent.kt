@@ -3,5 +3,5 @@ package io.github.numq.haskcore.feature.workspace.presentation.feature
 internal sealed interface WorkspaceEvent {
     data class HandleFailure(val throwable: Throwable) : WorkspaceEvent
 
-    data object ExitApplication : WorkspaceEvent
+    data object Close : WorkspaceEvent
 }

@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.Flow
 
 internal sealed interface WorkspaceCommand {
     enum class Key {
-        INITIALIZE, INITIALIZE_SUCCESS, CLOSE_WORKSPACE, OPEN_DOCUMENT, CLOSE_DOCUMENT, SELECT_SHELF_TOOL, SAVE_LEFT_SHELF_PANEL_RATIO, SAVE_RIGHT_SHELF_PANEL_RATIO, SAVE_VERTICAL_RATIO, SAVE_DIMENSIONS
+        INITIALIZE, INITIALIZE_SUCCESS, CLOSE_WORKSPACE, OPEN_DOCUMENT, CLOSE_DOCUMENT, SELECT_SHELF_TOOL, SAVE_LEFT_SHELF_PANEL_RATIO, SAVE_RIGHT_SHELF_PANEL_RATIO, SAVE_VERTICAL_RATIO, SAVE_DIMENSIONS, TOGGLE_FULLSCREEN
     }
 
     data class HandleFailure(val throwable: Throwable) : WorkspaceCommand
@@ -27,8 +27,6 @@ internal sealed interface WorkspaceCommand {
     }
 
     data object CloseWorkspaceSuccess : WorkspaceCommand
-
-    data object ExitApplication : WorkspaceCommand
 
     data class OpenDocument(val document: WorkspaceDocument) : WorkspaceCommand {
         val key = Key.OPEN_DOCUMENT
@@ -66,15 +64,23 @@ internal sealed interface WorkspaceCommand {
 
     data object SaveVerticalRatioSuccess : WorkspaceCommand
 
-    data class SaveDimensions(
-        val x: Float? = null,
-        val y: Float? = null,
-        val width: Float? = null,
-        val height: Float? = null,
-        val isFullscreen: Boolean,
-    ) : WorkspaceCommand {
+    data class SaveDimensions(val x: Float, val y: Float, val width: Float, val height: Float) : WorkspaceCommand {
         val key = Key.SAVE_DIMENSIONS
     }
 
     data object SaveDimensionsSuccess : WorkspaceCommand
+
+    data object Minimize : WorkspaceCommand
+
+    data object ToggleMaximize : WorkspaceCommand
+
+    data object ToggleFullscreen : WorkspaceCommand {
+        val key = Key.TOGGLE_FULLSCREEN
+    }
+
+    data object ToggleFullscreenSuccess : WorkspaceCommand
+
+    data class Close(
+        val windowX: Float, val windowY: Float, val windowWidth: Float, val windowHeight: Float,
+    ) : WorkspaceCommand
 }

@@ -19,6 +19,7 @@ val workspaceFeaturePresentationModule = module {
                 selectShelfTool = get(),
                 saveLeftShelfPanelRatio = get(),
                 saveRightShelfPanelRatio = get(),
+                toggleFullscreen = get(),
             )
         }
 
