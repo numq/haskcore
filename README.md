@@ -38,37 +38,8 @@ The project is being developed solo and requires no code contributions.
 
 ## Architecture
 
-> [!NOTE]
-> The application was designed using the [Reduce & Conquer](https://github.com/numq/reduce-and-conquer) architectural
-> pattern
-
-This project follows a highly modularized, layered architecture designed for strict isolation, testability, and
-scalability.
-
-```mermaid
-graph TD
-core[":core"]
-
-feature_presentation[":feature:*:presentation"]
-feature_core[":feature:*:core"]
-
-platform[":platform:*"]
-
-service[":service:*"]
-
-service --> core
-
-feature_core --> core
-feature_core --> service
-
-feature_presentation --> core
-feature_presentation --> feature_core
-
-platform --> core
-platform --> service
-platform --> feature_core
-platform --> feature_presentation
-```
+- [FLIP](https://github.com/numq/flip)
+- [Reduce & Conquer](https://github.com/numq/reduce-and-conquer)
 
 ## Known bugs
 
