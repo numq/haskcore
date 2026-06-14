@@ -13,9 +13,7 @@ import io.github.numq.haskcore.feature.bootstrap.presentation.feature.BootstrapV
 import io.github.numq.haskcore.feature.editor.presentation.feature.view.EditorView
 import io.github.numq.haskcore.feature.editor.presentation.layer.LayerFactory
 import io.github.numq.haskcore.feature.execution.presentation.feature.ExecutionView
-import io.github.numq.haskcore.feature.explorer.presentation.feature.ExplorerCommand
-import io.github.numq.haskcore.feature.explorer.presentation.feature.ExplorerFeature
-import io.github.numq.haskcore.feature.explorer.presentation.feature.ExplorerView
+import io.github.numq.haskcore.feature.explorer.presentation.feature.view.ExplorerView
 import io.github.numq.haskcore.feature.log.presentation.feature.LogView
 import io.github.numq.haskcore.feature.navigation.core.Destination
 import io.github.numq.haskcore.feature.navigation.presentation.feature.NavigationView
@@ -24,6 +22,8 @@ import io.github.numq.haskcore.feature.output.presentation.feature.OutputView
 import io.github.numq.haskcore.feature.status.presentation.feature.StatusView
 import io.github.numq.haskcore.feature.welcome.presentation.feature.WelcomeView
 import io.github.numq.haskcore.feature.workspace.presentation.feature.WorkspaceView
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import org.koin.compose.koinInject
 import org.koin.core.context.startKoin
 import org.koin.core.parameter.parametersOf
@@ -78,8 +78,6 @@ object Entrypoint {
             BootstrapView(
                 applicationScope = applicationScope,
                 handleError = Throwable::printStackTrace,
-                title = APPLICATION_NAME,
-                logo = logo,
                 exitApplication = exitApplication,
                 content = { bootstrap, welcomeLogoFont, welcomeMonoFont, editorMonoFont ->
                     NavigationView(
@@ -121,23 +119,21 @@ object Entrypoint {
                                 }
                             }
 
-                            val explorerFeature = koinInject<ExplorerFeature>(scope = projectScope)
-
                             val outputFeature = koinInject<OutputFeature>(scope = projectScope)
 
-                            val outputState by outputFeature.state.collectAsState()
-
-                            val hasOutput = remember(outputState.output) {
-                                with(outputState.output) {
-                                    sessions.isNotEmpty() && activeSession != null
-                                }
-                            }
+                            val hasOutput by outputFeature.state.map { state ->
+                                state.output.sessions.isNotEmpty() && state.output.activeSession != null
+                            }.distinctUntilChanged().collectAsState(false)
 
                             val (textPosition, setTextPosition) = remember { mutableStateOf<TextPosition?>(null) }
 
                             val (textEncoding, setTextEncoding) = remember { mutableStateOf<TextEncoding?>(null) }
 
                             val (textLineEnding, setTextLineEnding) = remember { mutableStateOf<TextLineEnding?>(null) }
+
+                            val (navigateToPath, setNavigateToPath) = remember {
+                                mutableStateOf<(suspend (path: String) -> Unit)?>(null)
+                            }
 
                             WorkspaceView(
                                 projectScope = projectScope,
@@ -148,7 +144,10 @@ object Entrypoint {
                                     ExecutionView(projectScope = projectScope, handleError = Throwable::printStackTrace)
                                 },
                                 explorer = {
-                                    ExplorerView(feature = explorerFeature, handleError = Throwable::printStackTrace)
+                                    ExplorerView(
+                                        projectScope = projectScope,
+                                        handleError = Throwable::printStackTrace,
+                                        navigateToPathCallback = { callback -> setNavigateToPath(callback) })
                                 },
                                 log = {
                                     LogView(projectScope = projectScope, handleError = Throwable::printStackTrace)
@@ -162,16 +161,16 @@ object Entrypoint {
                                         font = editorMonoFont,
                                         theme = editorTheme,
                                         layerFactory = layerFactory,
-                                        onTextPosition = setTextPosition,
-                                        onTextLineEnding = setTextLineEnding,
-                                        onTextEncoding = setTextEncoding,
+                                        textPositionCallback = setTextPosition,
+                                        textLineEndingCallback = setTextLineEnding,
+                                        textEncodingCallback = setTextEncoding,
                                     )
                                 },
                                 output = when {
                                     hasOutput -> {
                                         @Composable {
                                             OutputView(
-                                                projectScope = projectScope, handleError = Throwable::printStackTrace
+                                                feature = outputFeature, handleError = Throwable::printStackTrace
                                             )
                                         }
                                     }
@@ -185,9 +184,8 @@ object Entrypoint {
                                         textPosition = textPosition,
                                         textLineEnding = textLineEnding,
                                         textEncoding = textEncoding,
-                                        navigateToPath = { path ->
-                                            explorerFeature.execute(ExplorerCommand.OpenPath(path = path))
-                                        })
+                                        navigateToPath = navigateToPath
+                                    )
                                 })
                         })
                 })
