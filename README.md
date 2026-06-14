@@ -72,7 +72,7 @@ platform --> feature_presentation
 
 ## Known bugs
 
-- Window does not persist its window size when re-opening in fullscreen mode
+- TODO
 
 ## License
 
