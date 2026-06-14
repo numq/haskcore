@@ -4,6 +4,8 @@
 
 <h1 align="center" title="A lightweight and standalone Haskell IDE powered by Compose Desktop">haskcore</h1>
 
+<p align="center"><img src="media/logo.svg" alt="Logo" width="128"></p>
+
 <p align="center">A lightweight and standalone Haskell IDE powered by Compose Desktop</p>
 
 <p align="center"><img src="media/preview.png" alt="Preview"></p>
@@ -67,6 +69,10 @@ platform --> service
 platform --> feature_core
 platform --> feature_presentation
 ```
+
+## Known bugs
+
+- Window does not persist its window size when re-opening in fullscreen mode
 
 ## License
 
