@@ -5,7 +5,7 @@ import kotlinx.coroutines.flow.Flow
 
 internal sealed interface LogCommand {
     enum class Key {
-        INITIALIZE, INITIALIZE_SUCCESS
+        INITIALIZE, INITIALIZE_SUCCESS, CLEAR
     }
 
     data class HandleFailure(val throwable: Throwable) : LogCommand
@@ -19,4 +19,10 @@ internal sealed interface LogCommand {
     }
 
     data class UpdateLogs(val logs: List<Log>) : LogCommand
+
+    data object Clear : LogCommand {
+        val key = Key.CLEAR
+    }
+
+    data object ClearSuccess : LogCommand
 }

@@ -8,7 +8,7 @@ import org.koin.dsl.module
 
 val logFeaturePresentationModule = module {
     scope<ScopeQualifier.Type.Project> {
-        scopedOwner { LogReducer(observeLogs = get()) }
+        scopedOwner { LogReducer(clearLogs = get(), observeLogs = get()) }
 
         scopedOwner { LogFeature(reducer = get()) }
     }

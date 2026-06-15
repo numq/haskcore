@@ -5,27 +5,27 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.numq.haskcore.common.core.log.Log
+import io.github.numq.haskcore.common.presentation.container.Container
+import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import org.koin.core.scope.Scope
 
 @Composable
 fun LogView(projectScope: Scope, handleError: (Throwable) -> Unit) {
-    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
 
     val feature = koinInject<LogFeature>(scope = projectScope)
 
@@ -39,78 +39,134 @@ fun LogView(projectScope: Scope, handleError: (Throwable) -> Unit) {
         }
     }
 
+    val listState = rememberLazyListState()
+
+    val isAtBottom by remember { derivedStateOf { !listState.canScrollForward } }
+
     LaunchedEffect(state.logs.size) {
-        if (state.logs.isNotEmpty()) {
+        if (state.logs.isNotEmpty() && isAtBottom) {
             listState.animateScrollToItem(state.logs.size - 1)
         }
     }
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(top = 4.dp, bottom = 4.dp)
-    ) {
-        items(items = state.logs, key = Log::timestamp) { log ->
-            val (markerColor, level) = when (log) {
-                is Log.Info -> MaterialTheme.colorScheme.primary to "INFO"
+    val infoColor = MaterialTheme.colorScheme.primary
 
-                is Log.Warning -> Color(0xFFE65100) to "WARN"
+    val errorColor = MaterialTheme.colorScheme.error
 
-                is Log.Error -> MaterialTheme.colorScheme.error to "ERROR"
-            }
-
+    Container {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.Start,
+            verticalArrangement = Arrangement.Top
+        ) {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
-                verticalAlignment = Alignment.Top
+                modifier = Modifier.fillMaxWidth().height(36.dp).padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Box(
-                    modifier = Modifier.width(3.dp).height(20.dp)
-                        .background(markerColor, shape = MaterialTheme.shapes.small)
+                Text(
+                    text = "Logs",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                Spacer(modifier = Modifier.width(8.dp))
+                IconButton(
+                    onClick = {
+                        scope.launch {
+                            feature.execute(LogCommand.Clear)
+                        }
+                    }, modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Clear",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
 
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = log.timestampLabel,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = .5f),
-                            fontFamily = FontFamily.Monospace
+            LazyColumn(
+                modifier = Modifier.weight(1f), state = listState, contentPadding = PaddingValues(vertical = 4.dp)
+            ) {
+                items(items = state.logs, key = Log::id) { log ->
+                    val (markerColor, level) = when (log) {
+                        is Log.Info -> infoColor to "INFO"
+
+                        is Log.Warning -> Color(0xFFE65100) to "WARN"
+
+                        is Log.Error -> errorColor to "ERROR"
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Max)
+                            .padding(horizontal = 4.dp, vertical = 2.dp), verticalAlignment = Alignment.Top
+                    ) {
+                        Box(
+                            modifier = Modifier.width(3.dp).fillMaxHeight()
+                                .background(markerColor, shape = MaterialTheme.shapes.small)
                         )
 
                         Spacer(modifier = Modifier.width(8.dp))
 
-                        Text(
-                            text = level,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = markerColor,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Monospace
-                        )
-                    }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Start,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = log.timestampLabel,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = .5f),
+                                    fontFamily = FontFamily.Monospace,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Clip
+                                )
 
-                    Spacer(modifier = Modifier.height(2.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
 
-                    Text(
-                        text = log.message,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontFamily = FontFamily.Monospace
-                    )
+                                Text(
+                                    text = level,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = markerColor,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Clip
+                                )
+                            }
 
-                    if (log is Log.Error) {
-                        Spacer(modifier = Modifier.height(4.dp))
+                            Spacer(modifier = Modifier.height(2.dp))
 
-                        Surface(
-                            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f),
-                            shape = MaterialTheme.shapes.small
-                        ) {
                             Text(
-                                text = "${log.className}\n${log.stackTrace}",
-                                style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-                                fontSize = 11.sp,
-                                color = MaterialTheme.colorScheme.onErrorContainer,
-                                modifier = Modifier.padding(8.dp)
+                                text = log.message,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontFamily = FontFamily.Monospace,
+                                maxLines = 1,
+                                overflow = TextOverflow.Clip
                             )
+
+                            if (log is Log.Error) {
+                                Spacer(modifier = Modifier.height(4.dp))
+
+                                Surface(
+                                    color = MaterialTheme.colorScheme.errorContainer.copy(alpha = .3f),
+                                    shape = MaterialTheme.shapes.small
+                                ) {
+                                    Text(
+                                        text = "${log.className}\n${log.stackTrace}",
+                                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                                        fontSize = 11.sp,
+                                        color = MaterialTheme.colorScheme.onErrorContainer,
+                                        modifier = Modifier.padding(8.dp),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Clip
+                                    )
+                                }
+                            }
                         }
                     }
                 }
