@@ -6,6 +6,8 @@ import kotlinx.serialization.protobuf.ProtoNumber
 
 @Serializable
 internal sealed interface LoggerData {
+    val id: String
+
     val projectId: String?
 
     val message: String
@@ -15,17 +17,19 @@ internal sealed interface LoggerData {
     @Serializable
     @SerialName("Info")
     data class Info(
-        @ProtoNumber(1) override val projectId: String?,
-        @ProtoNumber(2) override val message: String,
-        @ProtoNumber(3) override val timestampNanos: Long,
+        @ProtoNumber(1) override val id: String,
+        @ProtoNumber(2) override val projectId: String?,
+        @ProtoNumber(3) override val message: String,
+        @ProtoNumber(4) override val timestampNanos: Long,
     ) : LoggerData
 
     @Serializable
     @SerialName("Warning")
     data class Warning(
-        @ProtoNumber(1) override val projectId: String?,
-        @ProtoNumber(2) override val message: String,
-        @ProtoNumber(3) override val timestampNanos: Long,
+        @ProtoNumber(1) override val id: String,
+        @ProtoNumber(2) override val projectId: String?,
+        @ProtoNumber(3) override val message: String,
+        @ProtoNumber(4) override val timestampNanos: Long,
     ) : LoggerData
 
     @Serializable
@@ -37,31 +41,34 @@ internal sealed interface LoggerData {
         @Serializable
         @SerialName("Handled")
         data class Handled(
-            @ProtoNumber(1) override val projectId: String?,
-            @ProtoNumber(2) override val message: String,
-            @ProtoNumber(3) override val timestampNanos: Long,
-            @ProtoNumber(4) override val className: String,
-            @ProtoNumber(5) override val stackTrace: String,
+            @ProtoNumber(1) override val id: String,
+            @ProtoNumber(2) override val projectId: String?,
+            @ProtoNumber(3) override val message: String,
+            @ProtoNumber(4) override val timestampNanos: Long,
+            @ProtoNumber(5) override val className: String,
+            @ProtoNumber(6) override val stackTrace: String,
         ) : Error
 
         @Serializable
         @SerialName("Internal")
         data class Internal(
-            @ProtoNumber(1) override val projectId: String?,
-            @ProtoNumber(2) override val message: String,
-            @ProtoNumber(3) override val timestampNanos: Long,
-            @ProtoNumber(4) override val className: String,
-            @ProtoNumber(5) override val stackTrace: String,
+            @ProtoNumber(1) override val id: String,
+            @ProtoNumber(2) override val projectId: String?,
+            @ProtoNumber(3) override val message: String,
+            @ProtoNumber(4) override val timestampNanos: Long,
+            @ProtoNumber(5) override val className: String,
+            @ProtoNumber(6) override val stackTrace: String,
         ) : Error
 
         @Serializable
         @SerialName("Critical")
         data class Critical(
-            @ProtoNumber(1) override val projectId: String?,
-            @ProtoNumber(2) override val message: String,
-            @ProtoNumber(3) override val timestampNanos: Long,
-            @ProtoNumber(4) override val className: String,
-            @ProtoNumber(5) override val stackTrace: String,
+            @ProtoNumber(1) override val id: String,
+            @ProtoNumber(2) override val projectId: String?,
+            @ProtoNumber(3) override val message: String,
+            @ProtoNumber(4) override val timestampNanos: Long,
+            @ProtoNumber(5) override val className: String,
+            @ProtoNumber(6) override val stackTrace: String,
         ) : Error
     }
 }

@@ -5,14 +5,15 @@ import io.github.numq.haskcore.common.core.timestamp.Timestamp
 
 internal fun LoggerData.toLogger(timestamp: Timestamp, timestampLabel: String) = when (this) {
     is LoggerData.Info -> Log.Info(
-        projectId = projectId, message = message, timestamp = timestamp, timestampLabel = timestampLabel
+        id = id, projectId = projectId, message = message, timestamp = timestamp, timestampLabel = timestampLabel
     )
 
     is LoggerData.Warning -> Log.Warning(
-        projectId = projectId, message = message, timestamp = timestamp, timestampLabel = timestampLabel
+        id = id, projectId = projectId, message = message, timestamp = timestamp, timestampLabel = timestampLabel
     )
 
     is LoggerData.Error.Handled -> Log.Error.Handled(
+        id = id,
         projectId = projectId,
         message = message,
         timestamp = timestamp,
@@ -22,6 +23,7 @@ internal fun LoggerData.toLogger(timestamp: Timestamp, timestampLabel: String) =
     )
 
     is LoggerData.Error.Internal -> Log.Error.Internal(
+        id = id,
         projectId = projectId,
         message = message,
         timestamp = timestamp,
@@ -31,6 +33,7 @@ internal fun LoggerData.toLogger(timestamp: Timestamp, timestampLabel: String) =
     )
 
     is LoggerData.Error.Critical -> Log.Error.Critical(
+        id = id,
         projectId = projectId,
         message = message,
         timestamp = timestamp,
@@ -42,14 +45,15 @@ internal fun LoggerData.toLogger(timestamp: Timestamp, timestampLabel: String) =
 
 internal fun Log.toLoggerData() = when (this) {
     is Log.Info -> LoggerData.Info(
-        projectId = projectId, message = message, timestampNanos = timestamp.nanoseconds
+        id = id, projectId = projectId, message = message, timestampNanos = timestamp.nanoseconds
     )
 
     is Log.Warning -> LoggerData.Warning(
-        projectId = projectId, message = message, timestampNanos = timestamp.nanoseconds
+        id = id, projectId = projectId, message = message, timestampNanos = timestamp.nanoseconds
     )
 
     is Log.Error.Handled -> LoggerData.Error.Handled(
+        id = id,
         projectId = projectId,
         message = message,
         timestampNanos = timestamp.nanoseconds,
@@ -58,6 +62,7 @@ internal fun Log.toLoggerData() = when (this) {
     )
 
     is Log.Error.Internal -> LoggerData.Error.Internal(
+        id = id,
         projectId = projectId,
         message = message,
         timestampNanos = timestamp.nanoseconds,
@@ -66,6 +71,7 @@ internal fun Log.toLoggerData() = when (this) {
     )
 
     is Log.Error.Critical -> LoggerData.Error.Critical(
+        id = id,
         projectId = projectId,
         message = message,
         timestampNanos = timestamp.nanoseconds,
