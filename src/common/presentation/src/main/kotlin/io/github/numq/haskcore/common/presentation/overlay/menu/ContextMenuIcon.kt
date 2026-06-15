@@ -1,4 +1,4 @@
-package io.github.numq.haskcore.feature.editor.presentation.menu
+package io.github.numq.haskcore.common.presentation.overlay.menu
 
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
@@ -8,6 +8,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 
 @Composable
-internal fun ContextMenuIcon(imageVector: ImageVector) {
-    Icon(imageVector = imageVector, contentDescription = null, modifier = Modifier.size(18.dp))
+internal fun ContextMenuIcon(imageVector: ImageVector, modifier: Modifier = Modifier) {
+    Icon(imageVector = imageVector, contentDescription = null, modifier = modifier.size(18.dp))
 }
