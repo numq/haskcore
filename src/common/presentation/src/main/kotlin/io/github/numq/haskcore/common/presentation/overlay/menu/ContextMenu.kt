@@ -23,28 +23,33 @@ import androidx.compose.ui.window.Popup
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun Menu(state: MenuState, onState: (MenuState) -> Unit, items: () -> List<MenuItem>, content: @Composable () -> Unit) {
+fun ContextMenu(
+    state: ContextMenuState,
+    onState: (ContextMenuState) -> Unit,
+    items: () -> List<ContextMenuItem>,
+    content: @Composable () -> Unit,
+) {
     val currentOnState by rememberUpdatedState(onState)
 
     Box(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.fillMaxSize().onPointerEvent(eventType = PointerEventType.Press, onEvent = { event ->
             if (event.button.isSecondary) {
-                val offset = event.changes.first().position
+                val (x, y) = event.changes.first().position
 
-                currentOnState(MenuState.Visible(offset = offset))
+                currentOnState(ContextMenuState.Visible(x = x, y = y))
             }
         })) {
             content()
         }
 
         when (val currentState = state) {
-            is MenuState.Hidden -> Unit
+            is ContextMenuState.Hidden -> Unit
 
-            is MenuState.Visible -> Popup(
+            is ContextMenuState.Visible -> Popup(
                 alignment = Alignment.TopStart, offset = IntOffset(
-                    x = currentState.offset.x.toInt(), y = currentState.offset.y.toInt()
+                    x = currentState.x.toInt(), y = currentState.y.toInt()
                 ), onDismissRequest = {
-                    currentOnState(MenuState.Hidden)
+                    currentOnState(ContextMenuState.Hidden)
                 }) {
                 Surface(
                     shape = RoundedCornerShape(4.dp),
@@ -68,16 +73,16 @@ fun Menu(state: MenuState, onState: (MenuState) -> Unit, items: () -> List<MenuI
                                     enabled = item.enabled, onClick = {
                                         item.onClick()
 
-                                        currentOnState(MenuState.Hidden)
+                                        currentOnState(ContextMenuState.Hidden)
                                     }).padding(horizontal = 16.dp, vertical = 12.dp),
                                 horizontalArrangement = Arrangement.spacedBy(
                                     space = 12.dp, alignment = Alignment.Start
                                 ),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                item.leadingIcon?.let { iconContent ->
+                                item.leadingIcon?.let { imageVector ->
                                     Box(modifier = Modifier.size(20.dp)) {
-                                        iconContent()
+                                        ContextMenuIcon(imageVector = imageVector)
                                     }
                                 }
 
@@ -89,9 +94,9 @@ fun Menu(state: MenuState, onState: (MenuState) -> Unit, items: () -> List<MenuI
                                     maxLines = 1
                                 )
 
-                                item.trailingIcon?.let { iconContent ->
+                                item.trailingIcon?.let { imageVector ->
                                     Box(modifier = Modifier.size(20.dp)) {
-                                        iconContent()
+                                        ContextMenuIcon(imageVector = imageVector)
                                     }
                                 }
                             }

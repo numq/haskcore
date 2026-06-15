@@ -3,6 +3,8 @@ package io.github.numq.haskcore.common.core.log
 import io.github.numq.haskcore.common.core.timestamp.Timestamp
 
 sealed interface Log {
+    val id: String
+
     val projectId: String?
 
     val message: String
@@ -12,6 +14,7 @@ sealed interface Log {
     val timestampLabel: String
 
     data class Info(
+        override val id: String,
         override val projectId: String?,
         override val message: String,
         override val timestamp: Timestamp,
@@ -19,6 +22,7 @@ sealed interface Log {
     ) : Log
 
     data class Warning(
+        override val id: String,
         override val projectId: String?,
         override val message: String,
         override val timestamp: Timestamp,
@@ -31,6 +35,7 @@ sealed interface Log {
         val stackTrace: String
 
         data class Handled(
+            override val id: String,
             override val projectId: String?,
             override val message: String,
             override val timestamp: Timestamp,
@@ -40,6 +45,7 @@ sealed interface Log {
         ) : Error
 
         data class Internal(
+            override val id: String,
             override val projectId: String?,
             override val message: String,
             override val timestamp: Timestamp,
@@ -49,6 +55,7 @@ sealed interface Log {
         ) : Error
 
         data class Critical(
+            override val id: String,
             override val projectId: String?,
             override val message: String,
             override val timestamp: Timestamp,
