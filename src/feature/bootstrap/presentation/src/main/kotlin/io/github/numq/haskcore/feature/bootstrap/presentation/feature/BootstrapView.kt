@@ -4,7 +4,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.graphics.painter.Painter
 import io.github.numq.haskcore.common.presentation.font.Font
 import io.github.numq.haskcore.feature.bootstrap.core.Bootstrap
 import org.koin.compose.koinInject
@@ -14,8 +13,6 @@ import org.koin.core.scope.Scope
 fun BootstrapView(
     applicationScope: Scope,
     handleError: (Throwable) -> Unit,
-    title: String,
-    logo: Painter,
     exitApplication: () -> Unit,
     content: @Composable (Bootstrap, welcomeLogoFont: Font, welcomeMonoFont: Font, editorMonoFont: Font) -> Unit,
 ) {
