@@ -31,7 +31,7 @@ internal class HaskellSyntaxFoldingProvider : SyntaxFoldingProvider {
 
                         val range = TextRange(start = start, end = end)
 
-                        if (range.isNotEmpty) {
+                        if (range.start.line < range.end.line) {
                             add(SyntaxFoldingRegion(range = range))
                         }
                     }

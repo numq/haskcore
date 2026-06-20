@@ -173,7 +173,7 @@ internal class HaskellLspService(
         scope.launch(Dispatchers.IO) {
             process.errorStream.bufferedReader().use { reader ->
                 reader.forEachLine { line ->
-//                    println("HLS stderr: ${line.removeAnsi()}") // todo
+                    println("HLS stderr: ${line.removeAnsi()}") // todo
                 }
             }
         }
@@ -466,7 +466,7 @@ internal class HaskellLspService(
                     else -> emptyList()
                 }
 
-                items.map(CompletionItem::toLspCompletion)
+                items.distinctBy(CompletionItem::getLabel).map(CompletionItem::toLspCompletion)
             }
 
             else -> emptyList()

@@ -8,6 +8,7 @@ import io.github.numq.haskcore.common.core.text.TextPosition
 import io.github.numq.haskcore.common.core.text.TextRange
 import io.github.numq.haskcore.common.core.text.TextSnapshot
 import io.github.numq.haskcore.service.syntax.folding.SyntaxFoldingProvider
+import io.github.numq.haskcore.service.syntax.folding.SyntaxFoldingRegion
 import io.github.numq.haskcore.service.syntax.occurrence.SyntaxOccurrenceProvider
 import io.github.numq.haskcore.service.syntax.query.SyntaxQueryProvider
 import io.github.numq.haskcore.service.syntax.symbol.SymbolIndexer
@@ -67,9 +68,28 @@ internal class HaskellSyntaxService(
         }
     }
 
+    private suspend fun getTokens(
+        tree: org.treesitter.TSTree,
+        snapshot: TextSnapshot,
+        range: TextRange,
+    ) = syntaxTokenProvider.getSyntaxTokensPerLine(
+        tree = tree,
+        highlightsQuery = queryProvider.highlightsQuery,
+        localsQuery = queryProvider.localsQuery,
+        lineLengths = (range.start.line..range.end.line).associateWith(snapshot::getLineLength),
+        snapshot = snapshot,
+        range = range
+    ).getOrElse { emptyMap() }
+
     override suspend fun fullParse(snapshot: TextSnapshot) = Either.catch {
         withContext(dispatcher) {
             val revision = snapshot.revision
+
+            val range = TextRange(
+                start = TextPosition.ZERO, end = TextPosition(
+                    line = snapshot.lines - 1, column = snapshot.getLineLength(snapshot.lines - 1)
+                )
+            )
 
             updateTree { syntaxTree ->
                 val newTree = parser.parseStringEncoding(null, snapshot.text, encoding)
@@ -82,14 +102,22 @@ internal class HaskellSyntaxService(
                     throw throwable
                 }
 
+                val tokens = getTokens(newTree, snapshot, range)
+
                 SyntaxTree(
-                    revision = revision, tree = newTree, syntax = Syntax(revision = revision, text = snapshot.text)
+                    revision = revision, tree = newTree, syntax = Syntax(
+                        revision = revision,
+                        text = snapshot.text,
+                        tokensPerLine = syntaxTree?.syntax?.tokensPerLine.orEmpty() + tokens
+                    )
                 )
             }
         }
     }
 
-    override suspend fun applyChange(snapshot: TextSnapshot, data: TextEdit.Data, range: TextRange) = Either.catch {
+    override suspend fun applyChange(
+        snapshot: TextSnapshot, data: TextEdit.Data, range: TextRange,
+    ) = Either.catch {
         withContext(dispatcher) {
             val oldTree = getCurrentTree() ?: return@withContext
 
@@ -123,9 +151,15 @@ internal class HaskellSyntaxService(
                     throw throwable
                 }
 
+                val tokens = getTokens(newTree, snapshot, range)
+
                 updateTree { currentSyntaxTree ->
                     currentSyntaxTree?.copy(
-                        revision = revision, tree = newTree, syntax = currentSyntaxTree.syntax.copy(revision = revision)
+                        revision = revision, tree = newTree, syntax = currentSyntaxTree.syntax.copy(
+                            revision = revision,
+                            text = snapshot.text,
+                            tokensPerLine = currentSyntaxTree.syntax.tokensPerLine + tokens
+                        )
                     )
                 }
             } catch (throwable: Throwable) {
@@ -152,7 +186,9 @@ internal class HaskellSyntaxService(
                 when (latestSyntaxTree?.revision) {
                     currentSyntaxTree.revision -> latestSyntaxTree.copy(
                         syntax = latestSyntaxTree.syntax.copy(
-                            foldingRegions = foldingRegions
+                            foldingRegions = (latestSyntaxTree.syntax.foldingRegions + foldingRegions).distinctBy(
+                                SyntaxFoldingRegion::range
+                            )
                         )
                     )
 
@@ -203,7 +239,7 @@ internal class HaskellSyntaxService(
                 when (latestSyntaxTree?.revision) {
                     currentSyntaxTree.revision -> latestSyntaxTree.copy(
                         syntax = latestSyntaxTree.syntax.copy(
-                            tokensPerLine = tokensPerLine
+                            tokensPerLine = latestSyntaxTree.syntax.tokensPerLine + tokensPerLine
                         )
                     )
 
