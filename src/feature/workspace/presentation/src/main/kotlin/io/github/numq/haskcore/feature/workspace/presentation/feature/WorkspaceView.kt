@@ -45,12 +45,12 @@ fun WorkspaceView(
             state = currentState,
             execute = feature::execute,
             icon = logo,
-            execution = execution,
             explorer = explorer,
             log = log,
             editor = editor,
-            output = output,
-            status = status
+            execution = execution,
+            status = status,
+            output = output
         )
     }
 }

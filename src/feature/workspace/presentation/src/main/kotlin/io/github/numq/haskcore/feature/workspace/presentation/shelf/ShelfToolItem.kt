@@ -1,8 +1,8 @@
 package io.github.numq.haskcore.feature.workspace.presentation.shelf
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
@@ -12,7 +12,7 @@ import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -44,20 +44,24 @@ internal fun ShelfToolItem(tool: ShelfTool, isActive: Boolean, select: () -> Uni
     )
 
     Box(modifier = Modifier.size(40.dp), contentAlignment = Alignment.Center) {
-        Surface(
-            modifier = Modifier.size(32.dp).hoverable(interactionSource).clip(RoundedCornerShape(8.dp)).clickable(
-                interactionSource = interactionSource, onClick = select
-            ), shape = RoundedCornerShape(8.dp), color = containerColor, contentColor = contentColor
+        Box(
+            modifier = Modifier.size(32.dp).clip(RoundedCornerShape(8.dp)).clickable(
+                interactionSource = interactionSource, indication = when {
+                    isActive -> null
+
+                    else -> ripple()
+                }, onClick = select
+            ).background(containerColor), contentAlignment = Alignment.Center
         ) {
-            Box(contentAlignment = Alignment.Center) {
-                val icon = when (tool) {
-                    is ShelfTool.Explorer -> Icons.Outlined.Folder
+            val icon = when (tool) {
+                is ShelfTool.Explorer -> Icons.Outlined.Folder
 
-                    is ShelfTool.Log -> Icons.Outlined.Info
-                }
-
-                Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(20.dp))
+                is ShelfTool.Log -> Icons.Outlined.Info
             }
+
+            Icon(
+                imageVector = icon, contentDescription = null, modifier = Modifier.size(20.dp), tint = contentColor
+            )
         }
     }
 }
