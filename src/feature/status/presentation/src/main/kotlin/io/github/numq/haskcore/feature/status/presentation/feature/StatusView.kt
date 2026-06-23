@@ -26,7 +26,7 @@ fun StatusView(
     textPosition: TextPosition?,
     textLineEnding: TextLineEnding?,
     textEncoding: TextEncoding?,
-    navigateToPath: suspend (path: String) -> Unit,
+    navigate: (suspend (path: String) -> Unit)?,
 ) {
     val scope = rememberCoroutineScope()
 
@@ -52,7 +52,7 @@ fun StatusView(
         Breadcrumbs(
             modifier = Modifier.weight(1f), pathSegments = state.status.pathSegments, navigateToPath = { path ->
                 scope.launch {
-                    navigateToPath(path)
+                    navigate?.invoke(path)
                 }
             })
         Row(
