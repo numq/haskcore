@@ -125,13 +125,19 @@ object Entrypoint {
                                 state.output.sessions.isNotEmpty() && state.output.activeSession != null
                             }.distinctUntilChanged().collectAsState(false)
 
-                            val (textPosition, setTextPosition) = remember { mutableStateOf<TextPosition?>(null) }
+                            val (textPosition, setTextPosition) = remember {
+                                mutableStateOf<TextPosition?>(null)
+                            }
 
-                            val (textEncoding, setTextEncoding) = remember { mutableStateOf<TextEncoding?>(null) }
+                            val (textEncoding, setTextEncoding) = remember {
+                                mutableStateOf<TextEncoding?>(null)
+                            }
 
-                            val (textLineEnding, setTextLineEnding) = remember { mutableStateOf<TextLineEnding?>(null) }
+                            val (textLineEnding, setTextLineEnding) = remember {
+                                mutableStateOf<TextLineEnding?>(null)
+                            }
 
-                            val (navigateToPath, setNavigateToPath) = remember {
+                            val (navigate, setNavigate) = remember {
                                 mutableStateOf<(suspend (path: String) -> Unit)?>(null)
                             }
 
@@ -141,16 +147,21 @@ object Entrypoint {
                                 logo = logo,
                                 exitApplication = exitApplication,
                                 execution = {
-                                    ExecutionView(projectScope = projectScope, handleError = Throwable::printStackTrace)
+                                    ExecutionView(
+                                        projectScope = projectScope, handleError = Throwable::printStackTrace
+                                    )
                                 },
                                 explorer = {
                                     ExplorerView(
                                         projectScope = projectScope,
                                         handleError = Throwable::printStackTrace,
-                                        navigateToPathCallback = { callback -> setNavigateToPath(callback) })
+                                        navigateToPathCallback = setNavigate
+                                    )
                                 },
                                 log = {
-                                    LogView(projectScope = projectScope, handleError = Throwable::printStackTrace)
+                                    LogView(
+                                        projectScope = projectScope, handleError = Throwable::printStackTrace
+                                    )
                                 },
                                 editor = { path, language ->
                                     EditorView(
@@ -164,6 +175,7 @@ object Entrypoint {
                                         textPositionCallback = setTextPosition,
                                         textLineEndingCallback = setTextLineEnding,
                                         textEncodingCallback = setTextEncoding,
+                                        navigateToPath = navigate,
                                     )
                                 },
                                 output = when {
@@ -184,7 +196,7 @@ object Entrypoint {
                                         textPosition = textPosition,
                                         textLineEnding = textLineEnding,
                                         textEncoding = textEncoding,
-                                        navigateToPath = navigateToPath
+                                        navigate = navigate
                                     )
                                 })
                         })
