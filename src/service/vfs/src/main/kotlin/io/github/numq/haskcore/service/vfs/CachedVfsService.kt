@@ -64,14 +64,13 @@ internal class CachedVfsService(
             vfsDataSource.getSnapshotData().onRight { snapshotData ->
                 snapshotData?.toSnapshot()?.let { snapshot ->
                     snapshot.files.forEach { (parentPath, files) ->
-
-
                         cacheUpdates.emit(
                             VfsCacheAction.SetDirectory(
                                 path = parentPath, files = files.associateBy(VirtualFile::name)
                             )
                         )
                     }
+
                     backgroundSync(rootPath = snapshot.path)
                 }
             }
@@ -108,11 +107,17 @@ internal class CachedVfsService(
         if (!directoryCache.value.containsKey(path)) {
             val files = vfsDataSource.list(path = path).bind()
 
-            cacheUpdates.emit(VfsCacheAction.SetDirectory(path = path, files = files.associateBy(VirtualFile::name)))
+            cacheUpdates.emit(
+                VfsCacheAction.SetDirectory(
+                    path = path, files = files.associateBy(VirtualFile::name)
+                )
+            )
         }
 
         val watchEvents = watchFlows.getOrPut(path) {
-            vfsDataSource.watch(path).bind().shareIn(scope = scope, started = SharingStarted.Eagerly)
+            vfsDataSource.watch(path = path).bind().shareIn(
+                scope = scope, started = SharingStarted.Eagerly
+            )
         }
 
         channelFlow {
@@ -123,10 +128,16 @@ internal class CachedVfsService(
                     else -> vfsDataSource.fetchSingleEntry(path = event.path).getOrNull()
                 }
 
-                cacheUpdates.emit(VfsCacheAction.UpdateEntry(parentPath = path, event = event, newFile = newFile))
+                cacheUpdates.emit(
+                    VfsCacheAction.UpdateEntry(
+                        parentPath = path, event = event, newFile = newFile
+                    )
+                )
             }.launchIn(this)
 
-            directoryCache.mapNotNull { cache -> cache[path]?.values?.toList() }.distinctUntilChanged().collect(::send)
+            directoryCache.mapNotNull { cache ->
+                cache[path]?.values?.toList()
+            }.distinctUntilChanged().collect(::send)
 
             awaitClose {
                 job.cancel()
