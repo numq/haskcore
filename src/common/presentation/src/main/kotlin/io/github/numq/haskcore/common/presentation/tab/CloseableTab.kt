@@ -5,7 +5,14 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -17,12 +24,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerButton
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun CloseableTab(title: String, isSelected: Boolean, select: () -> Unit, close: () -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -41,9 +53,19 @@ fun CloseableTab(title: String, isSelected: Boolean, select: () -> Unit, close: 
         modifier = Modifier.height(32.dp).clip(RoundedCornerShape(8.dp)).background(backgroundColor)
             .hoverable(interactionSource).clickable(
                 interactionSource = interactionSource, indication = null, onClick = select
-            ).padding(horizontal = 8.dp), contentAlignment = Alignment.Center
+            ).onPointerEvent(
+                eventType = PointerEventType.Press, onEvent = { event ->
+                    if (event.button == PointerButton.Tertiary) {
+                        event.changes.first().consume()
+
+                        close()
+                    }
+                }).padding(horizontal = 8.dp), contentAlignment = Alignment.Center
     ) {
-        Row(horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Text(
                 text = title, fontSize = 12.sp, color = when {
                     isSelected -> MaterialTheme.colorScheme.onSurface

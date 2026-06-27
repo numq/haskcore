@@ -1,7 +1,15 @@
 package io.github.numq.haskcore.common.presentation.overlay.menu
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -13,6 +21,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.isSpecified
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.isSecondary
 import androidx.compose.ui.input.pointer.onPointerEvent
@@ -24,33 +34,32 @@ import androidx.compose.ui.window.Popup
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun ContextMenu(
-    state: ContextMenuState,
-    onState: (ContextMenuState) -> Unit,
+    offset: Offset,
+    onOpen: (Offset) -> Unit,
+    onClose: () -> Unit,
     items: () -> List<ContextMenuItem>,
-    content: @Composable () -> Unit,
+    content: @Composable () -> Unit
 ) {
-    val currentOnState by rememberUpdatedState(onState)
+    val currentOnOpen by rememberUpdatedState(onOpen)
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        Box(modifier = Modifier.fillMaxSize().onPointerEvent(eventType = PointerEventType.Press, onEvent = { event ->
-            if (event.button.isSecondary) {
-                val (x, y) = event.changes.first().position
+    val currentOnClose by rememberUpdatedState(onClose)
 
-                currentOnState(ContextMenuState.Visible(x = x, y = y))
-            }
-        })) {
-            content()
-        }
+    Box(
+        modifier = Modifier.fillMaxSize().onPointerEvent(
+            eventType = PointerEventType.Press, onEvent = { event ->
+                if (event.button.isSecondary) {
+                    currentOnOpen(event.changes.first().position)
+                }
+            })
+    ) {
+        content()
 
-        when (val currentState = state) {
-            is ContextMenuState.Hidden -> Unit
-
-            is ContextMenuState.Visible -> Popup(
+        if (offset.isSpecified) {
+            Popup(
                 alignment = Alignment.TopStart, offset = IntOffset(
-                    x = currentState.x.toInt(), y = currentState.y.toInt()
-                ), onDismissRequest = {
-                    currentOnState(ContextMenuState.Hidden)
-                }) {
+                    x = offset.x.toInt(), y = offset.y.toInt()
+                ), onDismissRequest = currentOnClose
+            ) {
                 Surface(
                     shape = RoundedCornerShape(4.dp),
                     shadowElevation = 8.dp,
@@ -59,7 +68,9 @@ fun ContextMenu(
                 ) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(space = 4.dp, alignment = Alignment.CenterVertically)
+                        verticalArrangement = Arrangement.spacedBy(
+                            space = 4.dp, alignment = Alignment.CenterVertically
+                        )
                     ) {
                         items().forEach { item ->
                             Row(
@@ -73,7 +84,7 @@ fun ContextMenu(
                                     enabled = item.enabled, onClick = {
                                         item.onClick()
 
-                                        currentOnState(ContextMenuState.Hidden)
+                                        currentOnClose()
                                     }).padding(horizontal = 16.dp, vertical = 12.dp),
                                 horizontalArrangement = Arrangement.spacedBy(
                                     space = 12.dp, alignment = Alignment.Start
