@@ -5,7 +5,11 @@ import org.jetbrains.skia.Image
 import org.jetbrains.skia.Rect
 import kotlin.math.round
 
-class GutterActionLayer(private val rect: Rect, private val image: Image) {
+class GutterActionLayer(
+    val line: Int,
+    val rect: Rect,
+    private val image: Image,
+) {
     fun render(canvas: Canvas) {
         if (!image.isClosed) {
             val x = round(rect.left + (rect.width - image.width) / 2f)
