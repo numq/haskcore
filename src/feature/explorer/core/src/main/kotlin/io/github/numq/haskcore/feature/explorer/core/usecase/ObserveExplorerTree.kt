@@ -10,9 +10,13 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 
 class ObserveExplorerTree(
-    private val root: ExplorerRoot, private val explorerService: ExplorerService, private val vfsService: VfsService,
+    private val root: ExplorerRoot,
+    private val explorerService: ExplorerService,
+    private val vfsService: VfsService,
 ) : UseCase.Query<Flow<ExplorerTree>> {
-    private suspend fun buildTree(cache: Map<String, List<VirtualFile>>, explorer: Explorer): ExplorerTree {
+    private suspend fun buildTree(
+        cache: Map<String, List<VirtualFile>>, explorer: Explorer,
+    ): ExplorerTree {
         val rootPath = root.path
 
         val expandedPath = explorer.expandedPaths.toSet()
@@ -23,7 +27,7 @@ class ObserveExplorerTree(
             add(
                 ExplorerNode.Directory(
                     name = explorerService.getName(path = rootPath).getOrElse { "" }
-                    .ifEmpty { rootPath },
+                        .ifEmpty { rootPath },
                     path = rootPath,
                     level = 0,
                     segments = emptyList(),
@@ -72,9 +76,9 @@ class ObserveExplorerTree(
         }
 
         return when {
-            isRootExpanded && nodes.size == 1 && !cache.containsKey(rootPath) -> ExplorerTree.Loading(root = root)
+            isRootExpanded && nodes.size == 1 && !cache.containsKey(rootPath) -> ExplorerTree(root = root)
 
-            else -> ExplorerTree.Loaded(
+            else -> ExplorerTree(
                 root = root, nodes = nodes.distinctBy(ExplorerNode::path), position = explorer.position
             )
         }
@@ -101,9 +105,9 @@ class ObserveExplorerTree(
         when {
             observers.isEmpty() -> flowOf(mapOf(root.path to emptyList()))
 
-            else -> combine(flows = observers.values, transform = Array<Pair<String, List<VirtualFile>>>::toMap)
+            else -> combine(
+                flows = observers.values, transform = Array<Pair<String, List<VirtualFile>>>::toMap
+            )
         }
-    }.combine(explorerService.explorer) { cache, data ->
-        buildTree(cache = cache, explorer = data)
-    }
+    }.combine(flow = explorerService.explorer, transform = ::buildTree)
 }
