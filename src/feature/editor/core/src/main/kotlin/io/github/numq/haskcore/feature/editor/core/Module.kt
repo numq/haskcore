@@ -52,7 +52,23 @@ val editorFeatureCoreModule = module {
 
         scopedOwner { ApplyCodeSuggestion(editorService = get(), textService = get()) }
 
+        scopedOwner { CopySelection(editorService = get(), clipboardService = get(), textService = get()) }
+
+        scopedOwner { CutSelection(editorService = get(), clipboardService = get(), textService = get()) }
+
         scopedOwner { ExtendSelection(editorService = get(), textService = get()) }
+
+        scopedOwner {
+            val documentPath = get<String>(qualifier = ScopeQualifier.Document)
+
+            GetCodeDocumentation(path = documentPath, lspService = get())
+        }
+
+        scopedOwner {
+            val documentPath = get<String>(qualifier = ScopeQualifier.Document)
+
+            GetCodeSuggestions(path = documentPath, lspService = get())
+        }
 
         scopedOwner { MoveCaret(editorService = get(), textService = get()) }
 
@@ -75,6 +91,8 @@ val editorFeatureCoreModule = module {
             ObserveSyntax(editorService = get(), syntaxService = get(), loggerService = get(), textService = get())
         }
 
+        scopedOwner { PasteFromClipboard(editorService = get(), clipboardService = get(), textService = get()) }
+
         scopedOwner {
             val documentPath = get<String>(qualifier = ScopeQualifier.Document)
 
@@ -89,22 +107,16 @@ val editorFeatureCoreModule = module {
             )
         }
 
-        scopedOwner {
-            val documentPath = get<String>(qualifier = ScopeQualifier.Document)
+        scopedOwner { SaveEditorPosition(editorService = get()) }
 
-            GetCodeDocumentation(path = documentPath, lspService = get())
-        }
+        scopedOwner { SelectAll(editorService = get(), textService = get()) }
 
-        scopedOwner {
-            val documentPath = get<String>(qualifier = ScopeQualifier.Document)
-
-            GetCodeSuggestions(path = documentPath, lspService = get())
-        }
+        scopedOwner { StartSelection(editorService = get(), textService = get()) }
 
         scopedOwner { UpdateActiveLines(editorService = get()) }
 
-        scopedOwner { SaveEditorPosition(editorService = get()) }
+        scopedOwner { UpdateCollapsedLines(editorService = get()) }
 
-        scopedOwner { StartSelection(editorService = get(), textService = get()) }
+        scopedOwner { UpdateFoldingRegions(editorService = get()) }
     }
 }

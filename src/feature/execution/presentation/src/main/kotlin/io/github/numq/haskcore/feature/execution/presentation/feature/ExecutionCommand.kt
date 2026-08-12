@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.Flow
 
 internal sealed interface ExecutionCommand {
     enum class Key {
-        OBSERVE_EXECUTION, OBSERVE_EXECUTION_SUCCESS, BUILD_CONFIGURATION, RUN_CONFIGURATION, STOP_CONFIGURATION, SELECT_CONFIGURATION, EDIT_CONFIGURATION, DELETE_CONFIGURATION
+        OBSERVE_EXECUTION, OBSERVE_EXECUTION_SUCCESS, BUILD_CONFIGURATION, RUN_CONFIGURATION, STOP_CONFIGURATION, RERUN_CONFIGURATION, SELECT_CONFIGURATION, EDIT_CONFIGURATION, DELETE_CONFIGURATION
     }
 
     data class HandleFailure(val throwable: Throwable) : ExecutionCommand
@@ -43,7 +43,9 @@ internal sealed interface ExecutionCommand {
 
     data object StopCurrentConfiguration : ExecutionCommand
 
-    data class RerunConfiguration(val configuration: ExecutionConfiguration) : ExecutionCommand
+    data class RerunConfiguration(val configuration: ExecutionConfiguration) : ExecutionCommand {
+        val key = Key.RERUN_CONFIGURATION
+    }
 
     data class SelectConfiguration(val configuration: ExecutionConfiguration) : ExecutionCommand {
         val key = Key.SELECT_CONFIGURATION
