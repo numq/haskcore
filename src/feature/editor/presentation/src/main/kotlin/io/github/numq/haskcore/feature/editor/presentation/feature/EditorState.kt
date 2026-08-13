@@ -4,7 +4,7 @@ import io.github.numq.haskcore.feature.editor.core.Editor
 import io.github.numq.haskcore.feature.editor.core.analysis.Analysis
 import io.github.numq.haskcore.feature.editor.core.syntax.Syntax
 import io.github.numq.haskcore.feature.editor.presentation.documentation.DocumentationState
-import io.github.numq.haskcore.feature.editor.presentation.menu.EditorMenu
+import io.github.numq.haskcore.feature.editor.presentation.menu.ContextMenuState
 import io.github.numq.haskcore.feature.editor.presentation.scrollbar.Scrollbar
 import io.github.numq.haskcore.feature.editor.presentation.suggestions.SuggestionsState
 
@@ -15,10 +15,12 @@ internal sealed interface EditorState {
         val editor: Editor,
         val gutterWidth: Float = 0f,
         val scrollbar: Scrollbar = Scrollbar.ZERO,
-        val menu: EditorMenu = EditorMenu.Hidden,
+        val contextMenuState: ContextMenuState = ContextMenuState.Hidden,
         val analysis: Analysis? = null,
         val syntax: Syntax? = null,
+        val collapsedLines: Set<Int> = emptySet(),
         val documentationState: DocumentationState = DocumentationState.Hidden,
         val suggestionsState: SuggestionsState = SuggestionsState.Hidden,
+        val isMouseOverDocumentation: Boolean = false,
     ) : EditorState
 }
