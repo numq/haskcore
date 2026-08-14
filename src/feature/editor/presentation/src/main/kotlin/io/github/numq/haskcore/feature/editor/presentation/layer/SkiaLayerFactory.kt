@@ -246,7 +246,7 @@ internal class SkiaLayerFactory(
         val y = line.y + (line.height - actionSize) / 2
 
         GutterActionLayer(
-            rect = Rect.makeXYWH(l = x, t = y, w = actionSize, h = actionSize), image = image
+            line = line.line, rect = Rect.makeXYWH(l = x, t = y, w = actionSize, h = actionSize), image = image
         )
     }
 
