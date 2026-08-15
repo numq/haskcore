@@ -7,6 +7,7 @@ import kotlin.math.floor
 internal object ViewportCalculator {
     fun calculate(
         snapshot: TextSnapshot,
+        visibleLineIndices: List<Int>,
         width: Float,
         height: Float,
         scrollY: Float,
@@ -19,30 +20,32 @@ internal object ViewportCalculator {
         else -> {
             val snappedLineHeight = ceil(lineHeight)
 
-            val totalLines = snapshot.lines.coerceAtLeast(1)
+            val totalVisualLines = visibleLineIndices.size.coerceAtLeast(1)
 
             val effectiveScrollY = maxOf(0f, scrollY)
 
-            val startLine =
-                floor(effectiveScrollY / snappedLineHeight).toInt().coerceIn(0, (totalLines - 1).coerceAtLeast(0))
+            val startVisualLine =
+                floor(effectiveScrollY / snappedLineHeight).toInt().coerceIn(0, (totalVisualLines - 1).coerceAtLeast(0))
 
-            val linesInViewport = ceil(height / snappedLineHeight).toInt()
+            val visualLinesInViewport = ceil(height / snappedLineHeight).toInt()
 
-            val endLine = (startLine + linesInViewport + 1).coerceAtMost(totalLines - 1)
+            val endVisualLine = (startVisualLine + visualLinesInViewport + 1).coerceAtMost(totalVisualLines - 1)
 
-            val visibleLinesRange = startLine..endLine
+            val visibleVisualLinesRange = startVisualLine..endVisualLine
 
-            val viewportLines = visibleLinesRange.map { lineIndex ->
-                val text = snapshot.getLineText(line = lineIndex)
+            val viewportLines = visibleVisualLinesRange.map { visualLineIndex ->
+                val documentLineIndex = visibleLineIndices.getOrElse(visualLineIndex) { visualLineIndex }
 
-                val lineTop = floor((lineIndex * snappedLineHeight) - effectiveScrollY)
+                val text = snapshot.getLineText(line = documentLineIndex)
+
+                val lineTop = floor((visualLineIndex * snappedLineHeight) - effectiveScrollY)
 
                 val leading = snappedLineHeight - textHeight
 
                 val textBaselineY = lineTop + (leading / 2f) - ascent
 
                 ViewportLine(
-                    line = lineIndex,
+                    line = documentLineIndex,
                     x = 0f,
                     y = lineTop,
                     width = width,
@@ -52,7 +55,15 @@ internal object ViewportCalculator {
                 )
             }
 
-            Viewport(width = width, height = height, visibleLines = visibleLinesRange, viewportLines = viewportLines)
+            val visibleLines = when {
+                viewportLines.isEmpty() -> IntRange.EMPTY
+
+                else -> viewportLines.first().line..viewportLines.last().line
+            }
+
+            Viewport(
+                width = width, height = height, visibleLines = visibleLines, viewportLines = viewportLines
+            )
         }
     }
 }
