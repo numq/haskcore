@@ -127,6 +127,7 @@ internal fun LspToken.toToken() = Token.Region(range = range, type = type.toToke
 
 internal fun SyntaxToken.Type.toTokenType() = when (this) {
     SyntaxToken.Type.KEYWORD -> Token.Type.KEYWORD
+
     SyntaxToken.Type.KEYWORD_CONDITIONAL -> Token.Type.KEYWORD_CONDITIONAL
 
     SyntaxToken.Type.KEYWORD_IMPORT -> Token.Type.KEYWORD_IMPORT
