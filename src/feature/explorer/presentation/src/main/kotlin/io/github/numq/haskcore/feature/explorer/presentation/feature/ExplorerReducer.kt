@@ -2,11 +2,12 @@ package io.github.numq.haskcore.feature.explorer.presentation.feature
 
 import io.github.numq.haskcore.common.presentation.feature.*
 import io.github.numq.haskcore.feature.explorer.core.ExplorerNode
-import io.github.numq.haskcore.feature.explorer.core.ExplorerTree
 import io.github.numq.haskcore.feature.explorer.core.usecase.*
+import io.github.numq.haskcore.feature.explorer.presentation.menu.MenuReducer
 import kotlinx.coroutines.flow.map
 
-class ExplorerReducer(
+internal class ExplorerReducer(
+    private val menuReducer: MenuReducer,
     private val collapseDirectory: CollapseDirectory,
     private val expandDirectory: ExpandDirectory,
     private val observeExplorerTree: ObserveExplorerTree,
@@ -14,7 +15,21 @@ class ExplorerReducer(
     private val openFile: OpenFile,
 ) : Reducer<ExplorerState, ExplorerCommand, ExplorerEvent> {
     override fun reduce(state: ExplorerState, command: ExplorerCommand) = when (command) {
-        is ExplorerCommand.HandleFailure -> transition(state).event(ExplorerEvent.HandleFailure(throwable = command.throwable))
+        is ExplorerCommand.HandleFailure -> transition(state).event(
+            ExplorerEvent.HandleFailure(throwable = command.throwable)
+        )
+
+        is ExplorerCommand.Menu -> when (state) {
+            is ExplorerState.Loading -> transition(state)
+
+            is ExplorerState.Ready -> menuReducer.reduce(state = state, command = command)
+        }
+
+        is ExplorerCommand.ShowDialog -> when (state) {
+            is ExplorerState.Loading -> transition(state)
+
+            is ExplorerState.Ready -> transition(state.copy(dialog = command.dialog))
+        }
 
         is ExplorerCommand.Initialize -> transition(state).effect(
             action(
@@ -33,7 +48,11 @@ class ExplorerReducer(
             )
         )
 
-        is ExplorerCommand.UpdateExplorerTree -> transition(state.copy(explorerTree = command.explorerTree))
+        is ExplorerCommand.UpdateExplorerTree -> when (state) {
+            is ExplorerState.Loading -> transition(ExplorerState.Ready(explorerTree = command.explorerTree))
+
+            is ExplorerState.Ready -> transition(state.copy(explorerTree = command.explorerTree))
+        }
 
         is ExplorerCommand.ToggleExplorerNode -> transition(state).effect(
             action(
@@ -41,22 +60,24 @@ class ExplorerReducer(
                     val node = command.node
 
                     when {
-                        command.node.isExpanded -> collapseDirectory(input = CollapseDirectory.Input(node = node)).fold(
-                            ifLeft = ExplorerCommand::HandleFailure, ifRight = {
-                                ExplorerCommand.ToggleExplorerNodeSuccess
-                            })
+                        command.node.isExpanded -> collapseDirectory(
+                            input = CollapseDirectory.Input(
+                                node = node
+                            )
+                        )
 
-                        else -> expandDirectory(input = ExpandDirectory.Input(node = node)).fold(
-                            ifLeft = ExplorerCommand::HandleFailure, ifRight = {
-                                ExplorerCommand.ToggleExplorerNodeSuccess
-                            })
-                    }
+                        else -> expandDirectory(input = ExpandDirectory.Input(node = node))
+                    }.fold(ifLeft = ExplorerCommand::HandleFailure, ifRight = {
+                        ExplorerCommand.SelectExplorerNode(node = node)
+                    })
                 })
         )
 
-        is ExplorerCommand.ToggleExplorerNodeSuccess -> transition(state)
+        is ExplorerCommand.SelectExplorerNode -> when (state) {
+            is ExplorerState.Loading -> transition(state)
 
-        is ExplorerCommand.SelectExplorerNode -> transition(state.copy(selectedPath = command.path))
+            is ExplorerState.Ready -> transition(state.copy(selectedNodes = listOfNotNull(command.node)))
+        }
 
         is ExplorerCommand.SaveExplorerPosition -> transition(state).effect(
             action(
@@ -71,34 +92,34 @@ class ExplorerReducer(
 
         is ExplorerCommand.SaveExplorerPositionSuccess -> transition(state)
 
-        is ExplorerCommand.OpenPath -> when (val explorerTree = state.explorerTree) {
-            is ExplorerTree.Loading -> transition(state)
+        is ExplorerCommand.OpenPath -> when (state) {
+            is ExplorerState.Loading -> transition(state)
 
-            is ExplorerTree.Loaded -> when (val node = explorerTree.nodes.find { node -> node.path == command.path }) {
+            is ExplorerState.Ready -> when (val node = state.explorerTree.nodes.find { node ->
+                node.path == command.path
+            }) {
                 null -> transition(state)
 
-                is ExplorerNode.File -> transition(state.copy(selectedPath = command.path)).effect(
+                is ExplorerNode.File -> transition(state).effect(
                     action(
                         key = command.key, fallback = ExplorerCommand::HandleFailure, block = {
-                            openFile(input = OpenFile.Input(path = command.path)).fold(
+                            openFile(input = OpenFile.Input(path = node.path)).fold(
                                 ifLeft = ExplorerCommand::HandleFailure, ifRight = {
-                                    ExplorerCommand.SelectExplorerNode(path = command.path)
+                                    ExplorerCommand.SelectExplorerNode(node = node)
                                 })
                         })
                 )
 
-                is ExplorerNode.Directory -> transition(state.copy(selectedPath = command.path)).effect(
+                is ExplorerNode.Directory -> transition(state).effect(
                     action(
                         key = command.key, fallback = ExplorerCommand::HandleFailure, block = {
                             expandDirectory(input = ExpandDirectory.Input(node = node)).fold(
                                 ifLeft = ExplorerCommand::HandleFailure, ifRight = {
-                                    ExplorerCommand.OpenPathSuccess
+                                    ExplorerCommand.SelectExplorerNode(node = node)
                                 })
                         })
                 )
             }
         }
-
-        is ExplorerCommand.OpenPathSuccess -> transition(state)
     }
 }
