@@ -100,15 +100,15 @@ internal class ExecutionReducer(
         }
 
         is ExecutionCommand.RerunConfiguration -> when (state.execution) {
-            is Execution.Synced.Found.Running -> with(command) {
-                val (state, events) = reduce(
-                    state = state, command = ExecutionCommand.StopConfiguration(configuration = configuration)
-                )
+            is Execution.Synced.Found -> transition(state).effect(
+                stream(key = command.key, flow = flow {
+                    stopConfiguration(input = StopConfiguration.Input(configuration = command.configuration))
 
-                reduce(
-                    state = state, command = ExecutionCommand.RunConfiguration(configuration = configuration)
-                ).events(*events.toTypedArray())
-            }
+                    runConfiguration(input = RunConfiguration.Input(configuration = command.configuration)).fold(
+                        ifLeft = ExecutionCommand::HandleFailure,
+                        ifRight = { ExecutionCommand.RunConfigurationSuccess })
+                }, fallback = ExecutionCommand::HandleFailure)
+            )
 
             else -> transition(state)
         }
