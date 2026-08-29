@@ -9,6 +9,8 @@ import androidx.compose.ui.input.pointer.*
 import io.github.numq.haskcore.common.core.text.TextPosition
 import io.github.numq.haskcore.common.core.text.TextSnapshot
 import io.github.numq.haskcore.feature.editor.presentation.feature.EditorCommand
+import io.github.numq.haskcore.feature.editor.presentation.gutter.GutterActionLayer
+import io.github.numq.haskcore.feature.editor.presentation.measurements.Measurements
 import io.github.numq.haskcore.feature.editor.presentation.scrollbar.Scrollbar
 import io.github.numq.haskcore.feature.editor.presentation.text.TextContentLayer
 import io.github.numq.haskcore.feature.editor.presentation.viewport.Viewport
@@ -26,12 +28,14 @@ internal fun EditorMouseHandler(
     contentWidth: Float,
     contentHeight: Float,
     contentLayers: List<TextContentLayer>,
+    gutterActionLayers: List<GutterActionLayer>,
     snapshot: TextSnapshot,
     gutterWidth: Float,
     scrollbar: Scrollbar,
     charWidth: Float,
     focusRequester: FocusRequester,
     execute: suspend (EditorCommand) -> Unit,
+    onPointerIconChange: (PointerIcon) -> Unit = {}, // todo
     content: @Composable (Modifier) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -42,7 +46,11 @@ internal fun EditorMouseHandler(
 
     val currentContentLayers by rememberUpdatedState(contentLayers)
 
+    val currentGutterActionLayers by rememberUpdatedState(gutterActionLayers)
+
     val currentSnapshot by rememberUpdatedState(snapshot)
+
+    val currentExecute by rememberUpdatedState(execute)
 
     var draggingMousePosition by remember { mutableStateOf<Offset?>(null) }
 
@@ -129,7 +137,8 @@ internal fun EditorMouseHandler(
                                     change.position.y >= viewportLine.y && change.position.y <= (viewportLine.y + viewportLine.height)
                                 }
 
-                                val targetX = change.position.x - gutterWidth + currentScrollbar.x
+                                val targetX =
+                                    change.position.x - gutterWidth - Measurements.EDITOR_PADDING_START + currentScrollbar.x
 
                                 val isOverText =
                                     clickedViewportLine != null && targetX >= 0f && targetX <= (currentSnapshot.getLineLength(
@@ -160,7 +169,13 @@ internal fun EditorMouseHandler(
                                         }
                                     }
 
-                                    lastHoverPosition != null -> lastHoverPosition = null
+                                    lastHoverPosition != null -> {
+                                        lastHoverPosition = null
+
+                                        scope.launch {
+                                            execute(EditorCommand.DocumentationHover.Exit)
+                                        }
+                                    }
                                 }
                             }
 
@@ -169,6 +184,25 @@ internal fun EditorMouseHandler(
 
                                 if (change.changedToDown()) {
                                     focusRequester.requestFocus()
+
+                                    if (change.position.x < gutterWidth) {
+                                        currentViewport.viewportLines.find { viewportLine ->
+                                            change.position.y >= viewportLine.y && change.position.y <= (viewportLine.y + viewportLine.height)
+                                        }?.let { viewportLine ->
+                                            val actionLayer =
+                                                currentGutterActionLayers.find { currentGutterActionLayer ->
+                                                    currentGutterActionLayer.line == viewportLine.line
+                                                }
+
+                                            if (actionLayer != null && change.position.x >= actionLayer.rect.left && change.position.x <= actionLayer.rect.right && change.position.y >= actionLayer.rect.top && change.position.y <= actionLayer.rect.bottom) {
+                                                scope.launch {
+                                                    currentExecute(EditorCommand.ToggleFolding(line = viewportLine.line))
+                                                }
+                                            }
+                                        }
+
+                                        return@awaitPointerEventScope
+                                    }
 
                                     val position = calculatePositionAtOffset(
                                         offset = change.position,
@@ -182,9 +216,15 @@ internal fun EditorMouseHandler(
                                     val buttons = event.buttons
 
                                     if (buttons.isPrimaryPressed) {
-                                        scope.launch { execute(EditorCommand.MoveCaret(position = position)) }
+                                        scope.launch {
+                                            execute(EditorCommand.MoveCaret(position = position))
+                                        }
 
-                                        selectionCommands.trySend(EditorCommand.TextSelection.Start(position = position))
+                                        selectionCommands.trySend(
+                                            EditorCommand.TextSelection.Start(
+                                                position = position
+                                            )
+                                        )
 
                                         draggingMousePosition = change.position
 
@@ -268,8 +308,10 @@ private fun calculatePositionAtOffset(
 
         val clickedLayer = contentLayers.find { contentLayer -> contentLayer.viewportLine.line == targetLineIndex }
 
+        val targetX = (offset.x - gutterWidth - Measurements.EDITOR_PADDING_START + scrollX).coerceAtLeast(0f)
+
         val column = clickedLayer?.getOffsetAtCoordinate(
-            targetX = (offset.x - gutterWidth + scrollX).coerceAtLeast(0f)
+            targetX = targetX
         ) ?: snapshot.getLineLength(line = targetLineIndex)
 
         TextPosition(line = targetLineIndex, column = column)
