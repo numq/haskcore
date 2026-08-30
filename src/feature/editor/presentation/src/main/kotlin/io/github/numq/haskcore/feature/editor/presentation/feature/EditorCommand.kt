@@ -13,7 +13,7 @@ import kotlinx.coroutines.flow.Flow
 
 internal sealed interface EditorCommand {
     enum class Key {
-        INITIALIZE_EDITOR, INITIALIZE_EDITOR_SUCCESS, INITIALIZE_ANALYSIS, INITIALIZE_ANALYSIS_SUCCESS, INITIALIZE_SYNTAX, INITIALIZE_SYNTAX_SUCCESS, UPDATE_VIEWPORT, DOCUMENTATION_HOVER, SHOW_SUGGESTIONS, APPLY_SUGGESTION, PROCESS_KEY, MOVE_CARET, START_SELECTION, EXTEND_SELECTION, SAVE_EDITOR_POSITION
+        INITIALIZE_EDITOR, INITIALIZE_EDITOR_SUCCESS, INITIALIZE_ANALYSIS, INITIALIZE_ANALYSIS_SUCCESS, INITIALIZE_SYNTAX, INITIALIZE_SYNTAX_SUCCESS, UPDATE_VIEWPORT, DOCUMENTATION_HOVER, SHOW_SUGGESTIONS, APPLY_SUGGESTION, PROCESS_KEY, MOVE_CARET, START_SELECTION, EXTEND_SELECTION, SAVE_EDITOR_POSITION, TOGGLE_FOLDING
     }
 
     data class HandleFailure(val throwable: Throwable) : EditorCommand
@@ -58,6 +58,10 @@ internal sealed interface EditorCommand {
         data object Exit : DocumentationHover {
             val key = Key.DOCUMENTATION_HOVER
         }
+
+        data class SetMouseOver(val isOver: Boolean) : DocumentationHover {
+            val key = Key.DOCUMENTATION_HOVER
+        }
     }
 
     data class ShowDocumentationSuccess(
@@ -81,15 +85,12 @@ internal sealed interface EditorCommand {
     data object DismissSuggestions : EditorCommand
 
     data class ProcessKey(
-        val keyCode: Int,
-        val modifiers: Int,
-        val utf16CodePoint: Int,
-        val offset: Offset? = null,
+        val keyCode: Int, val modifiers: Int, val utf16CodePoint: Int, val offset: Offset? = null,
     ) : EditorCommand {
         val key = Key.PROCESS_KEY
     }
 
-    data class ProcessKeySuccess(val utf16CodePoint: Int, val offset: Offset?) : EditorCommand
+    data class ProcessKeySuccess(val utf16CodePoint: Int, val offset: Offset?, val keyCode: Int) : EditorCommand
 
     data class MoveCaret(val position: TextPosition) : EditorCommand {
         val key = Key.MOVE_CARET
@@ -126,23 +127,35 @@ internal sealed interface EditorCommand {
 
     data object SaveEditorPositionSuccess : EditorCommand
 
+    data class ToggleFolding(val line: Int) : EditorCommand {
+        val key = Key.TOGGLE_FOLDING
+    }
+
     sealed interface Menu : EditorCommand {
         data class Open(val x: Float, val y: Float) : Menu
 
         data object Close : Menu
 
-        data object RunStack : Menu
+        sealed interface Action : Menu {
+            enum class Key {
+                MENU_ACTION_CUT, MENU_ACTION_COPY, MENU_ACTION_PASTE, MENU_ACTION_SELECT_ALL
+            }
 
-        data object RunCabal : Menu
+            data object Cut : Action {
+                val key = Key.MENU_ACTION_CUT
+            }
 
-        data object RunGhc : Menu
+            data object Copy : Action {
+                val key = Key.MENU_ACTION_COPY
+            }
 
-        data object Cut : Menu
+            data object Paste : Action {
+                val key = Key.MENU_ACTION_PASTE
+            }
 
-        data object Copy : Menu
-
-        data object Paste : Menu
-
-        data object SelectAll : Menu
+            data object SelectAll : Action {
+                val key = Key.MENU_ACTION_SELECT_ALL
+            }
+        }
     }
 }
