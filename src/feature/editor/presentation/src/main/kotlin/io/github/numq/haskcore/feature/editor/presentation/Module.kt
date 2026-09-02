@@ -28,23 +28,33 @@ val editorFeaturePresentationModule = module {
     }
 
     scope<ScopeQualifier.Type.Document> {
-        scopedOwner { MenuReducer() }
+        scopedOwner {
+            MenuReducer(
+                cutSelection = get(), copySelection = get(), pasteFromClipboard = get(), selectAll = get()
+            )
+        }
 
         scopedOwner {
             EditorReducer(
                 menuReducer = get(),
+                applyCodeSuggestion = get(),
+                copySelection = get(),
+                cutSelection = get(),
+                extendSelection = get(),
+                getCodeDocumentation = get(),
+                getCodeSuggestions = get(),
+                moveCaret = get(),
                 observeAnalysis = get(),
                 observeEditor = get(),
                 observeSyntax = get(),
-                updateActiveLines = get(),
-                getCodeDocumentation = get(),
-                getCodeSuggestions = get(),
-                applyCodeSuggestion = get(),
+                pasteFromClipboard = get(),
                 processKey = get(),
-                moveCaret = get(),
                 saveEditorPosition = get(),
+                selectAll = get(),
                 startSelection = get(),
-                extendSelection = get()
+                updateActiveLines = get(),
+                updateCollapsedLines = get(),
+                updateFoldingRegions = get()
             )
         }
 
