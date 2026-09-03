@@ -26,9 +26,10 @@ fun EditorView(
     font: Font,
     theme: EditorTheme,
     layerFactory: LayerFactory,
-    onTextPosition: (TextPosition?) -> Unit,
-    onTextLineEnding: (TextLineEnding?) -> Unit,
-    onTextEncoding: (TextEncoding?) -> Unit,
+    textPositionCallback: (TextPosition?) -> Unit,
+    textLineEndingCallback: (TextLineEnding?) -> Unit,
+    textEncodingCallback: (TextEncoding?) -> Unit,
+    navigateToPath: (suspend (String) -> Unit)? = null,
 ) {
     when {
         path != null && language != null -> {
@@ -88,22 +89,24 @@ fun EditorView(
                 }
 
                 LaunchedEffect(position) {
-                    onTextPosition(position)
+                    textPositionCallback(position)
                 }
 
                 LaunchedEffect(lineEnding) {
-                    onTextLineEnding(lineEnding)
+                    textLineEndingCallback(lineEnding)
                 }
 
                 LaunchedEffect(encoding) {
-                    onTextEncoding(encoding)
+                    textEncodingCallback(encoding)
                 }
 
                 DisposableEffect(Unit) {
                     onDispose {
-                        onTextPosition(null)
-                        onTextLineEnding(null)
-                        onTextEncoding(null)
+                        textPositionCallback(null)
+
+                        textLineEndingCallback(null)
+
+                        textEncodingCallback(null)
                     }
                 }
 
@@ -115,6 +118,7 @@ fun EditorView(
                         font = font,
                         theme = theme,
                         layerFactory = layerFactory,
+                        navigateToPath = navigateToPath,
                         execute = feature::execute
                     )
                 }
