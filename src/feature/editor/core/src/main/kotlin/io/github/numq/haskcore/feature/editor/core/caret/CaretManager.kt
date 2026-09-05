@@ -13,11 +13,11 @@ internal interface CaretManager : AutoCloseable {
 
     suspend fun moveTo(snapshot: TextSnapshot, position: TextPosition): Either<Throwable, Unit>
 
-    suspend fun moveLeft(snapshot: TextSnapshot): Either<Throwable, Unit>
+    suspend fun moveLeft(snapshot: TextSnapshot, collapsedRanges: List<IntRange>): Either<Throwable, Unit>
 
-    suspend fun moveRight(snapshot: TextSnapshot): Either<Throwable, Unit>
+    suspend fun moveRight(snapshot: TextSnapshot, collapsedRanges: List<IntRange>): Either<Throwable, Unit>
 
-    suspend fun moveUp(snapshot: TextSnapshot): Either<Throwable, Unit>
+    suspend fun moveUp(snapshot: TextSnapshot, collapsedRanges: List<IntRange>): Either<Throwable, Unit>
 
-    suspend fun moveDown(snapshot: TextSnapshot): Either<Throwable, Unit>
+    suspend fun moveDown(snapshot: TextSnapshot, collapsedRanges: List<IntRange>): Either<Throwable, Unit>
 }
