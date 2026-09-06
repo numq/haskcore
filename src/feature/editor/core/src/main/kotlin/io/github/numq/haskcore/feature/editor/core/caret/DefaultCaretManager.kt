@@ -103,18 +103,26 @@ internal class DefaultCaretManager(private val scope: CoroutineScope) : CaretMan
         _stickyColumn.value = validPosition.column
     }
 
-    override suspend fun moveLeft(snapshot: TextSnapshot): Either<Throwable, Unit> = either {
+    override suspend fun moveLeft(
+        snapshot: TextSnapshot,
+        collapsedRanges: List<IntRange>,
+    ): Either<Throwable, Unit> = either {
         val current = _caret.value.position
 
-        val next = when {
+        var next = when {
             current.column > 0 -> current.copy(column = current.column - 1)
 
             current.line > 0 -> {
-                val prevLine = current.line - 1
+                var prevLine = current.line - 1
 
-                val prevLineLen = snapshot.getLineLength(line = prevLine)
+                while (prevLine >= 0 && collapsedRanges.any { it.contains(prevLine) }) {
+                    prevLine--
+                }
 
-                TextPosition(line = prevLine, column = prevLineLen)
+                if (prevLine >= 0) {
+                    val prevLineLen = snapshot.getLineLength(line = prevLine)
+                    TextPosition(line = prevLine, column = prevLineLen)
+                } else current
             }
 
             else -> current
@@ -129,15 +137,28 @@ internal class DefaultCaretManager(private val scope: CoroutineScope) : CaretMan
         }
     }
 
-    override suspend fun moveRight(snapshot: TextSnapshot): Either<Throwable, Unit> = either {
+    override suspend fun moveRight(
+        snapshot: TextSnapshot,
+        collapsedRanges: List<IntRange>,
+    ): Either<Throwable, Unit> = either {
         val current = _caret.value.position
 
         val currentLineLength = snapshot.getLineLength(line = current.line)
 
-        val next = when {
+        var next = when {
             current.column < currentLineLength -> current.copy(column = current.column + 1)
 
-            current.line < snapshot.lines - 1 -> TextPosition(line = current.line + 1, column = 0)
+            current.line < snapshot.lines - 1 -> {
+                var nextLine = current.line + 1
+
+                while (nextLine < snapshot.lines && collapsedRanges.any { it.contains(nextLine) }) {
+                    nextLine++
+                }
+
+                if (nextLine < snapshot.lines) {
+                    TextPosition(line = nextLine, column = 0)
+                } else current
+            }
 
             else -> current
         }
@@ -151,12 +172,19 @@ internal class DefaultCaretManager(private val scope: CoroutineScope) : CaretMan
         }
     }
 
-    override suspend fun moveUp(snapshot: TextSnapshot): Either<Throwable, Unit> = either {
+    override suspend fun moveUp(
+        snapshot: TextSnapshot,
+        collapsedRanges: List<IntRange>,
+    ): Either<Throwable, Unit> = either {
         val current = _caret.value.position
 
-        if (current.line > 0) {
-            val nextLine = current.line - 1
+        var nextLine = current.line - 1
 
+        while (nextLine >= 0 && collapsedRanges.any { it.contains(nextLine) }) {
+            nextLine--
+        }
+
+        if (nextLine >= 0) {
             val nextLineLength = snapshot.getLineLength(line = nextLine)
 
             val targetColumn = _stickyColumn.value.coerceAtMost(nextLineLength)
@@ -169,12 +197,19 @@ internal class DefaultCaretManager(private val scope: CoroutineScope) : CaretMan
         }
     }
 
-    override suspend fun moveDown(snapshot: TextSnapshot): Either<Throwable, Unit> = either {
+    override suspend fun moveDown(
+        snapshot: TextSnapshot,
+        collapsedRanges: List<IntRange>,
+    ): Either<Throwable, Unit> = either {
         val current = _caret.value.position
 
-        if (current.line < snapshot.lines - 1) {
-            val nextLine = current.line + 1
+        var nextLine = current.line + 1
 
+        while (nextLine < snapshot.lines && collapsedRanges.any { it.contains(nextLine) }) {
+            nextLine++
+        }
+
+        if (nextLine < snapshot.lines) {
             val nextLineLength = snapshot.getLineLength(line = nextLine)
 
             val targetColumn = _stickyColumn.value.coerceAtMost(nextLineLength)
