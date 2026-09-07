@@ -18,6 +18,10 @@ interface EditorService : AutoCloseable {
 
     val activeLines: StateFlow<IntRange>
 
+    val collapsedLines: StateFlow<Set<Int>>
+
+    val collapsedRanges: StateFlow<List<IntRange>>
+
     suspend fun getParentPath(path: String): Either<Throwable, String>
 
     suspend fun getName(path: String): Either<Throwable, String>
@@ -27,6 +31,10 @@ interface EditorService : AutoCloseable {
     suspend fun saveEditorPosition(position: EditorPosition): Either<Throwable, Unit>
 
     suspend fun updateActiveLines(start: Int, end: Int): Either<Throwable, Unit>
+
+    suspend fun updateCollapsedLines(lines: Set<Int>): Either<Throwable, Unit>
+
+    suspend fun updateFoldingRegions(ranges: List<IntRange>): Either<Throwable, Unit>
 
     suspend fun handleEdit(snapshot: TextSnapshot, edit: TextEdit?): Either<Throwable, Unit>
 
