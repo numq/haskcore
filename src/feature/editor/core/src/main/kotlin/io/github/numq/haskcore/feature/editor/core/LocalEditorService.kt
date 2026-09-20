@@ -37,6 +37,24 @@ internal class LocalEditorService(
 
     override val activeLines = _activeLines.asStateFlow()
 
+    private val _collapsedLines = MutableStateFlow(emptySet<Int>())
+
+    override val collapsedLines = _collapsedLines.asStateFlow()
+
+    private val _collapsedRanges = MutableStateFlow(emptyList<IntRange>())
+
+    override val collapsedRanges = _collapsedRanges.asStateFlow()
+
+    private fun getActiveCollapsedRanges(): List<IntRange> {
+        val collapsedStarts = _collapsedLines.value
+
+        return _collapsedRanges.value.filter { ranges ->
+            ranges.first in collapsedStarts
+        }.map { range ->
+            (range.first + 1)..range.last
+        }
+    }
+
     override suspend fun getParentPath(path: String) = Either.catch {
         withContext(Dispatchers.IO) {
             Path.of(path).parent.toString()
@@ -65,6 +83,18 @@ internal class LocalEditorService(
         return Unit.right()
     }
 
+    override suspend fun updateCollapsedLines(lines: Set<Int>): Either<Throwable, Unit> {
+        _collapsedLines.value = lines
+
+        return Unit.right()
+    }
+
+    override suspend fun updateFoldingRegions(ranges: List<IntRange>): Either<Throwable, Unit> {
+        _collapsedRanges.value = ranges
+
+        return Unit.right()
+    }
+
     override suspend fun handleEdit(snapshot: TextSnapshot, edit: TextEdit?) = either {
         selectionManager.clearSelection().bind()
 
@@ -79,13 +109,21 @@ internal class LocalEditorService(
         snapshot: TextSnapshot, position: TextPosition,
     ) = caretManager.moveTo(snapshot = snapshot, position = position)
 
-    override suspend fun moveCaretLeft(snapshot: TextSnapshot) = caretManager.moveLeft(snapshot = snapshot)
+    override suspend fun moveCaretLeft(snapshot: TextSnapshot) = caretManager.moveLeft(
+        snapshot = snapshot, collapsedRanges = getActiveCollapsedRanges()
+    )
 
-    override suspend fun moveCaretRight(snapshot: TextSnapshot) = caretManager.moveRight(snapshot = snapshot)
+    override suspend fun moveCaretRight(snapshot: TextSnapshot) = caretManager.moveRight(
+        snapshot = snapshot, collapsedRanges = getActiveCollapsedRanges()
+    )
 
-    override suspend fun moveCaretUp(snapshot: TextSnapshot) = caretManager.moveUp(snapshot = snapshot)
+    override suspend fun moveCaretUp(snapshot: TextSnapshot) = caretManager.moveUp(
+        snapshot = snapshot, collapsedRanges = getActiveCollapsedRanges()
+    )
 
-    override suspend fun moveCaretDown(snapshot: TextSnapshot) = caretManager.moveDown(snapshot = snapshot)
+    override suspend fun moveCaretDown(snapshot: TextSnapshot) = caretManager.moveDown(
+        snapshot = snapshot, collapsedRanges = getActiveCollapsedRanges()
+    )
 
     override suspend fun startSelection(
         snapshot: TextSnapshot, position: TextPosition,
