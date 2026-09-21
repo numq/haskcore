@@ -8,7 +8,7 @@ plugins {
 dependencies {
     implementation(projects.common.presentation)
     implementation(projects.feature.editor.core)
-    implementation(libs.compose.rich.editor)
+    implementation(libs.jetbrains.markdown)
 }
 
 tasks.withType<Test>().configureEach {
