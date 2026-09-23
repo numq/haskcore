@@ -36,6 +36,7 @@ val featureModules = listOf(
     "navigation",
     "output",
     "settings",
+    "stack",
     "status",
     "welcome",
     "workspace"
