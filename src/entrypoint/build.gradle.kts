@@ -22,6 +22,8 @@ dependencies {
     implementation(projects.feature.output.presentation)
     implementation(projects.feature.settings.core)
     implementation(projects.feature.settings.presentation)
+    implementation(projects.feature.stack.core)
+    implementation(projects.feature.stack.presentation)
     implementation(projects.feature.status.core)
     implementation(projects.feature.status.presentation)
     implementation(projects.feature.welcome.core)
