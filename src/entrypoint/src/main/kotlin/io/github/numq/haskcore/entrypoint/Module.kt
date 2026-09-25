@@ -1,19 +1,5 @@
 package io.github.numq.haskcore.entrypoint
 
-import io.github.numq.haskcore.service.clipboard.clipboardServiceModule
-import io.github.numq.haskcore.service.configuration.configurationServiceModule
-import io.github.numq.haskcore.service.document.documentServiceModule
-import io.github.numq.haskcore.service.journal.journalServiceModule
-import io.github.numq.haskcore.service.keymap.keymapServiceModule
-import io.github.numq.haskcore.service.logger.loggerServiceModule
-import io.github.numq.haskcore.service.lsp.lspServiceModule
-import io.github.numq.haskcore.service.project.projectServiceModule
-import io.github.numq.haskcore.service.runtime.runtimeServiceModule
-import io.github.numq.haskcore.service.session.sessionServiceModule
-import io.github.numq.haskcore.service.syntax.syntaxServiceModule
-import io.github.numq.haskcore.service.text.textServiceModule
-import io.github.numq.haskcore.service.toolchain.toolchainModule
-import io.github.numq.haskcore.service.vfs.vfsServiceModule
 import io.github.numq.haskcore.common.presentation.commonPresentationModule
 import io.github.numq.haskcore.feature.bootstrap.core.bootstrapFeatureCoreModule
 import io.github.numq.haskcore.feature.bootstrap.presentation.bootstrapFeaturePresentationModule
@@ -31,12 +17,28 @@ import io.github.numq.haskcore.feature.output.core.outputFeatureCoreModule
 import io.github.numq.haskcore.feature.output.presentation.outputFeaturePresentationModule
 import io.github.numq.haskcore.feature.settings.core.settingsFeatureCoreModule
 import io.github.numq.haskcore.feature.settings.presentation.settingsFeaturePresentationModule
+import io.github.numq.haskcore.feature.stack.core.stackFeatureCoreModule
+import io.github.numq.haskcore.feature.stack.presentation.stackFeaturePresentationModule
 import io.github.numq.haskcore.feature.status.core.statusFeatureCoreModule
 import io.github.numq.haskcore.feature.status.presentation.statusFeaturePresentationModule
 import io.github.numq.haskcore.feature.welcome.core.welcomeFeatureCoreModule
 import io.github.numq.haskcore.feature.welcome.presentation.welcomeFeaturePresentationModule
 import io.github.numq.haskcore.feature.workspace.core.workspaceFeatureCoreModule
 import io.github.numq.haskcore.feature.workspace.presentation.workspaceFeaturePresentationModule
+import io.github.numq.haskcore.service.clipboard.clipboardServiceModule
+import io.github.numq.haskcore.service.configuration.configurationServiceModule
+import io.github.numq.haskcore.service.document.documentServiceModule
+import io.github.numq.haskcore.service.journal.journalServiceModule
+import io.github.numq.haskcore.service.keymap.keymapServiceModule
+import io.github.numq.haskcore.service.logger.loggerServiceModule
+import io.github.numq.haskcore.service.lsp.lspServiceModule
+import io.github.numq.haskcore.service.project.projectServiceModule
+import io.github.numq.haskcore.service.runtime.runtimeServiceModule
+import io.github.numq.haskcore.service.session.sessionServiceModule
+import io.github.numq.haskcore.service.syntax.syntaxServiceModule
+import io.github.numq.haskcore.service.text.textServiceModule
+import io.github.numq.haskcore.service.toolchain.toolchainModule
+import io.github.numq.haskcore.service.vfs.vfsServiceModule
 import org.koin.dsl.module
 
 private val common = module {
@@ -60,6 +62,8 @@ private val feature = module {
     includes(outputFeaturePresentationModule)
     includes(settingsFeatureCoreModule)
     includes(settingsFeaturePresentationModule)
+    includes(stackFeatureCoreModule)
+    includes(stackFeaturePresentationModule)
     includes(statusFeatureCoreModule)
     includes(statusFeaturePresentationModule)
     includes(welcomeFeatureCoreModule)
