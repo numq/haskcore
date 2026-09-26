@@ -7,14 +7,13 @@ import io.github.numq.haskcore.common.core.usecase.UseCase
 import io.github.numq.haskcore.feature.execution.core.*
 import io.github.numq.haskcore.service.document.DocumentService
 import io.github.numq.haskcore.service.runtime.RuntimeEvent
-import io.github.numq.haskcore.service.runtime.RuntimeRequest
 import io.github.numq.haskcore.service.runtime.RuntimeService
 import io.github.numq.haskcore.service.toolchain.ToolchainService
 import io.github.numq.haskcore.service.vfs.VfsService
 import io.github.numq.haskcore.service.vfs.VirtualFile
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+import kotlin.time.Duration.Companion.milliseconds
 
 class ObserveExecution(
     private val rootPath: String,
@@ -28,48 +27,53 @@ class ObserveExecution(
         const val DEBOUNCE_MILLIS = 300L
     }
 
-    private suspend fun findAvailableTargets(allFiles: List<VirtualFile>): List<LaunchTarget> {
-        val stackYaml = allFiles.find { file -> file.name.equals("stack.yaml", ignoreCase = true) }
+    private suspend fun findAvailableTargets(allFiles: List<VirtualFile>): List<LaunchTarget> = coroutineScope {
+        val isStack = allFiles.any { file -> file.name.equals("stack.yaml", ignoreCase = true) }
 
-        if (stackYaml != null) {
-            val request = RuntimeRequest.Stack(
-                id = "probe-${rootPath.hashCode()}",
-                name = "probe-targets",
-                arguments = listOf("ide", "targets"),
-                workingDir = rootPath
-            )
+        val packageYaml = allFiles.find { file -> file.name.equals("package.yaml", ignoreCase = true) }
 
-            val events = runtimeService.execute(request = request).getOrElse { emptyFlow() }.toList()
+        if (packageYaml != null) {
+            val packageTargets = documentService.readDocument(path = packageYaml.path).map { doc ->
+                var inExecutables = false
 
-            val targets = events.filter { event ->
-                event is RuntimeEvent.Stdout || event is RuntimeEvent.Stderr
-            }.flatMap { event ->
-                when (event) {
-                    is RuntimeEvent.Stdout -> event.text
+                val found = mutableListOf<LaunchTarget>()
 
-                    is RuntimeEvent.Stderr -> event.text
+                doc.content.lineSequence().forEach { line ->
+                    val trimmed = line.trimEnd()
 
-                    else -> ""
-                }.trim().lines()
-            }.map(String::trim).filter { line ->
-                line.isNotEmpty() && !line.startsWith("#") && line.contains(":")
-            }.map { targetInfo ->
-                val parts = targetInfo.split(":")
+                    if (trimmed.trim() == "executables:") {
+                        inExecutables = true
+                    } else if (inExecutables) {
+                        if (line.isNotEmpty() && !line.startsWith(" ") && !line.startsWith("\t") && !line.trim()
+                                .startsWith("#")
+                        ) {
+                            inExecutables = false
+                        } else if (trimmed.endsWith(":") && (line.startsWith("  ") || line.startsWith("\t")) && !line.startsWith(
+                                "    "
+                            )
+                        ) {
+                            val name = trimmed.trim().removeSuffix(":")
 
-                val name = when {
-                    parts.size >= 3 && parts[1] == "exe" -> parts[2]
+                            if (name.isNotEmpty()) {
+                                found.add(
+                                    when {
+                                        isStack -> LaunchTarget.Stack(
+                                            name = name, workingDir = rootPath, componentName = name
+                                        )
 
-                    parts.size >= 2 -> parts[1]
-
-                    else -> parts.last()
+                                        else -> LaunchTarget.Cabal(
+                                            name = name, workingDir = rootPath, componentName = name
+                                        )
+                                    }
+                                )
+                            }
+                        }
+                    }
                 }
+                found
+            }.getOrElse { emptyList() }
 
-                LaunchTarget.Stack(name = name, workingDir = rootPath, componentName = targetInfo)
-            }.filter { target ->
-                target.name.isNotEmpty()
-            }
-
-            if (targets.isNotEmpty()) return targets
+            if (packageTargets.isNotEmpty()) return@coroutineScope packageTargets
         }
 
         val cabalFile = allFiles.find { file -> file.extension?.lowercase() == "cabal" }
@@ -81,35 +85,61 @@ class ObserveExecution(
                 }.map { line ->
                     line.toString().substringAfter("executable").trim()
                 }.filter(String::isNotEmpty).map { name ->
-                    LaunchTarget.Cabal(name = name, workingDir = rootPath, componentName = name)
+                    when {
+                        isStack -> LaunchTarget.Stack(name = name, workingDir = rootPath, componentName = name)
+
+                        else -> LaunchTarget.Cabal(name = name, workingDir = rootPath, componentName = name)
+                    }
                 }.toList()
             }.getOrElse { emptyList() }
 
-            if (cabalTargets.isNotEmpty()) return cabalTargets
+            if (cabalTargets.isNotEmpty()) return@coroutineScope cabalTargets
         }
 
-        return allFiles.filter { file ->
+        allFiles.filter { file ->
             file.extension?.lowercase() == "hs"
-        }.filter { file ->
-            documentService.readDocument(path = file.path).map { doc ->
-                doc.content.lineSequence().any { line ->
-                    line.trim().startsWith("main =")
-                }
-            }.getOrElse { false }
         }.map { file ->
-            LaunchTarget.File(name = file.nameWithoutExtension, workingDir = rootPath, filePath = file.path)
-        }
+            async {
+                val isMain = documentService.readDocument(path = file.path).map { doc ->
+                    doc.content.lineSequence().any { line ->
+                        line.trim().startsWith("main =")
+                    }
+                }.getOrElse { false }
+
+                if (isMain) {
+                    LaunchTarget.File(name = file.nameWithoutExtension, workingDir = rootPath, filePath = file.path)
+                } else null
+            }
+        }.awaitAll().filterNotNull()
     }
 
     @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
     override suspend fun Raise<Throwable>.query(): Flow<Execution> {
-        val configsFlow = vfsService.observeFiles(path = rootPath).bind().map { files ->
-            files.filter { file ->
+        val relevantFilesFlow = vfsService.observeFiles(path = rootPath).bind().map { files ->
+            val filtered = files.filter { file ->
                 val path = file.path.lowercase()
 
-                !path.contains(".stack-work") && !path.contains("dist-newstyle")
+                !path.contains(".stack-work") && !path.contains("dist-newstyle") && !path.contains(".git")
             }
-        }.distinctUntilChanged().map { files ->
+
+            val stackYaml = filtered.find { it.name.equals("stack.yaml", ignoreCase = true) }
+
+            val cabalFile = filtered.find { it.extension?.lowercase() == "cabal" }
+
+            when {
+                stackYaml != null -> listOfNotNull(
+                    stackYaml, cabalFile, filtered.find { it.name.equals("package.yaml", ignoreCase = true) })
+
+                cabalFile != null -> listOf(cabalFile)
+                else -> filtered.filter { it.extension?.lowercase() == "hs" }
+            }
+        }.distinctUntilChanged { old, new ->
+            old.size == new.size && old.zip(new).all { (o, n) ->
+                o.path == n.path && o.lastModifiedTimestamp == n.lastModifiedTimestamp
+            }
+        }
+
+        val configsFlow = relevantFilesFlow.debounce(DEBOUNCE_MILLIS.milliseconds).map { files ->
             findAvailableTargets(allFiles = files).map { target ->
                 val stableId = when (target) {
                     is LaunchTarget.File -> "temp-file-${target.filePath.hashCode()}"
@@ -132,15 +162,19 @@ class ObserveExecution(
             executionService.setConfigurations(configurations = configurations).bind()
         }
 
+        val processStatusEvents =
+            runtimeService.events.filter { it is RuntimeEvent.Started || it is RuntimeEvent.Terminated }
+                .map { it.request.id }.onStart { emit("") }
+
         return configsFlow.flatMapLatest { discoveredConfigs ->
             combine(
                 flow = toolchainService.toolchain,
                 flow2 = executionService.configurations,
                 flow3 = executionService.selectedConfiguration,
-                flow4 = runtimeService.events.onStart<RuntimeEvent?> { emit(null) },
+                flow4 = processStatusEvents,
                 transform = { _, savedConfigs, selected, _ ->
                     savedConfigs.ifEmpty { discoveredConfigs } to selected
-                }).debounce(DEBOUNCE_MILLIS).map { (configs, selected) ->
+                }).map { (configs, selected) ->
                 when (val nonEmptyConfigs = configs.toNonEmptyListOrNull()) {
                     null -> Execution.Synced.NotFound
 
