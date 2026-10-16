@@ -24,6 +24,7 @@ tree-sitter-haskell = "0.23.1"
 java-diff-utils = "4.16"
 jetbrains-markdown = "0.7.5"
 turbine = "1.2.1"
+krope = "1.1.1"
 
 [libraries]
 compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "compose-material3" }
@@ -62,6 +63,8 @@ tree-sitter-haskell = { module = "io.github.bonede:tree-sitter-haskell", version
 java-diff-utils = { module = "io.github.java-diff-utils:java-diff-utils", version.ref = "java-diff-utils" }
 jetbrains-markdown = { module = "org.jetbrains:markdown", version.ref = "jetbrains-markdown" }
 turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
+krope-core = { module = "io.github.numq.krope:core", version.ref = "krope" }
+krope-text = { module = "io.github.numq.krope:text", version.ref = "krope" }
 
 [plugins]
 compose-hot-reload = { id = "org.jetbrains.compose.hot-reload", version.ref = "compose-hot-reload" }
