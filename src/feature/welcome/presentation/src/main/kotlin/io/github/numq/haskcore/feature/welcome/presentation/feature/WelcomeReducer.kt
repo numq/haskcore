@@ -1,10 +1,6 @@
 package io.github.numq.haskcore.feature.welcome.presentation.feature
 
-import io.github.numq.haskcore.common.presentation.feature.Reducer
-import io.github.numq.haskcore.common.presentation.feature.action
-import io.github.numq.haskcore.common.presentation.feature.effect
-import io.github.numq.haskcore.common.presentation.feature.event
-import io.github.numq.haskcore.common.presentation.feature.stream
+import io.github.numq.haskcore.common.presentation.feature.*
 import io.github.numq.haskcore.feature.welcome.core.usecase.ObserveRecentProjects
 import io.github.numq.haskcore.feature.welcome.core.usecase.RemoveRecentProject
 import kotlinx.coroutines.flow.map
