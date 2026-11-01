@@ -55,7 +55,6 @@ koin-compose = { module = "io.insert-koin:koin-compose", version.ref = "koin" }
 datastore = { module = "androidx.datastore:datastore-core", version.ref = "datastore" }
 datastore-preferences = { module = "androidx.datastore:datastore-preferences-core", version.ref = "datastore" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
-okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
 lsp4j = { module = "org.eclipse.lsp4j:org.eclipse.lsp4j", version.ref = "lsp4j" }
 lsp4j-jsonrpc = { module = "org.eclipse.lsp4j:org.eclipse.lsp4j.jsonrpc", version.ref = "lsp4j" }
 directory-watcher = { module = "io.methvin:directory-watcher", version.ref = "directory-watcher" }
