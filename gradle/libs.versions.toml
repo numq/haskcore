@@ -66,7 +66,6 @@ krope-core = { module = "io.github.numq.krope:core", version.ref = "krope" }
 kortex-code-compose = { module = "io.github.numq.kortex:code-compose", version.ref = "kortex" }
 
 [plugins]
-compose-hot-reload = { id = "org.jetbrains.compose.hot-reload", version.ref = "compose-hot-reload" }
 compose-multiplatform = { id = "org.jetbrains.compose", version.ref = "compose-multiplatform" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
