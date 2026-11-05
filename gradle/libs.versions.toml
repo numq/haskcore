@@ -51,7 +51,6 @@ arrow-core = { module = "io.arrow-kt:arrow-core", version.ref = "arrow" }
 koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }
 koin-compose = { module = "io.insert-koin:koin-compose", version.ref = "koin" }
 datastore = { module = "androidx.datastore:datastore-core", version.ref = "datastore" }
-datastore-preferences = { module = "androidx.datastore:datastore-preferences-core", version.ref = "datastore" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 lsp4j = { module = "org.eclipse.lsp4j:org.eclipse.lsp4j", version.ref = "lsp4j" }
 lsp4j-jsonrpc = { module = "org.eclipse.lsp4j:org.eclipse.lsp4j.jsonrpc", version.ref = "lsp4j" }
