@@ -28,9 +28,7 @@ data class TextRange(val start: TextPosition, val end: TextPosition) {
     )
 
     fun contains(position: TextPosition): Boolean {
-        if (position.line < start.line || position.line > end.line) return false
-
-        return when {
+        return !(position.line < start.line || position.line > end.line) && when {
             isSingleLine -> position.column in start.column..end.column
 
             position.line == start.line -> position.column >= start.column
