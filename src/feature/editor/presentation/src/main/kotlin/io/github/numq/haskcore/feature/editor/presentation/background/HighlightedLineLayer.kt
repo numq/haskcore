@@ -10,7 +10,7 @@ data class HighlightedLineLayer(
 ) : Layer {
     override fun render(canvas: Canvas) {
         if (!paint.isClosed) {
-            val bounds = Rect.Companion.makeXYWH(l = x, t = y, w = width, h = height)
+            val bounds = Rect.makeXYWH(l = x, t = y, w = width, h = height)
 
             canvas.drawRect(r = bounds, paint = paint)
         }
