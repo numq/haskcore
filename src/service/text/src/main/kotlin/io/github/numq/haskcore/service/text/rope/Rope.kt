@@ -268,9 +268,7 @@ internal class Rope private constructor(
         }
 
         fun buildRecursive(start: Int, end: Int): Node {
-            val count = end - start
-
-            return when (count) {
+            return when (val count = end - start) {
                 0 -> Node.Empty
 
                 1 -> mergedNodes[start]
@@ -706,7 +704,7 @@ internal class Rope private constructor(
         )
     }
 
-    fun batch(block: RopeBuilder.() -> Unit) = RopeBuilder.Companion.build(this, block)
+    fun batch(block: RopeBuilder.() -> Unit) = RopeBuilder.build(this, block)
 
     fun insertBatchFast(insertions: List<Pair<Int, String>>): Rope {
         if (insertions.isEmpty()) return this
