@@ -309,9 +309,7 @@ internal fun WorkspaceWindow(
 
                                 val path = workspace.path
 
-                                val name = workspace.name
-
-                                when (name) {
+                                when (val name = workspace.name) {
                                     null -> Text(
                                         text = "C:\\Users\\User\\Documents\\HaskellProject", // path, todo
                                         color = MaterialTheme.colorScheme.onSurface,
