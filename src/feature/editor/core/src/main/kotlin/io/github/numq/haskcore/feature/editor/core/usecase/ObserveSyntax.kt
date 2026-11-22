@@ -53,23 +53,12 @@ class ObserveSyntax(
             }).flatMapLatest { (snapshot, edit, activeLines) ->
             flow {
                 try {
-                    val needsFullParse =
-                        lastRevision == null || syntaxService.syntax.value?.revision != snapshot.revision
-
-                    if (needsFullParse) {
-                        syntaxService.fullParse(snapshot = snapshot).getOrElse { throwable ->
-                            lastRevision = null
-
-                            throw throwable
-                        }
-
-                        lastRevision = snapshot.revision.value
-                    }
-
-                    val startLine =
-                        (activeLines.start - HIGHLIGHTING_LINE_PADDING_START).coerceIn(0, snapshot.lines - 1)
-                    val endLine =
-                        (activeLines.endInclusive + HIGHLIGHTING_LINE_PADDING_END).coerceIn(0, snapshot.lines - 1)
+                    val startLine = (activeLines.start - HIGHLIGHTING_LINE_PADDING_START).coerceIn(
+                        0, snapshot.lines - 1
+                    )
+                    val endLine = (activeLines.endInclusive + HIGHLIGHTING_LINE_PADDING_END).coerceIn(
+                        0, snapshot.lines - 1
+                    )
 
                     val startPosition = TextPosition(line = startLine, column = 0)
 
@@ -79,28 +68,40 @@ class ObserveSyntax(
 
                     val range = TextRange(start = startPosition, end = endPosition)
 
-                    edit?.data?.let { data ->
-                        syntaxService.applyChange(
-                            snapshot = snapshot, data = data, range = range
-                        ).getOrElse { throwable ->
-                            if (throwable.message?.contains("closed") == true) {
-                                lastRevision = null
-                            }
+                    val needsFullParse =
+                        lastRevision == null || (syntaxService.syntax.value?.revision?.let { snapshot.revision.value - it.value }
+                            ?: Long.MAX_VALUE) > 10
+
+                    if (needsFullParse) {
+                        syntaxService.fullParse(snapshot = snapshot).getOrElse { throwable ->
+                            lastRevision = null
 
                             throw throwable
                         }
+
+                        lastRevision = snapshot.revision.value
+                    } else if (syntaxService.syntax.value?.revision != snapshot.revision) {
+                        edit?.data?.let { data ->
+                            syntaxService.applyChange(
+                                snapshot = snapshot, data = data, range = range
+                            ).getOrElse { throwable ->
+                                if (throwable.message?.contains("closed") == true) {
+                                    lastRevision = null
+                                }
+
+                                throw throwable
+                            }
+                        }
                     }
 
-                    syntaxService.parseFoldingRegions(snapshot = snapshot, range = range).getOrElse { throwable ->
+                    syntaxService.parseFoldingRegions(
+                        snapshot = snapshot, range = range
+                    ).getOrElse { throwable ->
                         println("Parse folding failed: $throwable") // todo
                     }
 
-                    syntaxService.parseTokensPerLine(snapshot = snapshot, range = range).getOrElse { throwable ->
-                        println("Parse tokens failed: $throwable") // todo
-                    }
-
                     emit(Unit)
-                } catch (throwable: Throwable) {
+                } catch (_: Throwable) {
                     delay(RETRY_DELAY_MS)
 
                     lastRevision = null
@@ -124,7 +125,6 @@ class ObserveSyntax(
         }
     }
 
-    @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
     override suspend fun Raise<Throwable>.exchange(input: Input) = when (input.language) {
         is Language.Haskell -> channelFlow<Syntax> {
             launch {
@@ -140,7 +140,13 @@ class ObserveSyntax(
                     Syntax(
                         revision = revision,
                         foldingRegions = foldingRegions.map { foldingRegion ->
-                            FoldingRegion.Expanded(range = foldingRegion.range)
+                            when {
+                                foldingRegion.range.start.line in editorService.collapsedLines.value -> FoldingRegion.Collapsed(
+                                    range = foldingRegion.range
+                                )
+
+                                else -> FoldingRegion.Expanded(range = foldingRegion.range)
+                            }
                         },
                         occurrences = occurrences.map(SyntaxOccurrence::toOccurrence),
                         tokensPerLine = tokensPerLine.mapValues { (_, tokens) ->
