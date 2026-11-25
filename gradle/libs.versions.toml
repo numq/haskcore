@@ -49,6 +49,7 @@ tree-sitter-haskell = { module = "io.github.bonede:tree-sitter-haskell", version
 java-diff-utils = { module = "io.github.java-diff-utils:java-diff-utils", version.ref = "java-diff-utils" }
 jetbrains-markdown = { module = "org.jetbrains:markdown", version.ref = "jetbrains-markdown" }
 turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
+krope-core = { module = "io.github.numq.krope:core", version.ref = "krope" }
 kortex-code-compose = { module = "io.github.numq.kortex:code-compose", version.ref = "kortex" }
 
 [plugins]
